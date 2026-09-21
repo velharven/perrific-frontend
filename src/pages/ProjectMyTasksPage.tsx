@@ -34,7 +34,7 @@ export default function ProjectMyTasksPage() {
   if (loading) return <p className="text-gray-500">Memuat…</p>;
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-4">
+    <div className="w-full space-y-4">
       <h1 className="text-2xl font-bold text-gray-800">Tugas Saya</h1>
       {myTasks.length === 0 ? (
         <p className="rounded-xl border border-gray-200 bg-white px-3 py-6 font-givonic text-sm text-gray-400">

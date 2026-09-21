@@ -5,6 +5,7 @@ import { projectApi } from '@/api/projects';
 import CreateProjectModal from '@/components/project/CreateProjectModal';
 import Avatar from '@/components/ui/Avatar';
 import { showToast } from '@/components/ui/Toast';
+import { APP_SIDEBAR_EVENT, isAppSidebarCollapsed } from '@/components/layout/AppLayout';
 import { useAuth } from '@/store/auth';
 import type { Project, Task, Team } from '@/types';
 
@@ -89,6 +90,14 @@ export default function TeamPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [tab, setTab] = useState<'project' | 'team'>('project');
   const [email, setEmail] = useState('');
+  // Offset pill fixed agar center ke area konten (di luar sidebar utama).
+  const [sbCollapsed, setSbCollapsed] = useState<boolean>(isAppSidebarCollapsed);
+
+  useEffect(() => {
+    const sync = () => setSbCollapsed(isAppSidebarCollapsed());
+    window.addEventListener(APP_SIDEBAR_EVENT, sync);
+    return () => window.removeEventListener(APP_SIDEBAR_EVENT, sync);
+  }, []);
 
   const projectParam = searchParams.get('project');
   const filterProjectId = projects.some((p) => p.id === projectParam) ? projectParam : null;
@@ -322,9 +331,13 @@ export default function TeamPage() {
         )}
       </div>
 
-      <div className="sticky bottom-4 z-10 flex justify-center">
+      <div
+        className={`pointer-events-none fixed inset-x-0 bottom-4 z-30 flex justify-center transition-[left] duration-200 ${
+          sbCollapsed ? 'md:left-[68px]' : 'md:left-64'
+        }`}
+      >
         <div
-          className="nice-scroll flex max-w-full gap-1 overflow-x-auto rounded-full border border-gray-300 bg-white/95 p-1.5 shadow-[0_8px_24px_rgba(26,26,30,0.14)] backdrop-blur"
+          className="pointer-events-auto nice-scroll flex max-w-full gap-1 overflow-x-auto rounded-full border border-gray-300 bg-white/95 p-1.5 shadow-[0_8px_24px_rgba(26,26,30,0.14)] backdrop-blur"
           role="tablist"
           aria-label="Navigasi tim"
         >
@@ -355,6 +368,13 @@ export default function TeamPage() {
       {createOpen && teamId && (
         <CreateProjectModal
           teamId={teamId}
+          projects={projects}
+          members={(team?.members ?? []).map((m) => ({
+            userId: m.userId,
+            name: m.user?.name,
+            email: m.user?.email,
+            avatarUrl: m.user?.avatarUrl,
+          }))}
           onClose={() => setCreateOpen(false)}
           onCreated={() => {
             setCreateOpen(false);

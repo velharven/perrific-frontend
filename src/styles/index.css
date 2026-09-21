@@ -68,6 +68,26 @@ html {
 .nice-scroll::-webkit-scrollbar-track {
   background: transparent;
 }
+/* Varian kontras untuk kolom kanban: thumb lebih gelap agar terlihat jelas. */
+.kanban-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(26, 26, 30, 0.45) transparent;
+  scrollbar-gutter: stable;
+}
+.kanban-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.kanban-scroll::-webkit-scrollbar-thumb {
+  background: rgba(26, 26, 30, 0.45);
+  border-radius: 999px;
+}
+.kanban-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(26, 26, 30, 0.6);
+}
+.kanban-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
 /* Rail collapse: sembunyikan visual scrollbar (scroll roda tetap jalan) */
 .no-bar {
   scrollbar-width: none;

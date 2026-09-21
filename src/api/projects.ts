@@ -1,5 +1,5 @@
 import { api } from '@/lib/api';
-import type { Attachment, BoardColumn, Comment, Project, Task, TaskActivity } from '@/types';
+import type { Attachment, BoardColumn, Comment, Project, ProjectMember, ProjectRole, Task, TaskActivity } from '@/types';
 
 export const projectApi = {
   getProject: (projectId: string) =>
@@ -39,6 +39,24 @@ export const projectApi = {
       .delete<{ data: { id: string; movedCount: number } }>(`/projects/${projectId}/columns/${columnId}`, {
         data: targetColumnId ? { targetColumnId } : {},
       })
+      .then((r) => r.data.data),
+  listRoles: (projectId: string) =>
+    api.get<{ data: ProjectRole[] }>(`/projects/${projectId}/roles`).then((r) => r.data.data),
+  createRole: (projectId: string, body: { name: string; permissions?: string[] }) =>
+    api.post<{ data: ProjectRole }>(`/projects/${projectId}/roles`, body).then((r) => r.data.data),
+  updateRole: (projectId: string, roleId: string, body: { name?: string; permissions?: string[] }) =>
+    api.patch<{ data: ProjectRole }>(`/projects/${projectId}/roles/${roleId}`, body).then((r) => r.data.data),
+  deleteRole: (projectId: string, roleId: string, targetRoleId?: string) =>
+    api
+      .delete<{ data: { id: string; movedCount: number } }>(`/projects/${projectId}/roles/${roleId}`, {
+        data: targetRoleId ? { targetRoleId } : {},
+      })
+      .then((r) => r.data.data),
+  listProjectMembers: (projectId: string) =>
+    api.get<{ data: ProjectMember[] }>(`/projects/${projectId}/members`).then((r) => r.data.data),
+  setMemberRole: (projectId: string, userId: string, roleId: string) =>
+    api
+      .patch<{ data: ProjectMember }>(`/projects/${projectId}/members/${userId}`, { roleId })
       .then((r) => r.data.data),
   updateProject: (projectId: string, body: Partial<Pick<Project, 'name' | 'description' | 'avatarUrl' | 'status'>>) =>
     api.patch<{ data: Project }>(`/projects/${projectId}`, body).then((r) => r.data.data),

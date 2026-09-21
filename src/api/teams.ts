@@ -28,6 +28,8 @@ export const teamApi = {
     api.patch<{ data: Team }>(`/teams/${teamId}/invite`, body).then((r) => r.data.data),
   listProjects: (teamId: string) =>
     api.get<{ data: Project[] }>(`/teams/${teamId}/projects`).then((r) => r.data.data),
-  createProject: (teamId: string, body: { name: string; description?: string }) =>
-    api.post<{ data: Project }>(`/teams/${teamId}/projects`, body).then((r) => r.data.data),
+  createProject: (
+    teamId: string,
+    body: { name: string; description?: string; sourceProjectId?: string; memberUserIds?: string[] },
+  ) => api.post<{ data: Project }>(`/teams/${teamId}/projects`, body).then((r) => r.data.data),
 };

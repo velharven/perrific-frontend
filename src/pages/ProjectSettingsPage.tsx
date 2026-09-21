@@ -9,13 +9,15 @@ import { fileToAvatarDataUrl } from '@/lib/avatar';
 import { ActivityIcon, TrashIcon } from '@/components/icons';
 import { loadBoardView, saveBoardView, type BoardView } from '@/components/kanban/KanbanBoard';
 import BoardColumnEditor from '@/components/project/BoardColumnEditor';
+import RoleTab from '@/components/project/RoleTab';
 import { buildJoinLink, formatExpiryText, INVITE_PRESETS, matchPreset } from '@/lib/invite';
 import { BOARD_VIEW_EVENT } from '@/pages/BoardPage';
+import { PROJECT_SIDEBAR_EVENT, isProjectSidebarCollapsed } from '@/components/layout/ProjectLayout';
 import { useAuth } from '@/store/auth';
 import { showToast } from '@/components/ui/Toast';
 import type { Project, Team } from '@/types';
 
-type Section = 'umum' | 'board' | 'undang' | 'danger';
+type Section = 'umum' | 'board' | 'undang' | 'role' | 'danger';
 
 // Event jendela saat project berubah dari halaman settings (nama/deskripsi/
 // status/foto), agar halaman induk (overview, kanban, daftar) ikut refresh.
@@ -30,6 +32,7 @@ const sections: { id: Section; label: string; adminOnly?: boolean; icon: ReactNo
   { id: 'umum', label: 'Umum', icon: <ActivityIcon name="note" className="h-[15px] w-[15px] shrink-0" /> },
   { id: 'board', label: 'Tampilan board', icon: <ActivityIcon name="kanban" className="h-[15px] w-[15px] shrink-0" /> },
   { id: 'undang', label: 'Undang', adminOnly: true, icon: <ActivityIcon name="users" className="h-[15px] w-[15px] shrink-0" /> },
+  { id: 'role', label: 'Role', adminOnly: true, icon: <ActivityIcon name="star" className="h-[15px] w-[15px] shrink-0" /> },
   { id: 'danger', label: 'Zona berbahaya', adminOnly: true, icon: <TrashIcon className="h-[15px] w-[15px] shrink-0" /> },
 ];
 
@@ -61,6 +64,14 @@ export default function ProjectSettingsPage() {
   const [confirmRegen, setConfirmRegen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  // Offset pill fixed agar center ke area konten (di luar sidebar project).
+  const [sbCollapsed, setSbCollapsed] = useState<boolean>(isProjectSidebarCollapsed);
+
+  useEffect(() => {
+    const sync = () => setSbCollapsed(isProjectSidebarCollapsed());
+    window.addEventListener(PROJECT_SIDEBAR_EVENT, sync);
+    return () => window.removeEventListener(PROJECT_SIDEBAR_EVENT, sync);
+  }, []);
 
   useEffect(() => {
     if (!projectId) return;
@@ -249,7 +260,7 @@ export default function ProjectSettingsPage() {
   if (!project) return <p className="text-gray-500">Project tidak ditemukan.</p>;
 
   return (
-    <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col space-y-5">
+    <div className="flex min-h-full w-full flex-col space-y-5">
       <div>
         <h1 className="text-2xl font-bold text-gray-800">Settings</h1>
         <p className="mt-0.5 text-sm text-gray-500">Kelola pengaturan project {project.name}</p>
@@ -477,6 +488,9 @@ export default function ProjectSettingsPage() {
             </form>
           </SettingsBlock>
         )}
+        {section === 'role' && isAdmin && project && (
+          <RoleTab projectId={project.id} />
+        )}
         {section === 'danger' && isAdmin && (
           <SettingsBlock title="Zona berbahaya" desc="Menghapus project ikut menghapus semua task di dalamnya">
             <button
@@ -489,9 +503,13 @@ export default function ProjectSettingsPage() {
           </SettingsBlock>
         )}
       </div>
-      <div className="sticky bottom-4 z-10 flex justify-center">
+      <div
+        className={`pointer-events-none fixed inset-x-0 bottom-4 z-30 flex justify-center transition-[left] duration-200 ${
+          sbCollapsed ? 'md:left-[68px]' : 'md:left-56'
+        }`}
+      >
         <div
-          className="nice-scroll flex max-w-full gap-1 overflow-x-auto rounded-full border border-gray-200 bg-white/95 p-1.5 shadow-[0_8px_24px_rgba(26,26,30,0.14)] backdrop-blur"
+          className="pointer-events-auto nice-scroll flex max-w-full gap-1 overflow-x-auto rounded-full border border-gray-200 bg-white/95 p-1.5 shadow-[0_8px_24px_rgba(26,26,30,0.14)] backdrop-blur"
           role="tablist"
           aria-label="Settings project"
         >

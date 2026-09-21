@@ -35,7 +35,7 @@ export default function ProjectPersetujuanPage() {
   if (!isAdmin) return <p className="text-gray-500">Hanya admin tim yang bisa membuka halaman ini.</p>;
 
   return (
-    <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col space-y-5">
+    <div className="flex min-h-full w-full flex-col space-y-5">
       <div>
         <h1 className="text-2xl font-bold text-gray-800">Persetujuan</h1>
         <p className="mt-0.5 text-sm text-gray-500">Usulan task di {project.name} dan permintaan anggota tim</p>

@@ -277,6 +277,13 @@ export default function TeamProjectsPage() {
       {createOpen && teamId && (
         <CreateProjectModal
           teamId={teamId}
+          projects={projects}
+          members={(team?.members ?? []).map((m) => ({
+            userId: m.userId,
+            name: m.user?.name,
+            email: m.user?.email,
+            avatarUrl: m.user?.avatarUrl,
+          }))}
           onClose={() => setCreateOpen(false)}
           onCreated={() => void handleCreated()}
         />

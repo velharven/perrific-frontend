@@ -308,7 +308,7 @@ function Column({
               </button>
             </span>
           </div>
-          <div className="nice-scroll min-h-0 flex-1 space-y-2 overflow-y-auto pr-0.5">
+          <div className="kanban-scroll min-h-0 flex-1 space-y-2 overflow-y-auto pr-0.5">
             <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
               {children}
             </SortableContext>

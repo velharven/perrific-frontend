@@ -6,6 +6,7 @@ import ConfirmModal from '@/components/ui/ConfirmModal';
 import { SettingsBlock } from '@/components/ui/SettingsShell';
 import { buildJoinLink, formatExpiryText, INVITE_PRESETS, matchPreset } from '@/lib/invite';
 import { useAuth } from '@/store/auth';
+import { APP_SIDEBAR_EVENT, isAppSidebarCollapsed } from '@/components/layout/AppLayout';
 import type { Team } from '@/types';
 
 export default function TeamSettingsPage() {
@@ -17,6 +18,14 @@ export default function TeamSettingsPage() {
   const [email, setEmail] = useState('');
   const [savingInvite, setSavingInvite] = useState(false);
   const [confirmRegen, setConfirmRegen] = useState(false);
+  // Offset pill fixed agar center ke area konten (di luar sidebar utama).
+  const [sbCollapsed, setSbCollapsed] = useState<boolean>(isAppSidebarCollapsed);
+
+  useEffect(() => {
+    const sync = () => setSbCollapsed(isAppSidebarCollapsed());
+    window.addEventListener(APP_SIDEBAR_EVENT, sync);
+    return () => window.removeEventListener(APP_SIDEBAR_EVENT, sync);
+  }, []);
 
   useEffect(() => {
     if (!teamId) return;
@@ -112,7 +121,7 @@ export default function TeamSettingsPage() {
   const joinLink = team.inviteCode ? buildJoinLink(team.inviteCode) : '';
 
   return (
-    <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col space-y-5">
+    <div className="flex min-h-full w-full flex-col space-y-5">
       <div>
         <h1 className="text-2xl font-bold text-gray-800">Settings</h1>
         <p className="mt-0.5 text-sm text-gray-500">Kelola tim {team.name}</p>
@@ -241,9 +250,13 @@ export default function TeamSettingsPage() {
         </SettingsBlock>
         )}
       </div>
-      <div className="sticky bottom-4 z-10 flex justify-center">
+      <div
+        className={`pointer-events-none fixed inset-x-0 bottom-4 z-30 flex justify-center transition-[left] duration-200 ${
+          sbCollapsed ? 'md:left-[68px]' : 'md:left-64'
+        }`}
+      >
         <div
-          className="nice-scroll flex max-w-full gap-1 overflow-x-auto rounded-full border border-gray-200 bg-white/95 p-1.5 shadow-[0_8px_24px_rgba(26,26,30,0.14)] backdrop-blur"
+          className="pointer-events-auto nice-scroll flex max-w-full gap-1 overflow-x-auto rounded-full border border-gray-200 bg-white/95 p-1.5 shadow-[0_8px_24px_rgba(26,26,30,0.14)] backdrop-blur"
           role="tablist"
           aria-label="Settings tim"
         >

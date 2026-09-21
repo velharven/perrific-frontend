@@ -77,6 +77,49 @@ export interface BoardColumn {
   createdAt: string;
 }
 
+export type PermissionKey =
+  | 'task.create'
+  | 'task.move'
+  | 'task.delete'
+  | 'task.approve'
+  | 'member.approve'
+  | 'column.manage'
+  | 'invite.manage'
+  | 'project.manage'
+  | 'role.manage';
+
+export const PERMISSION_META: { key: PermissionKey; label: string; desc: string }[] = [
+  { key: 'task.create', label: 'Buat task', desc: 'Membuat task/usulan baru' },
+  { key: 'task.move', label: 'Pindah task', desc: 'Menggeser card antar kolom' },
+  { key: 'task.delete', label: 'Hapus task', desc: 'Menghapus task' },
+  { key: 'task.approve', label: 'Setujui task', desc: 'Menyetujui/menolak usulan task' },
+  { key: 'member.approve', label: 'Setujui anggota', desc: 'Menerima/menolak permintaan bergabung' },
+  { key: 'column.manage', label: 'Kelola kolom', desc: 'Tambah/ubah/hapus kolom board' },
+  { key: 'invite.manage', label: 'Kelola invite', desc: 'Atur link, expiry, kode baru' },
+  { key: 'project.manage', label: 'Atur project', desc: 'Ubah nama, deskripsi, status, hapus' },
+  { key: 'role.manage', label: 'Kelola role', desc: 'Atur role dan jabatan anggota' },
+];
+
+export interface ProjectRole {
+  id: string;
+  projectId: string;
+  name: string;
+  system: string | null;
+  permissions: PermissionKey[];
+  createdAt: string;
+  _count?: { members: number };
+}
+
+export interface ProjectMember {
+  id: string;
+  projectId: string;
+  userId: string;
+  roleId: string;
+  createdAt: string;
+  user: User;
+  role: ProjectRole;
+}
+
 export interface Task {
   id: string;
   projectId: string;
