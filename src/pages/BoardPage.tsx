@@ -7,6 +7,8 @@ import { showToast } from '@/components/ui/Toast';
 import ModalShell from '@/components/ui/ModalShell';
 import MenuPortal from '@/components/ui/MenuPortal';
 import KanbanBoard, { DEFAULT_BOARD_VIEW, loadBoardView, saveBoardView, type BoardView } from '@/components/kanban/KanbanBoard';
+import { APP_SIDEBAR_EVENT, isAppSidebarCollapsed } from '@/components/layout/AppLayout';
+import { PROJECT_SIDEBAR_EVENT, isProjectSidebarCollapsed } from '@/components/layout/ProjectLayout';
 import { PROJECT_UPDATED_EVENT } from '@/pages/ProjectSettingsPage';
 import Avatar from '@/components/ui/Avatar';
 import { useAuth } from '@/store/auth';
@@ -49,6 +51,24 @@ export default function BoardPage() {
   const [filterCreatedBy, setFilterCreatedBy] = useState<string>('all');
   const [filterMenuOpen, setFilterMenuOpen] = useState(false);
   const [filterFlyout, setFilterFlyout] = useState<null | 'priority' | 'assignee' | 'role' | 'createdBy'>(null);
+  // Offset pill bawah agar center ke area konten (di luar sidebar).
+  // Route /board/* memakai sidebar utama (256px), tab kanban project memakai sidebar project (224px).
+  const [sbCollapsed, setSbCollapsed] = useState<boolean>(() =>
+    location.pathname.startsWith('/board/') ? isAppSidebarCollapsed() : isProjectSidebarCollapsed(),
+  );
+
+  useEffect(() => {
+    const sync = () =>
+      setSbCollapsed(
+        location.pathname.startsWith('/board/') ? isAppSidebarCollapsed() : isProjectSidebarCollapsed(),
+      );
+    window.addEventListener(APP_SIDEBAR_EVENT, sync);
+    window.addEventListener(PROJECT_SIDEBAR_EVENT, sync);
+    return () => {
+      window.removeEventListener(APP_SIDEBAR_EVENT, sync);
+      window.removeEventListener(PROJECT_SIDEBAR_EVENT, sync);
+    };
+  }, [location.pathname]);
   const filterBtnRef = useRef<HTMLButtonElement>(null);
   const flyoutTimer = useRef<number | null>(null);
 
@@ -317,48 +337,12 @@ export default function BoardPage() {
           </button>
         )}
       </div>
-      <div className="flex items-center gap-2">
-        <button
-          ref={filterBtnRef}
-          type="button"
-          onClick={() => {
-            setFilterMenuOpen((v) => !v);
-            cancelFlyoutClose();
-            setFilterFlyout(null);
-          }}
-          aria-haspopup="menu"
-          aria-expanded={filterMenuOpen}
-          aria-label="Filter task"
-          className={`flex shrink-0 items-center gap-1.5 rounded-xl border px-3 py-2 font-givonic text-xs font-semibold transition focus:outline-none ${
-            filterOptionCount > 0
-              ? 'border-perrific-violet bg-violet-50 text-perrific-violet'
-              : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
-          }`}
-        >
-          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <path d="M2.5 3.5h11l-4.2 4.8v3.4l-2.6 1.5V8.3L2.5 3.5z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          Filter
-          {filterOptionCount > 0 && (
-            <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-perrific-violet px-1 font-givonic text-[10px] font-bold text-white">
-              {filterOptionCount}
-            </span>
-          )}
-        </button>
-        <input
-          value={filterSearch}
-          onChange={(e) => setFilterSearch(e.target.value)}
-          placeholder="Cari task…"
-          aria-label="Cari task"
-          className="min-w-0 flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2 font-givonic text-xs placeholder:text-gray-400 focus:border-perrific-violet focus:outline-none"
-        />
-      </div>
       {filterMenuOpen && (
         <MenuPortal
           anchorRef={filterBtnRef}
           label="Filter task"
           width={256}
-          estimatedHeight={360}
+          placement="above"
           onClose={() => {
             setFilterMenuOpen(false);
             setFilterFlyout(null);
@@ -387,17 +371,8 @@ export default function BoardPage() {
               <div
                 role="menu"
                 aria-label="Pilih prioritas"
-                className="absolute left-0 top-full z-10 mt-1 w-full rounded-xl border border-gray-200 bg-white py-1 shadow-[0_8px_24px_rgba(26,26,30,0.14)] md:left-full md:top-0 md:mt-0 md:ml-0 md:w-56"
+                className="absolute bottom-full left-0 z-10 mb-1 max-h-[50vh] w-full overflow-y-auto rounded-xl border border-gray-200 bg-white py-1 shadow-[0_8px_24px_rgba(26,26,30,0.14)] md:top-auto md:left-full md:bottom-0 md:mb-0 md:ml-2 md:w-56"
               >
-                <div className="px-2 pb-1">
-                  <input
-                    value={priorityMenuQuery}
-                    onChange={(e) => setPriorityMenuQuery(e.target.value)}
-                    placeholder="Cari prioritas…"
-                    aria-label="Cari prioritas"
-                    className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 font-givonic text-xs focus:border-perrific-violet focus:outline-none"
-                  />
-                </div>
                 {(() => {
                   const q = priorityMenuQuery.trim().toLowerCase();
                   const opts = FILTER_PRIORITIES.filter((o) => !q || o.label.toLowerCase().includes(q));
@@ -420,6 +395,16 @@ export default function BoardPage() {
                     </button>
                   ));
                 })()}
+                <div className="mx-3 my-1 border-t border-gray-100" />
+                <div className="px-2 pt-1">
+                  <input
+                    value={priorityMenuQuery}
+                    onChange={(e) => setPriorityMenuQuery(e.target.value)}
+                    placeholder="Cari prioritas…"
+                    aria-label="Cari prioritas"
+                    className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 font-givonic text-xs focus:border-perrific-violet focus:outline-none"
+                  />
+                </div>
               </div>
             )}
           </div>
@@ -449,7 +434,7 @@ export default function BoardPage() {
               <div
                 role="menu"
                 aria-label="Pilih assignee"
-                className="absolute left-0 top-full z-10 mt-1 w-full rounded-xl border border-gray-200 bg-white py-1 shadow-[0_8px_24px_rgba(26,26,30,0.14)] md:left-full md:top-0 md:mt-0 md:ml-0 md:w-60"
+                className="absolute bottom-full left-0 z-10 mb-1 max-h-[50vh] w-full overflow-y-auto rounded-xl border border-gray-200 bg-white py-1 shadow-[0_8px_24px_rgba(26,26,30,0.14)] md:top-auto md:left-full md:bottom-0 md:mb-0 md:ml-2 md:w-60"
               >
                 {FILTER_ASSIGNEES.map((o) => (
                   <button
@@ -466,16 +451,6 @@ export default function BoardPage() {
                     {filterAssignee === o.v && <span aria-hidden="true">✓</span>}
                   </button>
                 ))}
-                <div className="mx-3 my-1 border-t border-gray-100" />
-                <div className="px-2 pb-1">
-                  <input
-                    value={assigneeMenuQuery}
-                    onChange={(e) => setAssigneeMenuQuery(e.target.value)}
-                    placeholder="Cari user…"
-                    aria-label="Cari user assignee"
-                    className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 font-givonic text-xs focus:border-perrific-violet focus:outline-none"
-                  />
-                </div>
                 <div className="nice-scroll max-h-44 overflow-y-auto">
                   {(() => {
                     const q = assigneeMenuQuery.trim().toLowerCase();
@@ -517,6 +492,16 @@ export default function BoardPage() {
                     });
                   })()}
                 </div>
+                <div className="mx-3 my-1 border-t border-gray-100" />
+                <div className="px-2 pt-1">
+                  <input
+                    value={assigneeMenuQuery}
+                    onChange={(e) => setAssigneeMenuQuery(e.target.value)}
+                    placeholder="Cari user…"
+                    aria-label="Cari user assignee"
+                    className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 font-givonic text-xs focus:border-perrific-violet focus:outline-none"
+                  />
+                </div>
               </div>
             )}
           </div>
@@ -543,17 +528,8 @@ export default function BoardPage() {
               <div
                 role="menu"
                 aria-label="Pilih role"
-                className="absolute left-0 top-full z-10 mt-1 w-full rounded-xl border border-gray-200 bg-white py-1 shadow-[0_8px_24px_rgba(26,26,30,0.14)] md:left-full md:top-0 md:mt-0 md:ml-0 md:w-56"
+                className="absolute bottom-full left-0 z-10 mb-1 max-h-[50vh] w-full overflow-y-auto rounded-xl border border-gray-200 bg-white py-1 shadow-[0_8px_24px_rgba(26,26,30,0.14)] md:top-auto md:left-full md:bottom-0 md:mb-0 md:ml-2 md:w-56"
               >
-                <div className="px-2 pb-1">
-                  <input
-                    value={roleMenuQuery}
-                    onChange={(e) => setRoleMenuQuery(e.target.value)}
-                    placeholder="Cari role…"
-                    aria-label="Cari role"
-                    className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 font-givonic text-xs focus:border-perrific-violet focus:outline-none"
-                  />
-                </div>
                 {(() => {
                   const q = roleMenuQuery.trim().toLowerCase();
                   const opts = FILTER_ROLES.filter((o) => !q || o.label.toLowerCase().includes(q));
@@ -576,6 +552,16 @@ export default function BoardPage() {
                     </button>
                   ));
                 })()}
+                <div className="mx-3 my-1 border-t border-gray-100" />
+                <div className="px-2 pt-1">
+                  <input
+                    value={roleMenuQuery}
+                    onChange={(e) => setRoleMenuQuery(e.target.value)}
+                    placeholder="Cari role…"
+                    aria-label="Cari role"
+                    className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 font-givonic text-xs focus:border-perrific-violet focus:outline-none"
+                  />
+                </div>
               </div>
             )}
           </div>
@@ -606,7 +592,7 @@ export default function BoardPage() {
               <div
                 role="menu"
                 aria-label="Pilih pembuat"
-                className="absolute left-0 top-full z-10 mt-1 w-full rounded-xl border border-gray-200 bg-white py-1 shadow-[0_8px_24px_rgba(26,26,30,0.14)] md:left-full md:top-0 md:mt-0 md:ml-0 md:w-60"
+                className="absolute bottom-full left-0 z-10 mb-1 max-h-[50vh] w-full overflow-y-auto rounded-xl border border-gray-200 bg-white py-1 shadow-[0_8px_24px_rgba(26,26,30,0.14)] md:top-auto md:left-full md:bottom-0 md:mb-0 md:ml-2 md:w-60"
               >
                 <button
                   type="button"
@@ -621,15 +607,6 @@ export default function BoardPage() {
                   {filterCreatedBy === 'all' && <span aria-hidden="true">✓</span>}
                 </button>
                 <div className="mx-3 my-1 border-t border-gray-100" />
-                <div className="px-2 pb-1">
-                  <input
-                    value={createdByMenuQuery}
-                    onChange={(e) => setCreatedByMenuQuery(e.target.value)}
-                    placeholder="Cari user…"
-                    aria-label="Cari user pembuat"
-                    className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 font-givonic text-xs focus:border-perrific-violet focus:outline-none"
-                  />
-                </div>
                 <div className="nice-scroll max-h-44 overflow-y-auto">
                   {(() => {
                     const q = createdByMenuQuery.trim().toLowerCase();
@@ -669,6 +646,16 @@ export default function BoardPage() {
                     });
                   })()}
                 </div>
+                <div className="mx-3 my-1 border-t border-gray-100" />
+                <div className="px-2 pt-1">
+                  <input
+                    value={createdByMenuQuery}
+                    onChange={(e) => setCreatedByMenuQuery(e.target.value)}
+                    placeholder="Cari user…"
+                    aria-label="Cari user pembuat"
+                    className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 font-givonic text-xs focus:border-perrific-violet focus:outline-none"
+                  />
+                </div>
               </div>
             )}
           </div>
@@ -705,6 +692,56 @@ export default function BoardPage() {
         canAdd={isMember}
         view={view}
       />
+      <div aria-hidden="true" className="h-16" />
+
+      <div
+        className={`pointer-events-none fixed inset-x-0 bottom-4 z-30 flex justify-center transition-[left] duration-200 ${
+          sbCollapsed ? 'md:left-[68px]' : location.pathname.startsWith('/board/') ? 'md:left-64' : 'md:left-56'
+        }`}
+      >
+        <div className="pointer-events-auto flex max-w-full items-center gap-2 rounded-full border border-gray-300 bg-white/95 p-2 shadow-[0_8px_24px_rgba(26,26,30,0.14)] backdrop-blur">
+          <button
+            ref={filterBtnRef}
+            type="button"
+            onClick={() => {
+              setFilterMenuOpen((v) => !v);
+              cancelFlyoutClose();
+              setFilterFlyout(null);
+            }}
+            aria-haspopup="menu"
+            aria-expanded={filterMenuOpen}
+            aria-label="Filter task"
+            className={`flex shrink-0 items-center gap-2 rounded-full px-5 py-2.5 font-givonic text-sm font-semibold transition focus:outline-none ${
+              filterOptionCount > 0
+                ? 'bg-perrific-graphite text-white'
+                : 'text-gray-800 hover:bg-gray-200 hover:text-black'
+            }`}
+          >
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M2.5 3.5h11l-4.2 4.8v3.4l-2.6 1.5V8.3L2.5 3.5z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Filter
+            {filterOptionCount > 0 && (
+              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-white px-1.5 font-givonic text-[11px] font-bold text-perrific-graphite">
+                {filterOptionCount}
+              </span>
+            )}
+          </button>
+          <div className="relative w-48 min-w-0 sm:w-72">
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true" className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+              <circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.5" />
+              <path d="M10.5 10.5L14 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+            <input
+              value={filterSearch}
+              onChange={(e) => setFilterSearch(e.target.value)}
+              placeholder="Cari task…"
+              aria-label="Cari task"
+              className="w-full rounded-full bg-gray-100 py-2.5 pl-10 pr-4 font-givonic text-sm text-gray-800 placeholder:text-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-perrific-violet/30"
+            />
+          </div>
+        </div>
+      </div>
 
       {createOpen && (
         <ModalShell label="Task baru" onClose={() => setCreateOpen(false)} wide>

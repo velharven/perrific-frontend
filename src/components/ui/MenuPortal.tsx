@@ -11,6 +11,7 @@ export default function MenuPortal({
   label,
   width,
   estimatedHeight = 220,
+  placement = 'auto',
   children,
 }: {
   anchorRef: RefObject<HTMLElement | null>;
@@ -18,9 +19,11 @@ export default function MenuPortal({
   label: string;
   width?: number;
   estimatedHeight?: number;
+  // 'above': tepi bawah menu menempel ke atas jangkar (tanpa tebakan tinggi).
+  placement?: 'auto' | 'above';
   children: React.ReactNode;
 }) {
-  const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [pos, setPos] = useState<{ top?: number; bottom?: number; left: number; width: number } | null>(null);
 
   useLayoutEffect(() => {
     function update() {
@@ -29,6 +32,10 @@ export default function MenuPortal({
       const r = el.getBoundingClientRect();
       const w = width ?? r.width;
       const left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8));
+      if (placement === 'above') {
+        setPos({ bottom: Math.max(8, window.innerHeight - r.top + 4), left, width: w });
+        return;
+      }
       let top = r.bottom + 4;
       if (top + estimatedHeight > window.innerHeight - 8) {
         top = Math.max(8, r.top - estimatedHeight - 4);
@@ -42,7 +49,7 @@ export default function MenuPortal({
       window.removeEventListener('resize', update);
       window.removeEventListener('scroll', update, true);
     };
-  }, [anchorRef, width, estimatedHeight]);
+  }, [anchorRef, width, estimatedHeight, placement]);
 
   if (!pos) return null;
   return createPortal(
@@ -55,7 +62,7 @@ export default function MenuPortal({
           if (e.key === 'Escape') onClose();
         }}
         className="fixed z-[71] rounded-xl border border-gray-200 bg-white py-1 shadow-[0_8px_24px_rgba(26,26,30,0.14)]"
-        style={{ top: pos.top, left: pos.left, width: pos.width }}
+        style={{ top: pos.top, bottom: pos.bottom, left: pos.left, width: pos.width }}
       >
         {children}
       </div>

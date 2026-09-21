@@ -3,6 +3,8 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { teamApi } from '@/api/teams';
 import { projectApi } from '@/api/projects';
 import CreateProjectModal from '@/components/project/CreateProjectModal';
+import Avatar from '@/components/ui/Avatar';
+import { showToast } from '@/components/ui/Toast';
 import { useAuth } from '@/store/auth';
 import type { Project, Task, Team } from '@/types';
 
@@ -85,6 +87,8 @@ export default function TeamPage() {
   const [tasksByProject, setTasksByProject] = useState<Record<string, Task[]>>({});
   const [tasksLoading, setTasksLoading] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
+  const [tab, setTab] = useState<'project' | 'team'>('project');
+  const [email, setEmail] = useState('');
 
   const projectParam = searchParams.get('project');
   const filterProjectId = projects.some((p) => p.id === projectParam) ? projectParam : null;
@@ -92,6 +96,30 @@ export default function TeamPage() {
   function setFilter(id: string | null) {
     if (id) setSearchParams({ project: id });
     else setSearchParams({});
+  }
+
+  async function handleInvite(e: React.FormEvent) {
+    e.preventDefault();
+    if (!teamId || !email.trim()) return;
+    try {
+      await teamApi.addMember(teamId, { email });
+      setEmail('');
+      const updated = await teamApi.getTeam(teamId).catch(() => null);
+      if (updated) setTeam(updated);
+      showToast('Undangan terkirim.');
+    } catch {
+      showToast('Gagal mengundang. Coba lagi.');
+    }
+  }
+
+  async function handleCopyCode() {
+    if (!team?.inviteCode) return;
+    try {
+      await navigator.clipboard.writeText(team.inviteCode);
+      showToast('Kode tim disalin. Bagikan ke calon anggota.');
+    } catch {
+      showToast('Gagal menyalin. Salin manual dari layar.');
+    }
   }
 
   async function refresh(tid: string) {
@@ -161,95 +189,168 @@ export default function TeamPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="truncate text-2xl font-bold text-gray-800">{team.name}</h1>
-          {team.description && <p className="mt-0.5 truncate text-sm text-gray-500">{team.description}</p>}
-        </div>
-        <Link
-          to="settings"
-          title="Pengaturan tim"
-          aria-label="Pengaturan tim"
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-perrific-graphite"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.6" />
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </Link>
+    <div className="mx-auto flex min-h-full w-full max-w-5xl flex-col space-y-5">
+      <div className="min-w-0">
+        <h1 className="truncate text-2xl font-bold text-gray-800">{team.name}</h1>
+        {team.description && <p className="mt-0.5 truncate text-sm text-gray-500">{team.description}</p>}
       </div>
 
-      {tasksLoading ? (
-        <p className="text-gray-500">Memuat…</p>
-      ) : (
-        <div className="grid items-start gap-6 lg:grid-cols-[1fr_260px]">
-          <div className="nice-scroll flex min-w-0 items-start gap-4 overflow-x-auto pb-2">
-            {panel(
-              'Working on',
-              mine,
-              'Rasanya kosong, ya?',
-              'Task yang di-assign ke kamu akan muncul di sini.',
-            )}
-            {panel(
-              'Watching',
-              watching,
-              'Belum ada yang dipantau.',
-              'Pantau task lewat tombol Watch di halaman detail task.',
-            )}
-          </div>
+      <div className="flex-1">
+        {tab === 'project' ? (
+          tasksLoading ? (
+            <p className="text-gray-500">Memuat…</p>
+          ) : (
+            <div className="grid items-start gap-6 lg:grid-cols-[1fr_260px]">
+              <div className="nice-scroll flex min-w-0 items-start gap-4 overflow-x-auto pb-2">
+                {panel(
+                  'Working on',
+                  mine,
+                  'Rasanya kosong, ya?',
+                  'Task yang di-assign ke kamu akan muncul di sini.',
+                )}
+                {panel(
+                  'Watching',
+                  watching,
+                  'Belum ada yang dipantau.',
+                  'Pantau task lewat tombol Watch di halaman detail task.',
+                )}
+              </div>
 
-          <aside className="space-y-2">
-            {projects.map((p) => {
-              const active = filterProjectId === p.id;
-              return (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => navigate(`/projects/${p.id}`)}
-                  aria-pressed={active}
-                  className={`block w-full rounded-xl border bg-white p-3 text-left transition hover:border-perrific-violet ${
-                    active ? 'border-perrific-violet ring-1 ring-perrific-violet' : 'border-gray-200'
-                  }`}
+              <aside className="space-y-2">
+                {projects.map((p) => {
+                  const active = filterProjectId === p.id;
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => navigate(`/projects/${p.id}`)}
+                      aria-pressed={active}
+                      className={`block w-full rounded-xl border bg-white p-3 text-left transition hover:border-perrific-violet ${
+                        active ? 'border-perrific-violet ring-1 ring-perrific-violet' : 'border-gray-200'
+                      }`}
+                    >
+                      <p className="truncate font-givonic text-sm font-bold text-perrific-graphite">{p.name}</p>
+                      {p.description && (
+                        <p className="mt-0.5 truncate font-givonic text-xs text-perrific-graphite/50">{p.description}</p>
+                      )}
+                      <p className="mt-1.5 font-mono text-[11px] text-perrific-graphite/50">
+                        {p.status === 'ARCHIVED' ? 'Arsip' : 'Aktif'}
+                      </p>
+                    </button>
+                  );
+                })}
+                {filterProjectId && (
+                  <button
+                    type="button"
+                    onClick={() => setFilter(null)}
+                    className="w-full font-givonic text-xs font-semibold text-perrific-violet hover:underline"
+                  >
+                    Tampilkan semua project
+                  </button>
+                )}
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => setCreateOpen(true)}
+                    aria-haspopup="dialog"
+                    className="block w-full rounded-lg border border-dashed border-perrific-violet/40 bg-perrific-violet/5 px-4 py-2.5 text-center font-givonic text-xs font-bold tracking-widest text-perrific-violet transition hover:bg-perrific-violet/10"
+                  >
+                    + PROJECT BARU
+                  </button>
+                )}
+                <Link
+                  to={`/team/${team.id}/projects`}
+                  className="block w-full rounded-lg bg-perrific-mint px-4 py-2.5 text-center font-givonic text-xs font-bold tracking-widest text-perrific-graphite transition hover:brightness-95"
                 >
-                  <p className="truncate font-givonic text-sm font-bold text-perrific-graphite">{p.name}</p>
-                  {p.description && (
-                    <p className="mt-0.5 truncate font-givonic text-xs text-perrific-graphite/50">{p.description}</p>
-                  )}
-                  <p className="mt-1.5 font-mono text-[11px] text-perrific-graphite/50">
-                    {p.status === 'ARCHIVED' ? 'Arsip' : 'Aktif'}
-                  </p>
+                  MANAGE PROJECTS
+                </Link>
+              </aside>
+            </div>
+          )
+        ) : (
+          <section aria-label="Undang dan anggota tim" className="space-y-5">
+            <div className="rounded-xl border border-gray-200 bg-white p-4">
+              <h2 className="font-givonic text-sm font-bold text-perrific-graphite">Undang anggota</h2>
+              <p className="mt-0.5 font-givonic text-xs text-gray-500">Kode tim atau email langsung</p>
+              {isAdmin && team.inviteCode && (
+                <div className="mt-3 flex items-center gap-2">
+                  <p className="font-mono text-[11px] tracking-widest text-perrific-graphite/40">KODE TIM</p>
+                  <code className="rounded-lg bg-gray-100 px-2.5 py-1 font-mono text-sm font-bold tracking-[0.15em] text-perrific-graphite">
+                    {team.inviteCode}
+                  </code>
+                  <button
+                    type="button"
+                    onClick={() => void handleCopyCode()}
+                    className="rounded-lg px-2 py-1 font-givonic text-xs font-semibold text-perrific-violet transition hover:bg-perrific-violet/10"
+                  >
+                    Salin
+                  </button>
+                </div>
+              )}
+              <form onSubmit={handleInvite} className="mt-3 flex gap-2">
+                <input
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Email anggota"
+                  className="min-w-0 flex-1 rounded-[10px] border border-perrific-line bg-white px-3 py-2.5 font-givonic text-sm text-perrific-graphite placeholder:text-perrific-graphite/40 focus:border-perrific-violet focus:outline-none focus:ring-2 focus:ring-perrific-violet/20"
+                />
+                <button className="shrink-0 rounded-full bg-perrific-violet px-5 py-2.5 font-givonic text-sm font-semibold text-white transition hover:bg-[#E64D0A]">
+                  Undang
                 </button>
-              );
-            })}
-            {filterProjectId && (
-              <button
-                type="button"
-                onClick={() => setFilter(null)}
-                className="w-full font-givonic text-xs font-semibold text-perrific-violet hover:underline"
-              >
-                Tampilkan semua project
-              </button>
-            )}
-            {isAdmin && (
-              <button
-                type="button"
-                onClick={() => setCreateOpen(true)}
-                aria-haspopup="dialog"
-                className="block w-full rounded-lg border border-dashed border-perrific-violet/40 bg-perrific-violet/5 px-4 py-2.5 text-center font-givonic text-xs font-bold tracking-widest text-perrific-violet transition hover:bg-perrific-violet/10"
-              >
-                + PROJECT BARU
-              </button>
-            )}
-            <Link
-              to={`/team/${team.id}/projects`}
-              className="block w-full rounded-lg bg-perrific-mint px-4 py-2.5 text-center font-givonic text-xs font-bold tracking-widest text-perrific-graphite transition hover:brightness-95"
+              </form>
+            </div>
+            <div className="rounded-xl border border-gray-200 bg-white p-4">
+              <h2 className="font-givonic text-sm font-bold text-perrific-graphite">
+                Anggota · {team.members?.length ?? 0}
+              </h2>
+              <ul className="mt-2 divide-y divide-gray-100">
+                {(team.members ?? []).map((m) => (
+                  <li key={m.id} className="flex items-center gap-3 py-2.5">
+                    <Avatar src={m.user?.avatarUrl ?? undefined} name={m.user?.name ?? '?'} size={32} alt={m.user?.name ?? 'anggota'} className="h-8 w-8 text-xs" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-givonic text-sm font-semibold text-perrific-graphite">{m.user?.name}</p>
+                      <p className="truncate font-givonic text-xs text-gray-500">{m.user?.email}</p>
+                    </div>
+                    <span className="shrink-0 rounded-full bg-gray-100 px-2.5 py-1 font-givonic text-[11px] font-semibold text-gray-600">
+                      {m.role}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </section>
+        )}
+      </div>
+
+      <div className="sticky bottom-4 z-10 flex justify-center">
+        <div
+          className="nice-scroll flex max-w-full gap-1 overflow-x-auto rounded-full border border-gray-300 bg-white/95 p-1.5 shadow-[0_8px_24px_rgba(26,26,30,0.14)] backdrop-blur"
+          role="tablist"
+          aria-label="Navigasi tim"
+        >
+          {(
+            [
+              { id: 'project', label: 'Project' },
+              { id: 'team', label: 'Team' },
+            ] as const
+          ).map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              aria-selected={tab === t.id}
+              onClick={() => setTab(t.id)}
+              className={`shrink-0 rounded-full px-4 py-2 font-givonic text-xs font-semibold transition ${
+                tab === t.id
+                  ? 'bg-perrific-graphite text-white'
+                  : 'text-gray-800 hover:bg-gray-200 hover:text-black'
+              }`}
             >
-              MANAGE PROJECTS
-            </Link>
-          </aside>
+              {t.label}
+            </button>
+          ))}
         </div>
-      )}
+      </div>
 
       {createOpen && teamId && (
         <CreateProjectModal

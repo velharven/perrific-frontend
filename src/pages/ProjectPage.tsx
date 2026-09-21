@@ -7,6 +7,7 @@ import SwipeRow from '@/components/ui/SwipeRow';
 import { showToast } from '@/components/ui/Toast';
 import { useAuth } from '@/store/auth';
 import { PROJECT_UPDATED_EVENT } from '@/pages/ProjectSettingsPage';
+import { PROJECT_SIDEBAR_EVENT, isProjectSidebarCollapsed } from '@/components/layout/ProjectLayout';
 import { fileExtLabel, previewKind } from '@/lib/preview';
 import type { Attachment, BoardColumn, Comment, Project, Task, TaskActivity, Team } from '@/types';
 
@@ -68,6 +69,14 @@ export default function ProjectPage() {
   const [tab, setTab] = useState<OverviewTab>('aktivitas');
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState('');
+  // Offset pill fixed agar center ke area konten (di luar sidebar project).
+  const [sbCollapsed, setSbCollapsed] = useState<boolean>(isProjectSidebarCollapsed);
+
+  useEffect(() => {
+    const sync = () => setSbCollapsed(isProjectSidebarCollapsed());
+    window.addEventListener(PROJECT_SIDEBAR_EVENT, sync);
+    return () => window.removeEventListener(PROJECT_SIDEBAR_EVENT, sync);
+  }, []);
 
   useEffect(() => {
     if (!projectId) return;
@@ -259,28 +268,6 @@ export default function ProjectPage() {
         </div>
       </div>
 
-      <nav aria-label="Navigasi overview" className="flex gap-1 border-b border-gray-200">
-        {(
-          [
-            { id: 'aktivitas', label: `Aktivitas · ${feed.length}` },
-            { id: 'team', label: `Team · ${team?.members?.length ?? 0}` },
-          ] as const
-        ).map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => setTab(t.id)}
-            aria-current={tab === t.id ? 'page' : undefined}
-            className={`-mb-px border-b-2 px-3 py-2 font-givonic text-xs font-bold transition ${
-              tab === t.id
-                ? 'border-perrific-graphite text-perrific-graphite'
-                : 'border-transparent text-gray-400 hover:text-gray-600'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </nav>
       {tab === 'team' ? (
         <section aria-label="Anggota tim" className="min-h-[320px]">
           {isTeamAdmin && team?.inviteCode && (
@@ -420,6 +407,39 @@ export default function ProjectPage() {
         )}
       </section>
       )}
+      <div
+        className={`pointer-events-none fixed inset-x-0 bottom-4 z-30 flex justify-center transition-[left] duration-200 ${
+          sbCollapsed ? 'md:left-[68px]' : 'md:left-56'
+        }`}
+      >
+        <div
+          className="pointer-events-auto nice-scroll flex max-w-full gap-1 overflow-x-auto rounded-full border border-gray-300 bg-white/95 p-1.5 shadow-[0_8px_24px_rgba(26,26,30,0.14)] backdrop-blur"
+          role="tablist"
+          aria-label="Navigasi overview"
+        >
+          {(
+            [
+              { id: 'aktivitas', label: `Aktivitas · ${feed.length}` },
+              { id: 'team', label: `Team · ${team?.members?.length ?? 0}` },
+            ] as const
+          ).map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              aria-selected={tab === t.id}
+              onClick={() => setTab(t.id)}
+              className={`shrink-0 rounded-full px-4 py-2 font-givonic text-xs font-semibold transition ${
+                tab === t.id
+                  ? 'bg-perrific-graphite text-white'
+                  : 'text-gray-800 hover:bg-gray-200 hover:text-black'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

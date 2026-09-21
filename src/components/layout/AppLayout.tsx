@@ -3498,6 +3498,16 @@ function SidebarContent({
   );
 }
 
+export const APP_SIDEBAR_EVENT = 'app-sidebar-changed';
+
+export function isAppSidebarCollapsed(): boolean {
+  try {
+    return localStorage.getItem('purrific:sidebar-collapsed') === '1';
+  } catch {
+    return false;
+  }
+}
+
 export default function AppLayout() {
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => {
@@ -3524,6 +3534,7 @@ export default function AppLayout() {
       } catch {
         // abaikan — penyimpanan lokal tidak tersedia
       }
+      window.dispatchEvent(new Event(APP_SIDEBAR_EVENT));
       return !v;
     });
     requestAnimationFrame(() => {

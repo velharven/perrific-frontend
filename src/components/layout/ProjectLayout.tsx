@@ -14,6 +14,16 @@ const tabs = [
   { to: 'tugas-saya', label: 'Tugas Saya', end: false, icon: 'check' },
 ] as const;
 
+export const PROJECT_SIDEBAR_EVENT = 'project-sidebar-changed';
+
+export function isProjectSidebarCollapsed(): boolean {
+  try {
+    return localStorage.getItem('purrific:project-sidebar-collapsed') === '1';
+  } catch {
+    return false;
+  }
+}
+
 export default function ProjectLayout() {
   const { projectId } = useParams<{ projectId: string }>();
   const location = useLocation();
@@ -21,7 +31,7 @@ export default function ProjectLayout() {
   const [project, setProject] = useState<Project | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [approvalCount, setApprovalCount] = useState(0);
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState<boolean>(isProjectSidebarCollapsed);
   // Layar loading singkat tiap pindah tab agar transisi terasa halus.
   const [switching, setSwitching] = useState(false);
   const firstRender = useRef(true);
@@ -101,7 +111,18 @@ export default function ProjectLayout() {
         <div className="flex items-center justify-start">
           <button
             type="button"
-            onClick={() => setCollapsed((v) => !v)}
+            onClick={() => {
+              setCollapsed((v) => {
+                const next = !v;
+                try {
+                  localStorage.setItem('purrific:project-sidebar-collapsed', next ? '1' : '0');
+                } catch {
+                  // abaikan
+                }
+                window.dispatchEvent(new Event(PROJECT_SIDEBAR_EVENT));
+                return next;
+              });
+            }}
             title={collapsed ? 'Buka sidebar project' : 'Tutup sidebar project'}
             aria-label={collapsed ? 'Buka sidebar project' : 'Tutup sidebar project'}
             aria-expanded={!collapsed}
