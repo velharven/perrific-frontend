@@ -1,0 +1,114 @@
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Work+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@font-face {
+  font-family: 'Gendy';
+  src: url('../fonts/gendy/Gendy.otf') format('opentype');
+  font-weight: 400 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Givonic';
+  src: url('../fonts/givonic/Givonic-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Giovani';
+  src: url('../fonts/givonic/Givonic-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+::selection {
+  background: #ff500b;
+  color: #fff;
+}
+:focus-visible {
+  outline: 2px solid #ff500b;
+  outline-offset: 2px;
+}
+html {
+  scroll-behavior: smooth;
+}
+[id] {
+  scroll-margin-top: 80px;
+}
+
+/* Scrollbar tipis terang di dalam wadah (overlay): tidak menggeser layout,
+   tombol X/konten tetap sejajar baik saat scroll muncul maupun tidak.
+   scrollbar-gutter: stable mencadangkan ruang gutter transparan;
+   Safari yang belum dukung jatuh gracefully tanpa merusak scroll. */
+.nice-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(26, 26, 30, 0.18) transparent;
+  scrollbar-gutter: stable;
+}
+.nice-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.nice-scroll::-webkit-scrollbar-thumb {
+  background: rgba(26, 26, 30, 0.18);
+  border-radius: 999px;
+}
+.nice-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(26, 26, 30, 0.32);
+}
+.nice-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+/* Rail collapse: sembunyikan visual scrollbar (scroll roda tetap jalan) */
+.no-bar {
+  scrollbar-width: none;
+}
+.no-bar::-webkit-scrollbar {
+  display: none;
+}
+/* Matikan seluruh transisi sesaat (dipakai saat toggle rail sidebar) */
+.no-anim,
+.no-anim * {
+  transition: none !important;
+}
+/* Hint transparan blok editor hanya terlihat saat baris di-hover
+   atau kursor di dalam textarea-nya. */
+.note-block-input::placeholder {
+  opacity: 0;
+  transition: opacity 0.15s ease-in-out;
+}
+.group:hover .note-block-input::placeholder,
+.note-block-input:focus::placeholder {
+  opacity: 1;
+}
+/* Penomoran daftar bernomor: tiap tingkat daftar mulai lagi dari 1. */
+.note-level {
+  counter-reset: note-num;
+}
+.note-num {
+  counter-increment: note-num;
+}
+.note-num::before {
+  content: counter(note-num) '.';
+}
+/* Animasi isi kolom kanban saat buka/tutup: konten baru masuk halus
+   sementara lebar wadah bertransisi (lihat Column di KanbanBoard). */
+@keyframes col-enter {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.col-enter {
+  animation: col-enter 0.25s ease-out;
+}
