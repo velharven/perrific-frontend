@@ -36,6 +36,7 @@ export interface Team {
   description?: string | null;
   inviteCode?: string | null;
   inviteExpiresAt?: string | null;
+  canManageInvite?: boolean;
   members?: TeamMember[];
 }
 

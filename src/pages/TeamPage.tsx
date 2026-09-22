@@ -281,7 +281,7 @@ export default function TeamPage() {
             <div className="rounded-xl border border-gray-200 bg-white p-4">
               <h2 className="font-givonic text-sm font-bold text-perrific-graphite">Undang anggota</h2>
               <p className="mt-0.5 font-givonic text-xs text-gray-500">Kode tim atau email langsung</p>
-              {isAdmin && team.inviteCode && (
+              {(isAdmin || team.canManageInvite) && team.inviteCode && (
                 <div className="mt-3 flex items-center gap-2">
                   <p className="font-mono text-[11px] tracking-widest text-perrific-graphite/40">KODE TIM</p>
                   <code className="rounded-lg bg-gray-100 px-2.5 py-1 font-mono text-sm font-bold tracking-[0.15em] text-perrific-graphite">

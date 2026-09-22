@@ -127,6 +127,7 @@ export default function ProjectPage() {
   }, [project?.teamId]);
 
   const isTeamAdmin = (team?.members ?? []).some((m) => m.userId === user?.id && m.role === 'ADMIN');
+  const canSeeInvite = isTeamAdmin || team?.canManageInvite;
 
   function openTask(taskId: string) {
     navigate(`/projects/${projectId}/kanban/${taskId}`);
@@ -270,7 +271,7 @@ export default function ProjectPage() {
 
       {tab === 'team' ? (
         <section aria-label="Anggota tim" className="min-h-[320px]">
-          {isTeamAdmin && team?.inviteCode && (
+          {canSeeInvite && team?.inviteCode && (
             <div className="mb-2 flex items-center gap-2">
               <p className="font-mono text-[11px] tracking-widest text-perrific-graphite/40">KODE TIM</p>
               <code className="rounded-lg bg-gray-100 px-2.5 py-1 font-mono text-sm font-bold tracking-[0.15em] text-perrific-graphite">
@@ -419,8 +420,8 @@ export default function ProjectPage() {
         >
           {(
             [
-              { id: 'aktivitas', label: `Aktivitas · ${feed.length}` },
-              { id: 'team', label: `Team · ${team?.members?.length ?? 0}` },
+              { id: 'aktivitas', label: 'Aktivitas' },
+              { id: 'team', label: 'Team' },
             ] as const
           ).map((t) => (
             <button

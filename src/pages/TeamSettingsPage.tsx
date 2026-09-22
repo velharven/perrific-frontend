@@ -114,7 +114,7 @@ export default function TeamSettingsPage() {
   if (!team) return <p className="text-gray-500">Tim tidak ditemukan.</p>;
 
   const isAdmin = team.members?.some((m) => m.userId === user?.id && m.role === 'ADMIN') ?? false;
-  const showCode = isAdmin && !!team.inviteCode;
+  const showCode = (isAdmin || team.canManageInvite) && !!team.inviteCode;
   const activePreset = matchPreset(team.inviteExpiresAt);
   const isExpired =
     team.inviteExpiresAt != null && new Date(team.inviteExpiresAt).getTime() <= Date.now();

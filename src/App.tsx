@@ -15,8 +15,7 @@ import BoardPage from '@/pages/BoardPage';
 import TaskDetailPage from '@/pages/TaskDetailPage';
 import ProjectPage from '@/pages/ProjectPage';
 import ProjectLayout from '@/components/layout/ProjectLayout';
-import ProjectMyTasksPage from '@/pages/ProjectMyTasksPage';
-import ProjectPersetujuanPage from '@/pages/ProjectPersetujuanPage';
+import ProjectApprovalPage from '@/pages/ProjectApprovalPage';
 import ProjectSettingsPage from '@/pages/ProjectSettingsPage';
 import NotePage from '@/pages/NotePage';
 import TeamPage from '@/pages/TeamPage';
@@ -62,8 +61,7 @@ export default function App() {
                 <Route index element={<ProjectPage />} />
                 <Route path="kanban" element={<BoardPage />} />
                 <Route path="kanban/:taskId" element={<TaskDetailPage />} />
-                <Route path="tugas-saya" element={<ProjectMyTasksPage />} />
-                <Route path="persetujuan" element={<ProjectPersetujuanPage />} />
+                <Route path="persetujuan" element={<ProjectApprovalPage />} />
                 <Route path="settings" element={<ProjectSettingsPage />} />
               </Route>
             </Route>

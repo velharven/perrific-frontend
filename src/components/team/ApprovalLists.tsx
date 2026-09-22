@@ -17,7 +17,19 @@ export function dispatchApprovalsChanged() {
 // Tab Persetujuan khusus admin: usulan task baru + permintaan anggota baru.
 // Dipakai di dalam project; bila projectId diisi, daftar task dibatasi ke
 // project tersebut (permintaan anggota tetap level tim).
-export default function ApprovalLists({ teamId, projectId }: { teamId: string; projectId?: string }) {
+export type ApprovalTab = 'task' | 'anggota';
+
+export default function ApprovalLists({
+  teamId,
+  projectId,
+  activeTab,
+  onCountsChange,
+}: {
+  teamId: string;
+  projectId?: string;
+  activeTab?: ApprovalTab;
+  onCountsChange?: (counts: { taskCount: number; requestCount: number }) => void;
+}) {
   const [tasks, setTasks] = useState<PendingTask[]>([]);
   const [requests, setRequests] = useState<JoinRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,6 +51,12 @@ export default function ApprovalLists({ teamId, projectId }: { teamId: string; p
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  const visibleTasks = projectId ? tasks.filter((t) => t.project.id === projectId) : tasks;
+
+  useEffect(() => {
+    onCountsChange?.({ taskCount: visibleTasks.length, requestCount: requests.length });
+  }, [visibleTasks.length, requests.length, onCountsChange]);
 
   async function decideTask(task: PendingTask, approve: boolean) {
     setBusy(task.id);
@@ -72,10 +90,12 @@ export default function ApprovalLists({ teamId, projectId }: { teamId: string; p
 
   if (loading) return <p className="font-givonic text-sm text-gray-500">Memuat persetujuan…</p>;
 
-  const visibleTasks = projectId ? tasks.filter((t) => t.project.id === projectId) : tasks;
+  const showTask = !activeTab || activeTab === 'task';
+  const showAnggota = !activeTab || activeTab === 'anggota';
 
   return (
     <div className="space-y-5">
+      {showTask && (
       <SettingsBlock
         title={projectId ? 'Task menunggu di project ini' : 'Task menunggu'}
         desc={`${visibleTasks.length} usulan task`}
@@ -113,6 +133,8 @@ export default function ApprovalLists({ teamId, projectId }: { teamId: string; p
           </ul>
         )}
       </SettingsBlock>
+      )}
+      {showAnggota && (
       <SettingsBlock title="Anggota menunggu" desc={`${requests.length} permintaan bergabung ke tim`}>
         {requests.length === 0 ? (
           <p className="font-givonic text-sm text-gray-500">Tidak ada permintaan bergabung.</p>
@@ -146,6 +168,7 @@ export default function ApprovalLists({ teamId, projectId }: { teamId: string; p
           </ul>
         )}
       </SettingsBlock>
+      )}
     </div>
   );
 }

@@ -7,11 +7,9 @@ import { SettingsBlock } from '@/components/ui/SettingsShell';
 import Avatar from '@/components/ui/Avatar';
 import { fileToAvatarDataUrl } from '@/lib/avatar';
 import { ActivityIcon, TrashIcon } from '@/components/icons';
-import { loadBoardView, saveBoardView, type BoardView } from '@/components/kanban/KanbanBoard';
 import BoardColumnEditor from '@/components/project/BoardColumnEditor';
 import RoleTab from '@/components/project/RoleTab';
 import { buildJoinLink, formatExpiryText, INVITE_PRESETS, matchPreset } from '@/lib/invite';
-import { BOARD_VIEW_EVENT } from '@/pages/BoardPage';
 import { PROJECT_SIDEBAR_EVENT, isProjectSidebarCollapsed } from '@/components/layout/ProjectLayout';
 import { useAuth } from '@/store/auth';
 import { showToast } from '@/components/ui/Toast';
@@ -21,17 +19,16 @@ type Section = 'umum' | 'board' | 'undang' | 'role' | 'danger';
 
 // Event jendela saat project berubah dari halaman settings (nama/deskripsi/
 // status/foto), agar halaman induk (overview, kanban, daftar) ikut refresh.
-// Pola yang sama dipakai BOARD_VIEW_EVENT untuk preferensi board.
 export const PROJECT_UPDATED_EVENT = 'project-updated';
 
 export function dispatchProjectUpdated(project: Project) {
   window.dispatchEvent(new CustomEvent<Project>(PROJECT_UPDATED_EVENT, { detail: project }));
 }
 
-const sections: { id: Section; label: string; adminOnly?: boolean; icon: ReactNode }[] = [
+const sections: { id: Section; label: string; adminOnly?: boolean; inviteAllowed?: boolean; icon: ReactNode }[] = [
   { id: 'umum', label: 'Umum', icon: <ActivityIcon name="note" className="h-[15px] w-[15px] shrink-0" /> },
   { id: 'board', label: 'Tampilan board', icon: <ActivityIcon name="kanban" className="h-[15px] w-[15px] shrink-0" /> },
-  { id: 'undang', label: 'Undang', adminOnly: true, icon: <ActivityIcon name="users" className="h-[15px] w-[15px] shrink-0" /> },
+  { id: 'undang', label: 'Undang', adminOnly: true, inviteAllowed: true, icon: <ActivityIcon name="users" className="h-[15px] w-[15px] shrink-0" /> },
   { id: 'role', label: 'Role', adminOnly: true, icon: <ActivityIcon name="star" className="h-[15px] w-[15px] shrink-0" /> },
   { id: 'danger', label: 'Zona berbahaya', adminOnly: true, icon: <TrashIcon className="h-[15px] w-[15px] shrink-0" /> },
 ];
@@ -58,7 +55,6 @@ export default function ProjectSettingsPage() {
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [view, setView] = useState<BoardView>(() => loadBoardView(projectId ?? ''));
   const [email, setEmail] = useState('');
   const [savingInvite, setSavingInvite] = useState(false);
   const [confirmRegen, setConfirmRegen] = useState(false);
@@ -90,16 +86,6 @@ export default function ProjectSettingsPage() {
       })
       .finally(() => setLoading(false));
   }, [projectId, user?.id]);
-
-  function updateView(patch: Partial<BoardView>) {
-    if (!projectId) return;
-    setView((prev) => {
-      const next = { ...prev, ...patch };
-      saveBoardView(projectId, next);
-      window.dispatchEvent(new Event(BOARD_VIEW_EVENT));
-      return next;
-    });
-  }
 
   function applyUpdated(updated: Project) {
     setProject(updated);
@@ -246,7 +232,8 @@ export default function ProjectSettingsPage() {
       description.trim() !== (project.description ?? '') ||
       status !== project.status);
 
-  const visible = sections.filter((s) => !s.adminOnly || isAdmin);
+  const canManageInvite = isAdmin || team?.canManageInvite;
+  const visible = sections.filter((s) => !s.adminOnly || isAdmin || (s.inviteAllowed && canManageInvite));
 
   // Foto yang ditampilkan: draft bila sudah disentuh, kalau tidak foto server.
   const effectiveAvatar = photo !== undefined ? (photo ?? '') : (project?.avatarUrl ?? '');
@@ -366,27 +353,8 @@ export default function ProjectSettingsPage() {
               </div>
             </SettingsBlock>
           ))}
-        {section === 'board' && (
-          <div className="space-y-5">
-            {isAdmin && project && <BoardColumnEditor projectId={project.id} />}
-            <SettingsBlock title="Tampilan board" desc={`Tersimpan di perangkat ini, khusus project ${project.name}`}>
-              <label className="flex cursor-pointer items-center justify-between gap-3 rounded-[10px] px-2 py-2.5 transition hover:bg-gray-50">
-                <span>
-                  <span className="block font-givonic text-sm font-semibold text-perrific-graphite">Mode ringkas</span>
-                  <span className="block font-givonic text-xs text-perrific-graphite/50">Kartu tanpa baris prioritas & assignees</span>
-                </span>
-                <input
-                  type="checkbox"
-                  checked={view.modeRingkas}
-                  onChange={(e) => updateView({ modeRingkas: e.target.checked })}
-                  className="h-4 w-4 shrink-0 accent-perrific-violet"
-                  aria-label="Mode ringkas"
-                />
-              </label>
-            </SettingsBlock>
-          </div>
-        )}
-        {section === 'undang' && isAdmin && (
+        {section === 'board' && isAdmin && project && <BoardColumnEditor projectId={project.id} />}
+        {section === 'undang' && canManageInvite && (
           <SettingsBlock title="Undang anggota" desc="Kode tim atau email langsung">
             {team?.inviteCode && (
               <div className="space-y-3">

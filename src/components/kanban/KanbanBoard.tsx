@@ -21,9 +21,9 @@ import {
 import Avatar from '@/components/ui/Avatar';
 import type { BoardColumn, Task } from '@/types';
 
-export type BoardView = { modeRingkas: boolean; collapsed: string[] };
+export type BoardView = { collapsed: string[] };
 
-export const DEFAULT_BOARD_VIEW: BoardView = { modeRingkas: false, collapsed: [] };
+export const DEFAULT_BOARD_VIEW: BoardView = { collapsed: [] };
 
 function viewKey(projectId: string) {
   return `purrific:boardview:${projectId}`;
@@ -35,7 +35,7 @@ export function loadBoardView(projectId: string): BoardView {
     if (!raw) return DEFAULT_BOARD_VIEW;
     const parsed = JSON.parse(raw) as Partial<BoardView> & { tampilkanSelesai?: boolean };
     const collapsed = Array.isArray(parsed.collapsed) ? parsed.collapsed.filter((s): s is string => typeof s === 'string') : [];
-    return { modeRingkas: parsed.modeRingkas ?? false, collapsed };
+    return { collapsed };
   } catch {
     return DEFAULT_BOARD_VIEW;
   }
@@ -51,14 +51,12 @@ export function saveBoardView(projectId: string, view: BoardView) {
 
 function CardView({
   task,
-  ringkas,
   overlay,
   className,
   bare,
   onOpenTitle,
 }: {
   task: Task;
-  ringkas: boolean;
   overlay?: boolean;
   className?: string;
   bare?: boolean;
@@ -112,23 +110,21 @@ function CardView({
           </span>
         </p>
       )}
-      {!ringkas && (
-        <div className="mt-2">
-          <span
-            className={`rounded px-1.5 py-0.5 text-xs ${
-              task.priority === 'URGENT'
-                ? 'bg-red-100 text-red-600'
-                : task.priority === 'HIGH'
-                  ? 'bg-orange-100 text-orange-600'
-                  : task.priority === 'MEDIUM'
-                    ? 'bg-yellow-100 text-yellow-600'
-                    : 'bg-gray-100 text-gray-500'
-            }`}
-          >
-            {task.priority}
-          </span>
-        </div>
-      )}
+      <div className="mt-2">
+        <span
+          className={`rounded px-1.5 py-0.5 text-xs ${
+            task.priority === 'URGENT'
+              ? 'bg-red-100 text-red-600'
+              : task.priority === 'HIGH'
+                ? 'bg-orange-100 text-orange-600'
+                : task.priority === 'MEDIUM'
+                  ? 'bg-yellow-100 text-yellow-600'
+                  : 'bg-gray-100 text-gray-500'
+          }`}
+        >
+          {task.priority}
+        </span>
+      </div>
       <div className="mt-2">
         <p className="text-[11px] text-gray-400">Assigned to:</p>
         {task.assignees.length > 0 ? (
@@ -163,14 +159,12 @@ function CardView({
 
 function Card({
   task,
-  ringkas,
   onOpen,
   dragActive,
   registerNode,
   gone,
 }: {
   task: Task;
-  ringkas: boolean;
   onOpen?: (task: Task) => void;
   dragActive?: boolean;
   registerNode?: (id: string, el: HTMLElement | null) => void;
@@ -202,7 +196,6 @@ function Card({
     >
       <CardView
         task={task}
-        ringkas={ringkas}
         bare={dragActive && !isDragging}
         onOpenTitle={onOpen && !isDragging ? () => onOpen(task) : undefined}
       />
@@ -524,7 +517,7 @@ export default function KanbanBoard({
             if (showPh && hv.index === i && activeTask) {
               nodes.push(
                 <div key={`ph-${i}`} aria-hidden="true" className="opacity-40">
-                  <CardView task={activeTask} ringkas={view.modeRingkas} />
+                  <CardView task={activeTask} />
                 </div>,
               );
             }
@@ -532,7 +525,6 @@ export default function KanbanBoard({
               <Card
                 key={task.id}
                 task={task}
-                ringkas={view.modeRingkas}
                 onOpen={onOpen}
                 dragActive={dragging}
                 registerNode={registerNode}
@@ -543,7 +535,7 @@ export default function KanbanBoard({
           if (showPh && activeTask && hv.index >= ordered.length) {
             nodes.push(
               <div key="ph-end" aria-hidden="true" className="opacity-40">
-                <CardView task={activeTask} ringkas={view.modeRingkas} />
+                <CardView task={activeTask} />
               </div>,
             );
           }
@@ -570,7 +562,7 @@ export default function KanbanBoard({
       <DragOverlay dropAnimation={null}>
         {activeTask ? (
           <div className="w-[85vw] sm:w-80">
-            <CardView task={activeTask} ringkas={view.modeRingkas} overlay />
+            <CardView task={activeTask} overlay />
           </div>
         ) : null}
       </DragOverlay>

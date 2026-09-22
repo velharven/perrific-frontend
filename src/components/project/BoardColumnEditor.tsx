@@ -1,4 +1,22 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  TouchSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { projectApi } from '@/api/projects';
 import { SettingsBlock } from '@/components/ui/SettingsShell';
 import ConfirmModal from '@/components/ui/ConfirmModal';
@@ -8,6 +26,45 @@ import type { BoardColumn } from '@/types';
 
 // Editor kolom kanban ala Taiga: tambah, rename, susun ulang, hapus.
 // Hapus kolom berisi task membuka popup pilihan kolom tujuan.
+function SortableColumnItem({ id, children }: { id: string; children: ReactNode }) {
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } =
+    useSortable({ id });
+  return (
+    <li
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : undefined,
+        zIndex: isDragging ? 10 : undefined,
+        position: isDragging ? 'relative' : undefined,
+      }}
+      className="flex items-center gap-2 bg-white px-3 py-2"
+    >
+      <span
+        ref={setActivatorNodeRef}
+        {...attributes}
+        {...listeners}
+        role="button"
+        tabIndex={0}
+        title="Seret untuk menyusun ulang kolom"
+        aria-label="Seret untuk menyusun ulang kolom"
+        className="flex shrink-0 cursor-grab touch-none items-center px-1 py-2 text-gray-300 transition hover:text-gray-500 active:cursor-grabbing"
+      >
+        <svg width="10" height="14" viewBox="0 0 10 14" fill="none" aria-hidden="true">
+          <circle cx="3" cy="2.5" r="1.3" fill="currentColor" />
+          <circle cx="7" cy="2.5" r="1.3" fill="currentColor" />
+          <circle cx="3" cy="7" r="1.3" fill="currentColor" />
+          <circle cx="7" cy="7" r="1.3" fill="currentColor" />
+          <circle cx="3" cy="11.5" r="1.3" fill="currentColor" />
+          <circle cx="7" cy="11.5" r="1.3" fill="currentColor" />
+        </svg>
+      </span>
+      {children}
+    </li>
+  );
+}
+
 export default function BoardColumnEditor({ projectId }: { projectId: string }) {
   const [columns, setColumns] = useState<BoardColumn[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({});
@@ -42,6 +99,31 @@ export default function BoardColumnEditor({ projectId }: { projectId: string }) 
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  async function persistOrder(next: BoardColumn[]) {
+    setColumns(next);
+    try {
+      await projectApi.reorderColumns(projectId, next.map((c) => c.id));
+    } catch {
+      showToast('Gagal menyimpan urutan kolom.');
+      void reload();
+    }
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const from = columns.findIndex((c) => c.id === String(active.id));
+    const to = columns.findIndex((c) => c.id === String(over.id));
+    if (from < 0 || to < 0) return;
+    void persistOrder(arrayMove(columns, from, to));
+  }
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -87,22 +169,6 @@ export default function BoardColumnEditor({ projectId }: { projectId: string }) 
     } catch {
       setColumns(prev);
       showToast('Gagal menyimpan warna kolom.');
-    }
-  }
-
-  async function handleMove(col: BoardColumn, dir: -1 | 1) {
-    const idx = columns.findIndex((c) => c.id === col.id);
-    const next = [...columns];
-    const j = idx + dir;
-    if (idx < 0 || j < 0 || j >= next.length) return;
-    const [m] = next.splice(idx, 1);
-    next.splice(j, 0, m);
-    setColumns(next);
-    try {
-      await projectApi.reorderColumns(projectId, next.map((c) => c.id));
-    } catch {
-      showToast('Gagal menyimpan urutan kolom.');
-      void reload();
     }
   }
 
@@ -153,30 +219,12 @@ export default function BoardColumnEditor({ projectId }: { projectId: string }) 
 
   return (
     <div className="space-y-5">
-      <SettingsBlock title="Kolom board" desc="Tambah, ubah nama, susun ulang, hapus">
-        <ul className="divide-y divide-gray-100 overflow-hidden rounded-[10px] border border-perrific-line">
-          {columns.map((c, i) => (
-            <li key={c.id} className="flex items-center gap-2 px-3 py-2">
-              <span className="flex shrink-0 flex-col">
-                <button
-                  type="button"
-                  disabled={i === 0}
-                  onClick={() => void handleMove(c, -1)}
-                  aria-label={`Geser ${c.name} ke kiri`}
-                  className="rounded px-1 font-givonic text-xs text-gray-400 hover:bg-gray-100 hover:text-perrific-graphite disabled:opacity-30"
-                >
-                  ↑
-                </button>
-                <button
-                  type="button"
-                  disabled={i === columns.length - 1}
-                  onClick={() => void handleMove(c, 1)}
-                  aria-label={`Geser ${c.name} ke kanan`}
-                  className="rounded px-1 font-givonic text-xs text-gray-400 hover:bg-gray-100 hover:text-perrific-graphite disabled:opacity-30"
-                >
-                  ↓
-                </button>
-              </span>
+      <SettingsBlock title="Kolom board" desc="Tambah, ubah nama, seret untuk menyusun ulang, hapus">
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={columns.map((c) => c.id)} strategy={verticalListSortingStrategy}>
+            <ul className="divide-y divide-gray-100 overflow-hidden rounded-[10px] border border-perrific-line">
+              {columns.map((c) => (
+                <SortableColumnItem key={c.id} id={c.id}>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
                   <label
@@ -233,9 +281,11 @@ export default function BoardColumnEditor({ projectId }: { projectId: string }) 
               >
                 Hapus
               </button>
-            </li>
-          ))}
-        </ul>
+                </SortableColumnItem>
+              ))}
+            </ul>
+          </SortableContext>
+        </DndContext>
         <form onSubmit={handleCreate} className="mt-3 flex gap-2">
           <input
             value={newName}

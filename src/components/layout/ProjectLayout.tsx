@@ -11,7 +11,6 @@ import type { Project } from '@/types';
 const tabs = [
   { to: '.', label: 'Overview', end: true, icon: 'clock' },
   { to: 'kanban', label: 'Kanban', end: false, icon: 'kanban' },
-  { to: 'tugas-saya', label: 'Tugas Saya', end: false, icon: 'check' },
 ] as const;
 
 export const PROJECT_SIDEBAR_EVENT = 'project-sidebar-changed';
