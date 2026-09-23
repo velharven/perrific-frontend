@@ -11,11 +11,24 @@ import {
   type Modifier,
 } from '@dnd-kit/core';
 import { SortableContext, horizontalListSortingStrategy, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import type { TableColumn, TableRow } from '@/types';
 import type { TableDataState } from './useTableData';
 import SortableTh from './SortableTh';
 import SortableRow from './SortableRow';
 import ColumnMenu from './ColumnMenu';
-import { ActivityIcon, TableColumnIcon, TrashIcon } from '@/components/icons';
+import PersonCell from './PersonCell';
+import {
+  ActivityIcon,
+  CheckIcon,
+  CopyIcon,
+  DEFAULT_CATEGORY_OPTIONS,
+  DEFAULT_STATUS_OPTIONS,
+  TableColumnIcon,
+  TrashIcon,
+  getCategoryBadgeStyle,
+  getStatusBadgeStyle,
+} from '@/components/icons';
+import { showToast } from '@/components/ui/Toast';
 
 // Event minta tambah baris ke tabel tertentu (tombol Baru di baris pointer).
 // Pola event jendela yang sudah dipakai app (notes/teams/toast).
@@ -53,6 +66,327 @@ function isHotkeyTextField(el: HTMLElement | null) {
   if (tag !== 'INPUT') return false;
   const type = (el as HTMLInputElement).type;
   return type !== 'checkbox' && type !== 'radio' && type !== 'button';
+}
+
+function TableGridPhoneCell({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (val: string) => void;
+}) {
+  const [copied, setCopied] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const rawStr = value.trim();
+  const [draft, setDraft] = useState(rawStr);
+
+  useEffect(() => {
+    setDraft(rawStr);
+  }, [rawStr]);
+
+  function handleCopy(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!rawStr) return;
+    void navigator.clipboard.writeText(rawStr).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+      showToast('Nomor telepon disalin');
+    });
+  }
+
+  function handleBlur() {
+    setIsEditing(false);
+    const next = draft.trim();
+    if (next !== rawStr) {
+      onChange(next);
+    }
+  }
+
+  return (
+    <div className="group/phone relative flex w-full min-w-0 items-center justify-between gap-1">
+      <div className="flex min-w-0 flex-1 items-center gap-1.5">
+        <TableColumnIcon type="PHONE" className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+        {isEditing ? (
+          <input
+            autoFocus
+            type="text"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={handleBlur}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleBlur();
+              if (e.key === 'Escape') {
+                setDraft(rawStr);
+                setIsEditing(false);
+              }
+            }}
+            onClick={(e) => e.stopPropagation()}
+            placeholder="Nomor telepon..."
+            className="w-full min-w-0 rounded border border-violet-300 bg-white px-1.5 py-0.5 text-xs text-gray-800 focus:outline-none"
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsEditing(true);
+            }}
+            title={rawStr ? `${rawStr} — klik untuk ubah` : 'Klik untuk isi telepon'}
+            className={`min-w-0 flex-1 truncate rounded px-1 py-0.5 text-left text-xs transition hover:bg-gray-100 ${
+              rawStr ? 'text-gray-800' : 'text-gray-300'
+            }`}
+          >
+            {rawStr || '—'}
+          </button>
+        )}
+      </div>
+      {rawStr && !isEditing && (
+        <button
+          type="button"
+          onClick={handleCopy}
+          title={copied ? 'Tersalin!' : 'Salin nomor telepon'}
+          aria-label="Salin nomor telepon"
+          className="shrink-0 rounded p-1 text-gray-400 opacity-0 transition hover:bg-gray-200/80 hover:text-gray-700 focus:opacity-100 group-hover/phone:opacity-100"
+        >
+          {copied ? (
+            <CheckIcon className="h-3.5 w-3.5 text-emerald-600" />
+          ) : (
+            <CopyIcon className="h-3.5 w-3.5" />
+          )}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function TableGridCell({
+  row,
+  col,
+  t,
+}: {
+  row: TableRow;
+  col: TableColumn;
+  t: TableDataState;
+}) {
+  const val = row.values[col.id];
+  const strVal = val === null || val === undefined ? '' : String(val);
+
+  if (col.type === 'CHECKBOX') {
+    return (
+      <input
+        type="checkbox"
+        checked={Boolean(val)}
+        onChange={(e) => t.changeCell(row.id, col, e.target.checked)}
+        className="h-3.5 w-3.5 rounded border-gray-300 text-violet-600"
+      />
+    );
+  }
+
+  if (col.type === 'SELECT') {
+    return (
+      <select
+        value={strVal}
+        onChange={(e) => t.changeCell(row.id, col, e.target.value)}
+        className="w-full bg-transparent text-xs text-gray-700 focus:outline-none"
+      >
+        <option value="">—</option>
+        {col.options.map((opt) => (
+          <option key={opt} value={opt}>
+            {opt}
+          </option>
+        ))}
+      </select>
+    );
+  }
+
+  if (col.type === 'STATUS') {
+    const current = strVal || 'Belum Mulai';
+    const style = getStatusBadgeStyle(current);
+    const opts = col.options && col.options.length > 0 ? col.options : DEFAULT_STATUS_OPTIONS;
+    return (
+      <div className="relative inline-flex items-center">
+        <select
+          value={current}
+          onChange={(e) => t.changeCell(row.id, col, e.target.value)}
+          className={`appearance-none rounded-md px-2 py-0.5 pr-5 text-xs font-medium cursor-pointer transition focus:outline-none ${style.bg} ${style.text}`}
+        >
+          {opts.map((opt) => (
+            <option key={opt} value={opt} className="bg-white text-gray-800">
+              {opt}
+            </option>
+          ))}
+        </select>
+        <span className="pointer-events-none absolute right-1.5 text-[9px] opacity-60">▾</span>
+      </div>
+    );
+  }
+
+  if (col.type === 'CATEGORY') {
+    const current = strVal || '';
+    const style = getCategoryBadgeStyle(current);
+    const opts = col.options && col.options.length > 0 ? col.options : DEFAULT_CATEGORY_OPTIONS;
+    return (
+      <div className="relative inline-flex items-center">
+        <select
+          value={current}
+          onChange={(e) => t.changeCell(row.id, col, e.target.value)}
+          className={`appearance-none rounded-md px-2 py-0.5 pr-5 text-xs font-medium cursor-pointer transition focus:outline-none ${style.bg} ${style.text}`}
+        >
+          <option value="" className="bg-white text-gray-500">—</option>
+          {opts.map((opt) => (
+            <option key={opt} value={opt} className="bg-white text-gray-800">
+              {opt}
+            </option>
+          ))}
+        </select>
+        <span className="pointer-events-none absolute right-1.5 text-[9px] opacity-60">▾</span>
+      </div>
+    );
+  }
+
+  if (col.type === 'START_TIME' || col.type === 'END_TIME') {
+    return (
+      <div className="flex w-full items-center gap-1.5">
+        <TableColumnIcon type={col.type} className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+        <input
+          type="time"
+          value={strVal}
+          onChange={(e) => t.changeCell(row.id, col, e.target.value)}
+          className="rounded border border-transparent bg-transparent px-1 py-0.5 text-xs text-gray-700 hover:border-gray-200 focus:border-violet-300 focus:bg-white focus:outline-none"
+        />
+      </div>
+    );
+  }
+
+  if (col.type === 'PERSON') {
+    return (
+      <PersonCell
+        value={strVal || null}
+        onChange={(val) => t.changeCell(row.id, col, val ?? '')}
+      />
+    );
+  }
+
+  if (col.type === 'FILES') {
+    const isUrl = /^https?:\/\//i.test(strVal.trim());
+    return (
+      <div className="flex w-full items-center gap-1.5">
+        <TableColumnIcon type="FILES" className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+        <input
+          type="text"
+          value={strVal}
+          onChange={(e) => t.changeCell(row.id, col, e.target.value)}
+          placeholder="File / tautan..."
+          className="w-full min-w-0 bg-transparent text-xs text-gray-700 placeholder:text-gray-300 focus:outline-none"
+        />
+        {isUrl && (
+          <a
+            href={strVal.trim()}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Buka tautan file"
+            className="shrink-0 text-xs text-gray-400 transition hover:text-perrific-violet"
+          >
+            ↗
+          </a>
+        )}
+      </div>
+    );
+  }
+
+  if (col.type === 'URL') {
+    const href = strVal ? (/^https?:\/\//i.test(strVal) ? strVal : `https://${strVal}`) : '';
+    return (
+      <div className="flex w-full items-center gap-1.5">
+        <TableColumnIcon type="URL" className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+        <input
+          type="url"
+          value={strVal}
+          onChange={(e) => t.changeCell(row.id, col, e.target.value)}
+          placeholder="https://..."
+          className="w-full min-w-0 bg-transparent text-xs text-gray-700 placeholder:text-gray-300 focus:outline-none"
+        />
+        {href && (
+          <a
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Buka tautan"
+            className="shrink-0 text-xs text-gray-400 transition hover:text-perrific-violet"
+          >
+            ↗
+          </a>
+        )}
+      </div>
+    );
+  }
+
+  if (col.type === 'PHONE') {
+    return (
+      <TableGridPhoneCell
+        value={strVal}
+        onChange={(val) => t.changeCell(row.id, col, val)}
+      />
+    );
+  }
+
+  if (col.type === 'EMAIL') {
+    return (
+      <div className="flex w-full items-center gap-1.5">
+        <TableColumnIcon type="EMAIL" className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+        <input
+          type="email"
+          value={strVal}
+          onChange={(e) => t.changeCell(row.id, col, e.target.value)}
+          placeholder="Email..."
+          className="w-full min-w-0 bg-transparent text-xs text-gray-700 placeholder:text-gray-300 focus:outline-none"
+        />
+        {strVal && (
+          <a
+            href={`mailto:${strVal}`}
+            title="Kirim email"
+            className="shrink-0 text-xs text-gray-400 transition hover:text-perrific-violet"
+          >
+            ↗
+          </a>
+        )}
+      </div>
+    );
+  }
+
+  if (col.type === 'NUMBER') {
+    return (
+      <input
+        type="number"
+        value={strVal}
+        onChange={(e) => t.changeCell(row.id, col, e.target.value)}
+        placeholder="—"
+        className="w-full min-w-0 bg-transparent text-xs text-gray-700 placeholder:text-gray-300 focus:outline-none"
+      />
+    );
+  }
+
+  if (col.type === 'DATE') {
+    return (
+      <input
+        type="date"
+        value={strVal}
+        onChange={(e) => t.changeCell(row.id, col, e.target.value)}
+        className="w-full min-w-0 bg-transparent text-xs text-gray-700 focus:outline-none"
+      />
+    );
+  }
+
+  // TEXT
+  return (
+    <input
+      type="text"
+      value={strVal}
+      onChange={(e) => t.changeCell(row.id, col, e.target.value)}
+      placeholder="—"
+      className="w-full min-w-0 bg-transparent text-xs text-gray-700 placeholder:text-gray-300 focus:outline-none"
+    />
+  );
 }
 
 // Grid gaya database Notion: judul-kiri/toolbar-kanan + header properti +
@@ -315,7 +649,9 @@ export default function TableGrid({
                 }
               >
                 {columns.map((col) => (
-                  <td key={col.id} className="min-w-[170px] border-b border-l border-gray-200 p-1.5">{col.type === 'SELECT' ? <select value={String(row.values[col.id] ?? '')} onChange={(e) => t.changeCell(row.id, col, e.target.value)} className="w-full bg-transparent focus:outline-none"><option value="" />{col.options.map((opt) => <option key={opt}>{opt}</option>)}</select> : col.type === 'CHECKBOX' ? <input type="checkbox" checked={Boolean(row.values[col.id])} onChange={(e) => t.changeCell(row.id, col, e.target.checked)} /> : <input type={col.type === 'NUMBER' ? 'number' : col.type === 'DATE' ? 'date' : 'text'} value={String(row.values[col.id] ?? '')} onChange={(e) => t.changeCell(row.id, col, e.target.value)} className="w-full bg-transparent focus:outline-none" />}</td>
+                  <td key={col.id} className="min-w-[170px] border-b border-l border-gray-200 p-1.5">
+                    <TableGridCell row={row} col={col} t={t} />
+                  </td>
                 ))}
                 <td aria-hidden="true" className="border-b border-gray-200" />
               </SortableRow>

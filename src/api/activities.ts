@@ -48,7 +48,7 @@ export const activityApi = {
   // Properti kustom database harian (user-scoped)
   listColumns: () =>
     api.get<{ data: DailyColumn[] }>('/activities/columns').then((r) => r.data.data),
-  createColumn: (body: { name: string; type?: DailyColumn['type']; icon?: string; options?: string[] }) =>
+  createColumn: (body: { id?: string; name: string; type?: DailyColumn['type']; icon?: string; options?: string[] }) =>
     api.post<{ data: DailyColumn }>('/activities/columns', body).then((r) => r.data.data),
   updateColumn: (columnId: string, body: Partial<Pick<DailyColumn, 'name' | 'type' | 'icon' | 'options'>>) =>
     api.patch<{ data: DailyColumn }>(`/activities/columns/${columnId}`, body).then((r) => r.data.data),

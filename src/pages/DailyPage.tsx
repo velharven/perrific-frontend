@@ -22,8 +22,22 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { useLocation } from 'react-router-dom';
 import { activityApi } from '@/api/activities';
-import { ActivityIcon, TableColumnIcon, TrashIcon } from '@/components/icons';
+import {
+  ActivityIcon,
+  CheckIcon,
+  CopyIcon,
+  DEFAULT_CATEGORY_OPTIONS,
+  DEFAULT_STATUS_OPTIONS,
+  PROPERTY_COLUMNS_LEFT,
+  PROPERTY_COLUMNS_RIGHT,
+  TAB_ICONS,
+  TableColumnIcon,
+  TrashIcon,
+  getCategoryBadgeStyle,
+  getStatusBadgeStyle,
+} from '@/components/icons';
 import { showToast } from '@/components/ui/Toast';
+import PersonCell from '@/components/table/PersonCell';
 import { UndoStackProvider, useUndo } from '@/hooks/useUndoStack';
 import type { DailyActivity, DailyColumn, DailyColumnType } from '@/types';
 
@@ -155,10 +169,12 @@ function SortableRow({
 function DraggableTh({
   id,
   entry,
+  onClick,
   children,
 }: {
   id: string;
   entry: string;
+  onClick?: (e: React.MouseEvent) => void;
   children: ReactNode;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
@@ -173,6 +189,7 @@ function DraggableTh({
       }}
       title="Klik untuk mengatur • Seret untuk memindahkan"
       className="group cursor-grab whitespace-nowrap border-b border-l border-gray-200 p-2 text-left font-medium active:cursor-grabbing"
+      onClick={onClick}
       {...attributes}
       {...listeners}
     >
@@ -181,20 +198,37 @@ function DraggableTh({
   );
 }
 
-// Ikon + label tipe properti kustom
-const COLUMN_TYPE_META: Record<DailyColumnType, { label: string }> = {
-  TEXT: { label: 'Teks' },
-  NUMBER: { label: 'Angka' },
-  DATE: { label: 'Tanggal' },
-  SELECT: { label: 'Pilihan' },
-  CHECKBOX: { label: 'Centang' },
-};
-
 // Kolom bawaan (fixed) yang ikut bisa digeser. Entri urutan: `fix:<id>` atau id kolom kustom.
 const FIXED_IDS = ['title', 'start', 'end', 'type', 'status'] as const;
 type FixedId = (typeof FIXED_IDS)[number];
 const fixKey = (id: FixedId) => `fix:${id}`;
 const ORDER_KEY = 'daily-column-order-v1';
+const FIXED_CONFIG_KEY = 'daily-fixed-columns-meta-v1';
+
+interface FixedColumnMeta {
+  name: string;
+  type: DailyColumnType;
+  icon?: string | null;
+}
+
+const DEFAULT_FIXED_CONFIG: Record<FixedId, FixedColumnMeta> = {
+  title: { name: 'Kegiatan', type: 'TEXT', icon: null },
+  start: { name: 'Waktu Mulai', type: 'START_TIME', icon: 'clock' },
+  end: { name: 'Waktu Selesai', type: 'END_TIME', icon: 'clock' },
+  type: { name: 'Kategori', type: 'CATEGORY', icon: 'folder' },
+  status: { name: 'Status', type: 'STATUS', icon: 'check' },
+};
+
+interface DisplayColumnItem {
+  id: string;
+  name: string;
+  type: DailyColumnType;
+  icon: string | null;
+  isFixed: boolean;
+  fixedId?: FixedId;
+  options?: string[];
+  rawColumn?: DailyColumn;
+}
 
 function mergeDisplayOrder(saved: string[], customs: DailyColumn[]): string[] {
   const fixedKeys = FIXED_IDS.map(fixKey);
@@ -215,6 +249,101 @@ const FIXED_TD_CLASS: Record<FixedId, string> = {
   status: 'border-b border-l border-gray-200 p-2',
 };
 
+function PhoneCell({
+  value,
+  onCommit,
+  ariaLabel,
+}: {
+  value: string | number | null | undefined;
+  onCommit: (val: string | null) => void;
+  ariaLabel: string;
+}) {
+  const [copied, setCopied] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const rawStr = value != null ? String(value).trim() : '';
+  const [draft, setDraft] = useState(rawStr);
+
+  useEffect(() => {
+    setDraft(rawStr);
+  }, [rawStr]);
+
+  function handleCopy(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!rawStr) return;
+    void navigator.clipboard.writeText(rawStr).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+      showToast('Nomor telepon disalin');
+    });
+  }
+
+  function handleBlur() {
+    setIsEditing(false);
+    const next = draft.trim();
+    if (next !== rawStr) {
+      onCommit(next === '' ? null : next);
+    }
+  }
+
+  return (
+    <div className="group/phone relative flex w-full min-w-0 items-center justify-between gap-1">
+      <div className="flex min-w-0 flex-1 items-center gap-1.5">
+        <TableColumnIcon type="PHONE" className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+        {isEditing ? (
+          <input
+            autoFocus
+            type="text"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={handleBlur}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleBlur();
+              if (e.key === 'Escape') {
+                setDraft(rawStr);
+                setIsEditing(false);
+              }
+            }}
+            onClick={(e) => e.stopPropagation()}
+            aria-label={ariaLabel}
+            placeholder="Nomor telepon..."
+            className="w-full min-w-0 rounded border border-violet-300 bg-white px-1.5 py-0.5 text-xs text-gray-800 focus:outline-none"
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsEditing(true);
+            }}
+            aria-label={ariaLabel}
+            title={rawStr ? `${rawStr} — klik untuk ubah` : 'Klik untuk isi telepon'}
+            className={`min-w-0 flex-1 truncate rounded px-1 py-0.5 text-left text-xs transition hover:bg-gray-100 ${
+              rawStr ? 'text-gray-800' : 'text-gray-300'
+            }`}
+          >
+            {rawStr || '—'}
+          </button>
+        )}
+      </div>
+      {rawStr && !isEditing && (
+        <button
+          type="button"
+          onClick={handleCopy}
+          title={copied ? 'Tersalin!' : 'Salin nomor telepon'}
+          aria-label="Salin nomor telepon"
+          className="shrink-0 rounded p-1 text-gray-400 opacity-0 transition hover:bg-gray-200/80 hover:text-gray-700 focus:opacity-100 group-hover/phone:opacity-100"
+        >
+          {copied ? (
+            <CheckIcon className="h-3.5 w-3.5 text-emerald-600" />
+          ) : (
+            <CopyIcon className="h-3.5 w-3.5" />
+          )}
+        </button>
+      )}
+    </div>
+  );
+}
+
 // Sel nilai properti kustom: edit inline sesuai tipe kolom.
 function CustomCell({
   activity,
@@ -226,6 +355,7 @@ function CustomCell({
   onCommit: (activity: DailyActivity, column: DailyColumn, value: string | number | boolean | null) => void;
 }) {
   const raw = activity.customValues?.[column.id] ?? null;
+
   if (column.type === 'CHECKBOX') {
     return (
       <input
@@ -237,6 +367,7 @@ function CustomCell({
       />
     );
   }
+
   if (column.type === 'SELECT') {
     const opts = Array.isArray(column.options) ? column.options : [];
     return (
@@ -255,6 +386,203 @@ function CustomCell({
       </select>
     );
   }
+
+  if (column.type === 'STATUS') {
+    const rawVal = typeof raw === 'string' ? raw : '';
+    const val = rawVal || 'Belum Mulai';
+    const style = getStatusBadgeStyle(val);
+    const opts = (Array.isArray(column.options) && column.options.length > 0) ? column.options : DEFAULT_STATUS_OPTIONS;
+    return (
+      <div className="relative inline-flex items-center">
+        <select
+          value={val}
+          onChange={(e) => onCommit(activity, column, e.target.value)}
+          aria-label={`${column.name} ${activity.title}`}
+          className={`appearance-none rounded-md px-2 py-0.5 pr-5 text-xs font-medium cursor-pointer transition focus:outline-none ${style.bg} ${style.text}`}
+        >
+          {opts.map((opt) => (
+            <option key={opt} value={opt} className="bg-white text-gray-800">
+              {opt}
+            </option>
+          ))}
+        </select>
+        <span className="pointer-events-none absolute right-1.5 text-[9px] opacity-60">▾</span>
+      </div>
+    );
+  }
+
+  if (column.type === 'CATEGORY') {
+    const rawVal = typeof raw === 'string' ? raw : '';
+    const style = getCategoryBadgeStyle(rawVal);
+    const opts = (Array.isArray(column.options) && column.options.length > 0) ? column.options : DEFAULT_CATEGORY_OPTIONS;
+    return (
+      <div className="relative inline-flex items-center">
+        <select
+          value={rawVal}
+          onChange={(e) => onCommit(activity, column, e.target.value === '' ? null : e.target.value)}
+          aria-label={`${column.name} ${activity.title}`}
+          className={`appearance-none rounded-md px-2 py-0.5 pr-5 text-xs font-medium cursor-pointer transition focus:outline-none ${style.bg} ${style.text}`}
+        >
+          <option value="" className="bg-white text-gray-500">—</option>
+          {opts.map((opt) => (
+            <option key={opt} value={opt} className="bg-white text-gray-800">
+              {opt}
+            </option>
+          ))}
+        </select>
+        <span className="pointer-events-none absolute right-1.5 text-[9px] opacity-60">▾</span>
+      </div>
+    );
+  }
+
+  if (column.type === 'START_TIME' || column.type === 'END_TIME') {
+    const rawVal = typeof raw === 'string' ? raw : '';
+    return (
+      <div className="flex w-full items-center gap-1.5">
+        <TableColumnIcon type={column.type} className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+        <input
+          type="time"
+          defaultValue={rawVal}
+          onBlur={(e) => {
+            const v = e.target.value.trim();
+            const cur = typeof raw === 'string' ? raw : null;
+            if ((v === '' ? null : v) !== cur) onCommit(activity, column, v === '' ? null : v);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+          }}
+          aria-label={`${column.name} ${activity.title}`}
+          className="rounded border border-transparent bg-transparent px-1 py-0.5 text-xs text-gray-700 hover:border-gray-200 focus:border-violet-300 focus:bg-white focus:outline-none"
+        />
+      </div>
+    );
+  }
+
+  if (column.type === 'PERSON') {
+    return (
+      <PersonCell
+        value={typeof raw === 'string' ? raw : raw != null ? String(raw) : null}
+        onChange={(val) => onCommit(activity, column, val)}
+        ariaLabel={`${column.name} ${activity.title}`}
+      />
+    );
+  }
+
+  if (column.type === 'FILES') {
+    const strVal = typeof raw === 'string' ? raw : '';
+    const isUrl = /^https?:\/\//i.test(strVal.trim());
+    return (
+      <div className="flex w-full items-center gap-1.5">
+        <TableColumnIcon type="FILES" className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+        <input
+          type="text"
+          defaultValue={strVal}
+          onBlur={(e) => {
+            const v = e.target.value.trim();
+            const cur = typeof raw === 'string' ? raw : null;
+            if ((v === '' ? null : v) !== cur) onCommit(activity, column, v === '' ? null : v);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+          }}
+          aria-label={`${column.name} ${activity.title}`}
+          placeholder="File / tautan..."
+          className="w-full min-w-0 bg-transparent text-xs text-gray-700 placeholder:text-gray-300 focus:outline-none"
+        />
+        {isUrl && (
+          <a
+            href={strVal.trim()}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Buka tautan file"
+            className="shrink-0 text-xs text-gray-400 transition hover:text-perrific-violet"
+          >
+            ↗
+          </a>
+        )}
+      </div>
+    );
+  }
+
+  if (column.type === 'URL') {
+    const rawStr = typeof raw === 'string' ? raw.trim() : '';
+    const href = rawStr ? (/^https?:\/\//i.test(rawStr) ? rawStr : `https://${rawStr}`) : '';
+    return (
+      <div className="flex w-full items-center gap-1.5">
+        <TableColumnIcon type="URL" className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+        <input
+          type="url"
+          defaultValue={rawStr}
+          onBlur={(e) => {
+            const v = e.target.value.trim();
+            const cur = typeof raw === 'string' ? raw : null;
+            if ((v === '' ? null : v) !== cur) onCommit(activity, column, v === '' ? null : v);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+          }}
+          aria-label={`${column.name} ${activity.title}`}
+          placeholder="https://..."
+          className="w-full min-w-0 bg-transparent text-xs text-gray-700 placeholder:text-gray-300 focus:outline-none"
+        />
+        {href && (
+          <a
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Buka tautan"
+            className="shrink-0 text-xs text-gray-400 transition hover:text-perrific-violet"
+          >
+            ↗
+          </a>
+        )}
+      </div>
+    );
+  }
+
+  if (column.type === 'PHONE') {
+    return (
+      <PhoneCell
+        value={raw != null ? String(raw) : null}
+        onCommit={(val) => onCommit(activity, column, val)}
+        ariaLabel={`${column.name} ${activity.title}`}
+      />
+    );
+  }
+
+  if (column.type === 'EMAIL') {
+    const rawStr = typeof raw === 'string' ? raw.trim() : '';
+    return (
+      <div className="flex w-full items-center gap-1.5">
+        <TableColumnIcon type="EMAIL" className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+        <input
+          type="email"
+          defaultValue={rawStr}
+          onBlur={(e) => {
+            const v = e.target.value.trim();
+            const cur = typeof raw === 'string' ? raw : null;
+            if ((v === '' ? null : v) !== cur) onCommit(activity, column, v === '' ? null : v);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+          }}
+          aria-label={`${column.name} ${activity.title}`}
+          placeholder="Email..."
+          className="w-full min-w-0 bg-transparent text-xs text-gray-700 placeholder:text-gray-300 focus:outline-none"
+        />
+        {rawStr && (
+          <a
+            href={`mailto:${rawStr}`}
+            title="Kirim email"
+            className="shrink-0 text-xs text-gray-400 transition hover:text-perrific-violet"
+          >
+            ↗
+          </a>
+        )}
+      </div>
+    );
+  }
+
   if (column.type === 'DATE') {
     return (
       <input
@@ -273,6 +601,7 @@ function CustomCell({
       />
     );
   }
+
   return (
     <input
       type={column.type === 'NUMBER' ? 'number' : 'text'}
@@ -305,38 +634,35 @@ function CustomCell({
   );
 }
 
-// Menu pengaturan properti kustom (nama, tipe, opsi SELECT, pindah, hapus).
+// Menu pengaturan properti kustom gaya Notion (nama, ikon, jenis properti, opsi SELECT, hapus).
 // Di-portal ke body dengan posisi fixed agar tak terpotong scroll tabel.
 function ColumnMenu({
-  column,
+  item,
   x,
   y,
-  isFirst,
-  isLast,
   onRename,
+  onChangeIcon,
   onChangeType,
   onSaveOptions,
-  onMove,
   onDelete,
   onClose,
 }: {
-  column: DailyColumn;
+  item: DisplayColumnItem;
   x: number;
   y: number;
-  isFirst: boolean;
-  isLast: boolean;
   onRename: (name: string) => void;
-  onChangeType: (type: DailyColumnType) => void;
-  onSaveOptions: (options: string[]) => void;
-  onMove: (dir: -1 | 1) => void;
-  onDelete: () => void;
+  onChangeIcon?: (icon: string | null) => void;
+  onChangeType?: (type: DailyColumnType) => void;
+  onSaveOptions?: (options: string[]) => void;
+  onDelete?: () => void;
   onClose: () => void;
 }) {
-  const [name, setName] = useState(column.name);
+  const [name, setName] = useState(item.name);
+  const [iconOpen, setIconOpen] = useState(false);
   const [optionInput, setOptionInput] = useState('');
   const rootRef = useRef<HTMLDivElement>(null);
   const nameRef = useRef<HTMLInputElement>(null);
-  const opts = Array.isArray(column.options) ? column.options : [];
+  const opts = Array.isArray(item.options) ? item.options : [];
 
   useEffect(() => {
     nameRef.current?.focus();
@@ -367,58 +693,224 @@ function ColumnMenu({
   }, [onClose]);
 
   // Jepit ke viewport agar tak keluar layar.
-  const W = 240;
-  const H = 420;
+  const W = 320;
+  const H = 380;
   const left = Math.max(8, Math.min(x, window.innerWidth - W - 8));
   const top = y + H > window.innerHeight ? Math.max(8, y - H) : y;
 
   function commitName() {
     const next = name.trim();
-    if (next && next !== column.name) onRename(next);
-    else setName(column.name);
+    if (next && next !== item.name) {
+      onRename(next);
+    } else if (!next && item.isFixed && item.fixedId) {
+      const defName = DEFAULT_FIXED_CONFIG[item.fixedId].name;
+      onRename(defName);
+      setName(defName);
+    } else {
+      setName(item.name);
+    }
   }
 
   function addOption() {
     const next = optionInput.trim();
-    if (!next || opts.includes(next)) return;
+    if (!next || opts.includes(next) || !onSaveOptions) return;
     onSaveOptions([...opts, next]);
     setOptionInput('');
   }
+
+  const customIcon = item.icon ?? null;
 
   return createPortal(
     <div
       ref={rootRef}
       role="menu"
-      aria-label={`Atur properti ${column.name}`}
-      className="fixed z-50 w-60 rounded-xl border border-gray-200 bg-white p-3 shadow-[0_8px_24px_rgba(26,26,30,0.14)]"
+      aria-label={`Atur properti ${item.name}`}
+      className="fixed z-50 w-80 overflow-visible rounded-2xl border border-gray-200 bg-white py-1.5 shadow-[0_8px_24px_rgba(26,26,30,0.14)]"
       style={{ left, top }}
     >
-      <label className="mb-1 block text-[11px] font-medium text-gray-500">Nama properti</label>
-      <input
-        ref={nameRef}
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        onBlur={commitName}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
-          if (e.key === 'Escape') onClose();
-        }}
-        className="mb-2 w-full rounded-md border border-gray-200 px-2 py-1.5 text-sm focus:border-violet-300 focus:outline-none"
-      />
-      <label className="mb-1 block text-[11px] font-medium text-gray-500">Tipe</label>
-      <select
-        value={column.type}
-        onChange={(e) => onChangeType(e.target.value as DailyColumnType)}
-        className="mb-2 w-full cursor-pointer rounded-md border border-gray-200 bg-white px-2 py-1.5 text-sm focus:outline-none"
-      >
-        {(Object.keys(COLUMN_TYPE_META) as DailyColumnType[]).map((t) => (
-          <option key={t} value={t}>
-            {COLUMN_TYPE_META[t].label}
-          </option>
-        ))}
-      </select>
-      {column.type === 'SELECT' && (
-        <div className="mb-2">
+      {/* Input Nama & Pemilih Ikon */}
+      <div className="flex items-center gap-2 px-3 py-2">
+        <div className="relative shrink-0">
+          <button
+            type="button"
+            onClick={() => setIconOpen((v) => !v)}
+            title="Ganti ikon"
+            aria-label="Ganti ikon"
+            aria-expanded={iconOpen}
+            aria-haspopup="menu"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-perrific-graphite transition hover:bg-gray-100"
+          >
+            {customIcon ? <ActivityIcon name={customIcon} /> : <TableColumnIcon type={item.type} />}
+          </button>
+          {iconOpen && (
+            <div
+              role="menu"
+              aria-label="Pilih ikon"
+              className="absolute left-0 top-full z-10 mt-1 grid max-h-56 w-52 grid-cols-6 gap-1 overflow-y-auto rounded-xl border border-gray-200 bg-white p-2 shadow-[0_8px_24px_rgba(26,26,30,0.14)]"
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  onChangeIcon?.(null);
+                  setIconOpen(false);
+                }}
+                title={item.isFixed ? 'Ikon bawaan' : 'Ikuti jenis'}
+                aria-label={item.isFixed ? 'Ikon bawaan' : 'Ikuti jenis'}
+                aria-pressed={customIcon === null}
+                className={`flex h-8 items-center justify-center rounded-lg transition hover:bg-gray-100 ${
+                  customIcon === null ? 'bg-perrific-violet/10 text-perrific-violet' : 'text-gray-500'
+                }`}
+              >
+                <TableColumnIcon type={item.type} />
+              </button>
+              {TAB_ICONS.map((ic) => (
+                <button
+                  key={ic.key}
+                  type="button"
+                  onClick={() => {
+                    onChangeIcon?.(ic.key);
+                    setIconOpen(false);
+                  }}
+                  title={ic.label}
+                  aria-label={ic.label}
+                  aria-pressed={customIcon === ic.key}
+                  className={`flex h-8 items-center justify-center rounded-lg transition hover:bg-gray-100 ${
+                    customIcon === ic.key ? 'bg-perrific-violet/10 text-perrific-violet' : 'text-gray-500'
+                  }`}
+                >
+                  <ActivityIcon name={ic.key} />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <input
+          ref={nameRef}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onBlur={commitName}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              commitName();
+              onClose();
+            }
+            if (e.key === 'Escape') onClose();
+          }}
+          maxLength={80}
+          aria-label="Nama properti"
+          placeholder="Nama properti"
+          className="min-w-0 flex-1 rounded-xl bg-gray-100/80 px-2.5 py-1.5 font-givonic text-sm font-semibold text-perrific-graphite focus:bg-gray-100 focus:outline-none"
+        />
+      </div>
+
+      <div className="h-px bg-gray-100" />
+
+      {/* Header: Pilih jenis */}
+      <div className="flex items-center justify-between px-3 pb-1 pt-2">
+        <p className="font-givonic text-xs font-semibold text-gray-500">
+          Pilih jenis
+        </p>
+        {item.isFixed && (
+          <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-500">
+            Kolom Bawaan
+          </span>
+        )}
+      </div>
+
+      {/* Grid 2 Kolom ala Notion */}
+      <div className="grid grid-cols-2 gap-x-2 px-2 py-1">
+        {/* Kolom Kiri: Teks, Status, Orang, Telepon */}
+        <div className="flex flex-col gap-0.5">
+          {PROPERTY_COLUMNS_LEFT.map((typeItem) => {
+            const isCurrent = item.type === typeItem.type;
+            return (
+              <button
+                key={typeItem.type}
+                type="button"
+                role="menuitemradio"
+                aria-checked={isCurrent}
+                disabled={item.isFixed}
+                onClick={() => {
+                  if (!item.isFixed && onChangeType) {
+                    onChangeType(typeItem.type);
+                  }
+                }}
+                className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 font-givonic text-xs transition ${
+                  item.isFixed
+                    ? isCurrent
+                      ? 'cursor-default bg-gray-50/70 font-semibold text-perrific-graphite'
+                      : 'cursor-not-allowed opacity-35 text-gray-400'
+                    : isCurrent
+                    ? 'bg-perrific-violet/10 font-semibold text-perrific-violet'
+                    : 'text-perrific-graphite hover:bg-gray-50'
+                }`}
+              >
+                <TableColumnIcon
+                  type={typeItem.type}
+                  className={`h-4 w-4 shrink-0 ${isCurrent ? 'text-perrific-violet' : 'text-gray-400'}`}
+                />
+                <span className="truncate text-left">{typeItem.label}</span>
+                {isCurrent && (
+                  <span aria-hidden="true" className="ml-auto shrink-0 font-bold text-perrific-violet">
+                    ✓
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Kolom Kanan: Angka, Tanggal, File & media, URL, Email */}
+        <div className="flex flex-col gap-0.5">
+          {PROPERTY_COLUMNS_RIGHT.map((typeItem) => {
+            const isCurrent = item.type === typeItem.type;
+            return (
+              <button
+                key={typeItem.type}
+                type="button"
+                role="menuitemradio"
+                aria-checked={isCurrent}
+                disabled={item.isFixed}
+                onClick={() => {
+                  if (!item.isFixed && onChangeType) {
+                    onChangeType(typeItem.type);
+                  }
+                }}
+                className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 font-givonic text-xs transition ${
+                  item.isFixed
+                    ? isCurrent
+                      ? 'cursor-default bg-gray-50/70 font-semibold text-perrific-graphite'
+                      : 'cursor-not-allowed opacity-35 text-gray-400'
+                    : isCurrent
+                    ? 'bg-perrific-violet/10 font-semibold text-perrific-violet'
+                    : 'text-perrific-graphite hover:bg-gray-50'
+                }`}
+              >
+                <TableColumnIcon
+                  type={typeItem.type}
+                  className={`h-4 w-4 shrink-0 ${isCurrent ? 'text-perrific-violet' : 'text-gray-400'}`}
+                />
+                <span className="truncate text-left">{typeItem.label}</span>
+                {isCurrent && (
+                  <span aria-hidden="true" className="ml-auto shrink-0 font-bold text-perrific-violet">
+                    ✓
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {item.isFixed && (
+        <p className="px-3 py-1 text-[11px] text-gray-400">
+          Jenis kolom bawaan tidak dapat diubah.
+        </p>
+      )}
+
+      {/* Opsi khusus jika tipe SELECT dan bukan kolom bawaan */}
+      {!item.isFixed && item.type === 'SELECT' && onSaveOptions && (
+        <div className="border-t border-gray-100 px-3 py-2">
           <p className="mb-1 text-[11px] font-medium text-gray-500">Pilihan</p>
           <div className="mb-1.5 flex flex-wrap gap-1">
             {opts.map((opt) => (
@@ -458,31 +950,24 @@ function ColumnMenu({
           </div>
         </div>
       )}
-      <div className="mb-2 flex gap-1.5">
-        <button
-          type="button"
-          disabled={isFirst}
-          onClick={() => onMove(-1)}
-          className="flex-1 rounded-md border border-gray-200 px-2 py-1 text-xs hover:bg-gray-100 disabled:opacity-40"
-        >
-          ← Kiri
-        </button>
-        <button
-          type="button"
-          disabled={isLast}
-          onClick={() => onMove(1)}
-          className="flex-1 rounded-md border border-gray-200 px-2 py-1 text-xs hover:bg-gray-100 disabled:opacity-40"
-        >
-          Kanan →
-        </button>
-      </div>
-      <button
-        type="button"
-        onClick={onDelete}
-        className="w-full rounded-md border border-red-200 px-2 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
-      >
-        Hapus properti
-      </button>
+
+      {/* Hapus Properti: hanya untuk kolom kustom */}
+      {!item.isFixed && onDelete && (
+        <>
+          <div className="h-px bg-gray-100" />
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              onClose();
+              onDelete();
+            }}
+            className="flex w-full items-center gap-2.5 px-3 py-2.5 font-givonic text-sm font-medium text-red-600 transition hover:bg-red-50"
+          >
+            Hapus properti
+          </button>
+        </>
+      )}
     </div>,
     document.body,
   );
@@ -523,7 +1008,72 @@ function DailyPageInner() {
   };
   const columnById = useMemo(() => new Map(columns.map((c) => [c.id, c])), [columns]);
   const displayOrder = useMemo(() => mergeDisplayOrder(order, columns), [order, columns]);
-  const displayCustomIds = useMemo(() => displayOrder.filter((id) => !id.startsWith('fix:')), [displayOrder]);
+
+  // Konfigurasi nama & ikon kustom untuk kolom bawaan (disimpan di localStorage).
+  const [fixedMeta, setFixedMeta] = useState<Record<string, { name?: string; icon?: string | null }>>(() => {
+    try {
+      const raw = localStorage.getItem(FIXED_CONFIG_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const updateFixedMeta = (id: FixedId, patch: { name?: string; icon?: string | null }) => {
+    setFixedMeta((prev) => {
+      const current = prev[id] ?? {};
+      const updated = { ...current };
+      if ('name' in patch) {
+        if (patch.name === undefined || patch.name.trim() === DEFAULT_FIXED_CONFIG[id].name) {
+          delete updated.name;
+        } else {
+          updated.name = patch.name.trim();
+        }
+      }
+      if ('icon' in patch) {
+        if (patch.icon === undefined || patch.icon === null) {
+          delete updated.icon;
+        } else {
+          updated.icon = patch.icon;
+        }
+      }
+      const next = { ...prev, [id]: updated };
+      try {
+        localStorage.setItem(FIXED_CONFIG_KEY, JSON.stringify(next));
+      } catch {
+        /* storage error diabaikan */
+      }
+      return next;
+    });
+  };
+
+  const getDisplayColumnItem = (entry: string): DisplayColumnItem | null => {
+    if (entry.startsWith('fix:')) {
+      const fid = entry.slice(4) as FixedId;
+      const def = DEFAULT_FIXED_CONFIG[fid];
+      if (!def) return null;
+      const meta = fixedMeta[fid];
+      return {
+        id: entry,
+        name: meta?.name?.trim() ? meta.name : def.name,
+        type: def.type,
+        icon: meta?.icon !== undefined ? meta.icon : (def.icon ?? null),
+        isFixed: true,
+        fixedId: fid,
+      };
+    }
+    const c = columnById.get(entry);
+    if (!c) return null;
+    return {
+      id: c.id,
+      name: c.name,
+      type: c.type,
+      icon: c.icon ?? null,
+      isFixed: false,
+      options: Array.isArray(c.options) ? c.options : [],
+      rawColumn: c,
+    };
+  };
 
   // Lebar kolom lokal-only (tidak disinkron): kunci entri `fix:<id>` / id kustom.
   const WIDTHS_KEY = 'daily-column-widths-v1';
@@ -657,7 +1207,7 @@ function DailyPageInner() {
       cancelAnimationFrame(raf);
       window.removeEventListener('resize', measure);
     };
-  }, [displayOrder, columns]);
+  }, [displayOrder, columns, fixedMeta]);
 
   const fetchActivities = async () => {
     setLoading(true);
@@ -777,6 +1327,18 @@ function DailyPageInner() {
     }
   }
 
+  async function handleChangeColumnIcon(column: DailyColumn, icon: string | null) {
+    const prev = columns;
+    setColumns((cs) => cs.map((c) => (c.id === column.id ? { ...c, icon } : c)));
+    try {
+      const updated = await activityApi.updateColumn(column.id, { icon });
+      setColumns((cs) => cs.map((c) => (c.id === column.id ? updated : c)));
+    } catch {
+      setColumns(prev);
+      showToast('Gagal mengubah ikon properti.');
+    }
+  }
+
   async function handleChangeColumnType(column: DailyColumn, type: DailyColumnType) {
     if (type === column.type) return;
     const prev = columns;
@@ -818,30 +1380,15 @@ function DailyPageInner() {
     }
   }
 
-  async function handleMoveColumn(column: DailyColumn, dir: -1 | 1) {
-    // Geser dalam urutan tampil (tetangga bisa kolom fixed).
-    const idx = displayOrder.indexOf(column.id);
-    const target = idx + dir;
-    if (idx < 0 || target < 0 || target >= displayOrder.length) return;
-    const prevOrder = displayOrder;
-    const next = [...displayOrder];
-    const [moved] = next.splice(idx, 1);
-    next.splice(target, 0, moved);
-    persistOrder(next);
-    const nextCustom = next.filter((id) => !id.startsWith('fix:'));
-    try {
-      await activityApi.reorderColumns(nextCustom);
-    } catch {
-      persistOrder(prevOrder);
-      showToast('Gagal memindahkan properti.');
-    }
-  }
+  // Hapus properti: snapshot kolom + isi nilai sel di semua aktivitas
+  // didorong ke stack undo, bisa dikembalikan via shortcut Ctrl+Z atau toast Urungkan.
+  function handleDeleteColumn(column: DailyColumn) {
+    const colIndex = columns.findIndex((c) => c.id === column.id);
+    const snapshotColumn = { ...column };
+    const snapshotOrder = [...displayOrder];
+    const snapshotWidth = widths[column.id];
+    const cellValues = new Map(activities.map((a) => [a.id, a.customValues?.[column.id] ?? null]));
 
-  async function handleDeleteColumn(column: DailyColumn) {
-    if (!confirm(`Hapus properti "${column.name}"? Nilainya di semua baris ikut terhapus.`)) return;
-    const prev = columns;
-    const prevActivities = activities;
-    const prevOrder = displayOrder;
     setMenu(null);
     setColumns((cs) => cs.filter((c) => c.id !== column.id));
     persistOrder(displayOrder.filter((id) => id !== column.id));
@@ -859,14 +1406,88 @@ function DailyPageInner() {
         return { ...a, customValues: next };
       }),
     );
-    try {
-      await activityApi.deleteColumn(column.id);
-    } catch {
-      setColumns(prev);
-      setActivities(prevActivities);
-      persistOrder(prevOrder);
-      showToast('Gagal menghapus properti.');
-    }
+
+    // Hapus di server (background); jika gagal sinkron ulang
+    void activityApi.deleteColumn(column.id).catch(() => fetchColumns());
+
+    const undo = () => {
+      // 1. Kembalikan kolom ke posisi semula
+      setColumns((prev) => {
+        if (prev.some((c) => c.id === snapshotColumn.id)) return prev;
+        const next = [...prev];
+        next.splice(Math.min(colIndex, next.length), 0, snapshotColumn);
+        return next;
+      });
+      // 2. Kembalikan urutan tampilan
+      persistOrder(snapshotOrder);
+      // 3. Kembalikan lebar kolom jika ada
+      if (snapshotWidth !== undefined) {
+        setWidths((prev) => ({ ...prev, [snapshotColumn.id]: snapshotWidth }));
+      }
+      // 4. Kembalikan nilai sel di setiap aktivitas
+      setActivities((prev) =>
+        prev.map((a) => {
+          const val = cellValues.get(a.id);
+          if (val === undefined || val === null) return a;
+          return {
+            ...a,
+            customValues: { ...(a.customValues ?? {}), [snapshotColumn.id]: val },
+          };
+        }),
+      );
+      // 5. Buat ulang kolom di server (dengan ID yang sama)
+      void activityApi
+        .createColumn({
+          id: snapshotColumn.id,
+          name: snapshotColumn.name,
+          type: snapshotColumn.type,
+          icon: snapshotColumn.icon ?? undefined,
+          options: Array.isArray(snapshotColumn.options) ? snapshotColumn.options : undefined,
+        })
+        .then((created) => {
+          const newId = created.id;
+          if (newId !== snapshotColumn.id) {
+            setColumns((prev) => prev.map((c) => (c.id === snapshotColumn.id ? created : c)));
+            setOrder((prev) => prev.map((id) => (id === snapshotColumn.id ? newId : id)));
+            setWidths((prev) => {
+              if (!(snapshotColumn.id in prev)) return prev;
+              const next = { ...prev, [newId]: prev[snapshotColumn.id] };
+              delete next[snapshotColumn.id];
+              return next;
+            });
+            setActivities((prev) =>
+              prev.map((a) => {
+                if (!a.customValues || !(snapshotColumn.id in a.customValues)) return a;
+                const next = { ...a.customValues, [newId]: a.customValues[snapshotColumn.id] };
+                delete next[snapshotColumn.id];
+                return { ...a, customValues: next };
+              }),
+            );
+          }
+          // Kembalikan nilai sel di server
+          const toRestore = Array.from(cellValues.entries()).filter(
+            ([_, val]) => val !== undefined && val !== null,
+          );
+          void Promise.all(
+            toRestore.map(([actId, val]) => activityApi.setCellValue(actId, newId, val)),
+          );
+          // Sinkronkan kembali urutan kolom kustom di server
+          const customIds = snapshotOrder
+            .filter((id) => !id.startsWith('fix:'))
+            .map((id) => (id === snapshotColumn.id ? newId : id));
+          void activityApi.reorderColumns(customIds);
+        })
+        .catch(() => {
+          fetchColumns();
+          fetchActivities();
+        });
+    };
+
+    const entryId = push(`properti "${column.name}"`, undo);
+    showToast(`Properti "${column.name}" dihapus`, {
+      label: 'Urungkan',
+      onAction: () => undoEntry(entryId),
+    });
   }
 
   // Tulis nilai sel properti (optimis + rollback).
@@ -1053,16 +1674,16 @@ function DailyPageInner() {
   }
 
   // Buka menu kolom dari header (klik/klik-kanan); abaikan klik lahir dari drag.
-  function openColumnMenu(e: React.MouseEvent, column: DailyColumn) {
+  function openColumnMenu(e: React.MouseEvent, item: DisplayColumnItem) {
     if (Date.now() - lastDragEndRef.current < 300) return;
-    if (menu?.id === column.id && e.type === 'click') {
+    if (menu?.id === item.id && e.type === 'click') {
       setMenu(null);
       return;
     }
     const rect =
       (e.currentTarget.closest('th') as HTMLElement | null)?.getBoundingClientRect() ??
       e.currentTarget.getBoundingClientRect();
-    setMenu({ id: column.id, x: rect.left, y: rect.bottom + 4 });
+    setMenu({ id: item.id, x: rect.left, y: rect.bottom + 4 });
   }
 
   async function handleTimeChange(activity: DailyActivity, start: string, end: string) {
@@ -1119,48 +1740,10 @@ function DailyPageInner() {
   }
 
   // ---- render sel/header mengikuti urutan tampil (fixed + kustom campur) ----
-  function fixedHeaderContent(id: FixedId) {
-    switch (id) {
-      case 'title':
-        return (
-          <span data-col-label className="flex items-center gap-1.5">
-            <span aria-hidden="true" className="font-serif text-sm font-bold">Aa</span> Kegiatan
-          </span>
-        );
-      case 'start':
-      case 'end':
-        return (
-          <span data-col-label className="flex items-center gap-1.5">
-            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5" />
-              <path d="M8 5v3l2 1.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
-            {id === 'start' ? 'Waktu Mulai' : 'Waktu Selesai'}
-          </span>
-        );
-      case 'type':
-        return (
-          <span data-col-label className="flex items-center gap-1.5">
-            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <rect x="2" y="4.5" width="12" height="9" rx="1" stroke="currentColor" strokeWidth="1.5" />
-              <path d="M2 4.5h12M6 2.5h4v2" stroke="currentColor" strokeWidth="1.5" />
-            </svg>
-            Kategori
-          </span>
-        );
-      case 'status':
-        return (
-          <span data-col-label className="flex items-center gap-1.5">
-            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <path d="M4 5.5l4 4 4-4M4 9.5l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            Status
-          </span>
-        );
-    }
-  }
-
   function renderHeaderCell(entry: string) {
+    const item = getDisplayColumnItem(entry);
+    if (!item) return null;
+
     const resizeHit = (
       <span
         role="separator"
@@ -1172,30 +1755,26 @@ function DailyPageInner() {
         className="absolute -right-2.5 top-1/2 z-10 h-6 w-2 -translate-y-1/2 cursor-col-resize touch-none rounded opacity-0 transition hover:bg-violet-300 group-hover:opacity-100"
       />
     );
-    if (entry.startsWith('fix:')) {
-      const id = entry.slice(4) as FixedId;
-      return (
-        <DraggableTh key={entry} id={`${COL_PREFIX}${entry}`} entry={entry}>
-          <div className="relative flex min-w-0 items-center">
-            {fixedHeaderContent(id)}
-            {resizeHit}
-          </div>
-        </DraggableTh>
-      );
-    }
-    const c = columnById.get(entry);
-    if (!c) return null;
+
     return (
-      <DraggableTh key={c.id} id={`${COL_PREFIX}${c.id}`} entry={entry}>
+      <DraggableTh
+        key={entry}
+        id={`${COL_PREFIX}${entry}`}
+        entry={entry}
+        onClick={(e) => {
+          if ((e.target as HTMLElement).closest('[role="separator"]')) return;
+          openColumnMenu(e, item);
+        }}
+      >
         <div className="relative flex min-w-0 items-center">
           <span
             ref={(el) => {
-              if (el && pendingMenuId === c.id) {
+              if (el && pendingMenuId === item.id) {
                 const th = (el as HTMLElement).closest('th');
                 const rect = th?.getBoundingClientRect();
                 if (rect) {
                   setPendingMenuId(null);
-                  setMenu({ id: c.id, x: rect.left, y: rect.bottom + 4 });
+                  setMenu({ id: item.id, x: rect.left, y: rect.bottom + 4 });
                 }
               }
             }}
@@ -1203,18 +1782,26 @@ function DailyPageInner() {
           >
             <button
               type="button"
-              onClick={(e) => openColumnMenu(e, c)}
+              onClick={(e) => {
+                e.stopPropagation();
+                openColumnMenu(e, item);
+              }}
               onContextMenu={(e) => {
                 e.preventDefault();
-                openColumnMenu(e, c);
+                e.stopPropagation();
+                openColumnMenu(e, item);
               }}
-              title={`${c.name} — klik untuk mengatur`}
-              aria-label={`Atur properti ${c.name}`}
+              title={`${item.name} — klik untuk mengatur`}
+              aria-label={`Atur properti ${item.name}`}
               aria-haspopup="menu"
               className="flex w-full min-w-0 items-center gap-1.5 rounded-md px-1 py-0.5 text-left transition hover:bg-gray-50"
             >
-              <TableColumnIcon type={c.type} className="h-4 w-4 shrink-0 text-gray-400" />
-              <span data-col-label className="min-w-0 flex-1 truncate">{c.name}</span>
+              {item.icon ? (
+                <ActivityIcon name={item.icon} className="h-4 w-4 shrink-0 text-gray-400" />
+              ) : (
+                <TableColumnIcon type={item.type} className="h-4 w-4 shrink-0 text-gray-400" />
+              )}
+              <span data-col-label className="min-w-0 flex-1 truncate">{item.name}</span>
             </button>
           </span>
           {resizeHit}
@@ -1312,17 +1899,17 @@ function DailyPageInner() {
   function renderPlaceholderCell(entry: string) {
     if (entry === fixKey('title')) {
       return (
-        <td key={entry} className="border-b border-l border-gray-200 p-2">
+        <td key={entry} className="p-2">
           <button
             onClick={() => void handleNewPage()}
-            className="flex items-center gap-1.5 rounded px-1 py-0.5 text-sm text-gray-400 opacity-0 transition group-hover:opacity-100 hover:bg-gray-50 hover:text-gray-600 focus-visible:opacity-100 max-sm:opacity-100"
+            className="flex items-center gap-1.5 rounded px-1 py-0.5 text-sm text-gray-400 transition hover:bg-gray-50 hover:text-gray-600 focus-visible:opacity-100"
           >
-            <span aria-hidden="true">+</span> Baru item
+            <span aria-hidden="true">+</span> Baru Item
           </button>
         </td>
       );
     }
-    return <td key={entry} className="border-b border-l border-gray-200" />;
+    return <td key={entry} />;
   }
 
   // Lebar tabel deterministik: gutter (40px) + semua kolom + kolom `+` (48px).
@@ -1499,17 +2086,6 @@ function DailyPageInner() {
             </thead>
             <SortableContext items={activities.map((a) => `${ROW_PREFIX}${a.id}`)} strategy={verticalListSortingStrategy}>
             <tbody>
-              {activities.length === 0 && (
-                <>
-                  {Array.from({ length: 4 }, (_, i) => (
-                    <tr key={`empty-${i}`} className="group">
-                      <td className="h-10 w-10 border-b border-gray-200" />
-                      {displayOrder.map((entry) => renderPlaceholderCell(entry))}
-                      <td className="border-b border-gray-200" />
-                    </tr>
-                  ))}
-                </>
-              )}
               {activities.map((a) => {
                 const isEditing = editingId === a.id;
                 return (
@@ -1528,9 +2104,9 @@ function DailyPageInner() {
                 );
               })}
               <tr className="group">
-                <td className="w-10 border-b border-gray-200" />
+                <td className="w-10" />
                 {displayOrder.map((entry) => renderPlaceholderCell(entry))}
-                <td className="border-b border-gray-200" />
+                <td />
               </tr>
             </tbody>
             </SortableContext>
@@ -1538,20 +2114,42 @@ function DailyPageInner() {
           </div>
         </DndContext>
         {menu && (() => {
-          const column = columns.find((c) => c.id === menu.id);
-          if (!column) return null;
+          const item = getDisplayColumnItem(menu.id);
+          if (!item) return null;
           return (
             <ColumnMenu
-              column={column}
+              item={item}
               x={menu.x}
               y={menu.y}
-              isFirst={displayCustomIds[0] === column.id}
-              isLast={displayCustomIds[displayCustomIds.length - 1] === column.id}
-              onRename={(name) => void handleRenameColumn(column, name)}
-              onChangeType={(type) => void handleChangeColumnType(column, type)}
-              onSaveOptions={(options) => void handleSaveOptions(column, options)}
-              onMove={(dir) => void handleMoveColumn(column, dir)}
-              onDelete={() => void handleDeleteColumn(column)}
+              onRename={(name) => {
+                if (item.isFixed && item.fixedId) {
+                  updateFixedMeta(item.fixedId, { name });
+                } else if (item.rawColumn) {
+                  void handleRenameColumn(item.rawColumn, name);
+                }
+              }}
+              onChangeIcon={(icon) => {
+                if (item.isFixed && item.fixedId) {
+                  updateFixedMeta(item.fixedId, { icon });
+                } else if (item.rawColumn) {
+                  void handleChangeColumnIcon(item.rawColumn, icon);
+                }
+              }}
+              onChangeType={(type) => {
+                if (!item.isFixed && item.rawColumn) {
+                  void handleChangeColumnType(item.rawColumn, type);
+                }
+              }}
+              onSaveOptions={(options) => {
+                if (!item.isFixed && item.rawColumn) {
+                  void handleSaveOptions(item.rawColumn, options);
+                }
+              }}
+              onDelete={() => {
+                if (!item.isFixed && item.rawColumn) {
+                  void handleDeleteColumn(item.rawColumn);
+                }
+              }}
               onClose={() => setMenu(null)}
             />
           );

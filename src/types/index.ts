@@ -23,7 +23,21 @@ export interface Note {
   updatedAt: string;
 }
 
-export type TableColumnType = 'TEXT' | 'NUMBER' | 'SELECT' | 'DATE' | 'CHECKBOX';
+export type TableColumnType =
+  | 'TEXT'
+  | 'NUMBER'
+  | 'SELECT'
+  | 'DATE'
+  | 'CHECKBOX'
+  | 'STATUS'
+  | 'PERSON'
+  | 'FILES'
+  | 'URL'
+  | 'PHONE'
+  | 'EMAIL'
+  | 'CATEGORY'
+  | 'START_TIME'
+  | 'END_TIME';
 export interface TableColumn { id: string; name: string; type: TableColumnType; icon?: string | null; options: string[]; order: number; }
 export interface TableRow { id: string; noteId: string | null; values: Record<string, unknown>; order: number; }
 export interface TableData { id: string; noteId: string; note: Note; columns: TableColumn[]; rows: TableRow[]; }
@@ -182,7 +196,21 @@ export interface DailyActivity {
   customValues?: Record<string, string | number | boolean> | null;
 }
 
-export type DailyColumnType = 'TEXT' | 'NUMBER' | 'DATE' | 'SELECT' | 'CHECKBOX';
+export type DailyColumnType =
+  | 'TEXT'
+  | 'NUMBER'
+  | 'DATE'
+  | 'SELECT'
+  | 'CHECKBOX'
+  | 'STATUS'
+  | 'PERSON'
+  | 'FILES'
+  | 'URL'
+  | 'PHONE'
+  | 'EMAIL'
+  | 'CATEGORY'
+  | 'START_TIME'
+  | 'END_TIME';
 
 export interface DailyColumn {
   id: string;

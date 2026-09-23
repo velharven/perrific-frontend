@@ -1,12 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ActivityIcon, TABLE_COLUMN_LABELS, TAB_ICONS, TableColumnIcon } from '@/components/icons';
+import {
+  ActivityIcon,
+  PROPERTY_COLUMNS_LEFT,
+  PROPERTY_COLUMNS_RIGHT,
+  TAB_ICONS,
+  TableColumnIcon,
+} from '@/components/icons';
 import type { TableColumnType } from '@/types';
 import type { TableDataState } from './useTableData';
 
-const TYPES: TableColumnType[] = ['TEXT', 'NUMBER', 'SELECT', 'DATE', 'CHECKBOX'];
-
-// Menu pengaturan satu properti: ikon + nama, pemilih ikon, ganti jenis, hapus.
+// Menu pengaturan satu properti: ikon + nama, pemilih ikon, ganti jenis (2 kolom ala Notion), hapus.
 // Di-portal ke body dengan posisi fixed agar tak terpotong scroll tabel.
 export default function ColumnMenu({
   t,
@@ -59,8 +63,8 @@ export default function ColumnMenu({
   if (!col) return null;
 
   const customIcon = col.icon ?? null;
-  const W = 256;
-  const H = 400;
+  const W = 320;
+  const H = 380;
   const left = Math.max(8, Math.min(x, window.innerWidth - W - 8));
   const top = y + H > window.innerHeight ? Math.max(8, y - H) : y;
 
@@ -81,7 +85,7 @@ export default function ColumnMenu({
       ref={rootRef}
       role="menu"
       aria-label="Pengaturan properti"
-      className="fixed z-50 w-64 overflow-visible rounded-xl border border-gray-200 bg-white py-1 shadow-[0_8px_24px_rgba(26,26,30,0.14)]"
+      className="fixed z-50 w-80 overflow-visible rounded-2xl border border-gray-200 bg-white py-1.5 shadow-[0_8px_24px_rgba(26,26,30,0.14)]"
       style={{ left, top }}
     >
       <div className="flex items-center gap-2 px-3 py-2">
@@ -147,33 +151,86 @@ export default function ColumnMenu({
           maxLength={80}
           aria-label="Nama properti"
           placeholder="Nama properti"
-          className="min-w-0 flex-1 rounded-lg bg-transparent px-1.5 py-1 font-givonic text-sm font-semibold text-perrific-graphite focus:bg-gray-50 focus:outline-none"
+          className="min-w-0 flex-1 rounded-xl bg-gray-100/80 px-2.5 py-1.5 font-givonic text-sm font-semibold text-perrific-graphite focus:bg-gray-100 focus:outline-none"
         />
       </div>
+
       <div className="h-px bg-gray-100" />
-      <p className="px-3 pb-1 pt-2 font-mono text-[10px] tracking-widest text-perrific-graphite/40">
-        JENIS PROPERTI
-      </p>
-      {TYPES.map((type) => (
-        <button
-          key={type}
-          type="button"
-          role="menuitemradio"
-          aria-checked={col.type === type}
-          onClick={() => pickType(type)}
-          className="flex w-full items-center gap-2.5 px-3 py-2 font-givonic text-sm transition hover:bg-gray-50"
-        >
-          <TableColumnIcon type={type} className="h-4 w-4 shrink-0 text-gray-400" />
-          <span className="flex-1 text-left font-medium text-perrific-graphite">
-            {TABLE_COLUMN_LABELS[type]}
-          </span>
-          {col.type === type && (
-            <span aria-hidden="true" className="shrink-0 font-bold text-perrific-violet">
-              ✓
-            </span>
-          )}
-        </button>
-      ))}
+
+      {/* Header: Pilih jenis */}
+      <div className="flex items-center justify-between px-3 pb-1 pt-2">
+        <p className="font-givonic text-xs font-semibold text-gray-500">
+          Pilih jenis
+        </p>
+      </div>
+
+      {/* Grid 2 Kolom ala Notion */}
+      <div className="grid grid-cols-2 gap-x-2 px-2 py-1">
+        {/* Kolom Kiri: Teks, Status, Orang, Telepon */}
+        <div className="flex flex-col gap-0.5">
+          {PROPERTY_COLUMNS_LEFT.map((typeItem) => {
+            const isCurrent = col.type === typeItem.type;
+            return (
+              <button
+                key={typeItem.type}
+                type="button"
+                role="menuitemradio"
+                aria-checked={isCurrent}
+                onClick={() => pickType(typeItem.type)}
+                className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 font-givonic text-xs transition ${
+                  isCurrent
+                    ? 'bg-perrific-violet/10 font-semibold text-perrific-violet'
+                    : 'text-perrific-graphite hover:bg-gray-50'
+                }`}
+              >
+                <TableColumnIcon
+                  type={typeItem.type}
+                  className={`h-4 w-4 shrink-0 ${isCurrent ? 'text-perrific-violet' : 'text-gray-400'}`}
+                />
+                <span className="truncate text-left">{typeItem.label}</span>
+                {isCurrent && (
+                  <span aria-hidden="true" className="ml-auto shrink-0 font-bold text-perrific-violet">
+                    ✓
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Kolom Kanan: Angka, Tanggal, File & media, URL, Email */}
+        <div className="flex flex-col gap-0.5">
+          {PROPERTY_COLUMNS_RIGHT.map((typeItem) => {
+            const isCurrent = col.type === typeItem.type;
+            return (
+              <button
+                key={typeItem.type}
+                type="button"
+                role="menuitemradio"
+                aria-checked={isCurrent}
+                onClick={() => pickType(typeItem.type)}
+                className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 font-givonic text-xs transition ${
+                  isCurrent
+                    ? 'bg-perrific-violet/10 font-semibold text-perrific-violet'
+                    : 'text-perrific-graphite hover:bg-gray-50'
+                }`}
+              >
+                <TableColumnIcon
+                  type={typeItem.type}
+                  className={`h-4 w-4 shrink-0 ${isCurrent ? 'text-perrific-violet' : 'text-gray-400'}`}
+                />
+                <span className="truncate text-left">{typeItem.label}</span>
+                {isCurrent && (
+                  <span aria-hidden="true" className="ml-auto shrink-0 font-bold text-perrific-violet">
+                    ✓
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       <div className="h-px bg-gray-100" />
       <button
         type="button"
@@ -182,7 +239,7 @@ export default function ColumnMenu({
           onClose();
           t.removeColumn(col.id);
         }}
-        className="flex w-full items-center gap-2.5 px-3 py-2.5 font-givonic text-sm font-medium text-red-600 transition hover:bg-red-50"
+        className="flex w-full items-center gap-2.5 px-3 py-2 font-givonic text-xs font-medium text-red-600 transition hover:bg-red-50"
       >
         Hapus properti
       </button>

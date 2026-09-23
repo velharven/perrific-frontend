@@ -276,9 +276,18 @@ export function CalendarIcon({ className = 'h-4 w-4' }: { className?: string }) 
 export const TABLE_COLUMN_LABELS: Record<TableColumnType, string> = {
   TEXT: 'Teks',
   NUMBER: 'Angka',
-  SELECT: 'Pilihan',
+  STATUS: 'Status',
+  CATEGORY: 'Kategori',
   DATE: 'Tanggal',
-  CHECKBOX: 'Centang',
+  START_TIME: 'Waktu mulai',
+  END_TIME: 'Waktu selesai',
+  PERSON: 'Orang',
+  FILES: 'File & media',
+  URL: 'URL',
+  PHONE: 'Telepon',
+  EMAIL: 'Email',
+  SELECT: 'Pilih',
+  CHECKBOX: 'Kotak centang',
 };
 
 // Ikon jenis properti tabel (tampil di kiri nama properti).
@@ -287,25 +296,56 @@ export function TableColumnIcon({ type, className = 'h-4 w-4' }: { type: TableCo
     <Base className={className}>
       {type === 'NUMBER' ? (
         <path d="M6 3v10M10 3v10M3.5 6h9M3.5 10h9" />
-      ) : type === 'SELECT' ? (
-        <>
-          <rect x="3" y="4" width="10" height="8" rx="2" />
-          <path d="M6.5 8l1.5 1.5 1.5-1.5" />
-        </>
+      ) : type === 'STATUS' ? (
+        <path d="M8 2.5v2M8 11.5v2M2.5 8h2M11.5 8h2M4.1 4.1l1.4 1.4M10.5 10.5l1.4 1.4M4.1 11.9l1.4-1.4M10.5 5.5l1.4-1.4" />
+      ) : type === 'CATEGORY' ? (
+        <path d="M2 4.5a1.5 1.5 0 0 1 1.5-1.5h2.8a1.5 1.5 0 0 1 1.1.5l1.1 1.2h4a1.5 1.5 0 0 1 1.5 1.5v5.3a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 11.5v-7z" />
       ) : type === 'DATE' ? (
         <>
-          <rect x="3" y="4" width="10" height="9" rx="1.5" />
-          <path d="M3 7h10M6 2.5V5M10 2.5V5" />
+          <rect x="2.5" y="3.5" width="11" height="9.5" rx="1.5" />
+          <path d="M2.5 6.5h11M5.5 2v3M10.5 2v3" />
+        </>
+      ) : type === 'START_TIME' ? (
+        <>
+          <circle cx="7.5" cy="8" r="5" />
+          <path d="M7.5 5.5v2.8l2 1.2M13.5 6.5l1.5 1.5-1.5 1.5" />
+        </>
+      ) : type === 'END_TIME' ? (
+        <>
+          <circle cx="7.5" cy="8" r="5" />
+          <path d="M7.5 5.5v2.8l-1.8 1.2M13.5 6v4" />
+        </>
+      ) : type === 'PERSON' ? (
+        <>
+          <circle cx="5.5" cy="5.2" r="2.2" />
+          <path d="M1.5 13.5a4 4 0 0 1 8 0" />
+          <circle cx="11" cy="4.8" r="1.8" />
+          <path d="M10 9.8c1.6.3 3.5 1.5 3.5 3.7" />
+        </>
+      ) : type === 'FILES' ? (
+        <path d="M12.5 6.5l-5.5 5.5a3.2 3.2 0 0 1-4.5-4.5l5.5-5.5a2.1 2.1 0 0 1 3 3L5.5 10.5a1 1 0 0 1-1.4-1.4l5-5" />
+      ) : type === 'URL' ? (
+        <path d="M6.8 9.2a3 3 0 0 1 0-4.2l1.8-1.8a3 3 0 0 1 4.2 4.2l-.9.9M9.2 6.8a3 3 0 0 1 0 4.2l-1.8 1.8a3 3 0 0 1-4.2-4.2l.9-.9" />
+      ) : type === 'PHONE' ? (
+        <path d="M3.2 3.2a1 1 0 0 1 1.1-.3l1.8.7a1 1 0 0 1 .6 1l-.5 1.4a8.5 8.5 0 0 0 4.5 4.5l1.4-.5a1 1 0 0 1 1 .6l.7 1.8a1 1 0 0 1-.3 1.1l-1.2 1.2c-.8.8-2 .9-3 .3a12.8 12.8 0 0 1-6.7-6.7c-.6-1-.5-2.2.3-3l1.2-1.2z" />
+      ) : type === 'EMAIL' ? (
+        <>
+          <circle cx="8" cy="8" r="2.5" />
+          <path d="M10.5 5.5v3a1.8 1.8 0 0 0 3.2 1.1A5.5 5.5 0 1 0 6 13.2" />
+        </>
+      ) : type === 'SELECT' ? (
+        <>
+          <circle cx="8" cy="8" r="5.5" />
+          <path d="M6 7l2 2 2-2" />
         </>
       ) : type === 'CHECKBOX' ? (
         <>
-          <rect x="3" y="3" width="10" height="10" rx="2.5" />
-          <path d="M6 8.2l1.8 1.8 3-3.5" />
+          <rect x="2.5" y="2.5" width="11" height="11" rx="2" />
+          <path d="M5.5 8l2 2 3.5-4" />
         </>
       ) : (
-        <>
-          <path d="M4 12.5L8 3.5l4 9M5.5 9.5h5" />
-        </>
+        /* TEXT */
+        <path d="M2.5 4.5h11M2.5 8h8M2.5 11.5h5" />
       )}
     </Base>
   );
@@ -320,3 +360,91 @@ export function SlidersIcon({ className = 'h-4 w-4' }: { className?: string }) {
     </Base>
   );
 }
+
+export const PROPERTY_COLUMNS_LEFT: { type: TableColumnType; label: string }[] = [
+  { type: 'TEXT', label: 'Teks' },
+  { type: 'STATUS', label: 'Status' },
+  { type: 'CATEGORY', label: 'Kategori' },
+  { type: 'PERSON', label: 'Orang' },
+  { type: 'PHONE', label: 'Telepon' },
+  { type: 'EMAIL', label: 'Email' },
+];
+
+export const PROPERTY_COLUMNS_RIGHT: { type: TableColumnType; label: string }[] = [
+  { type: 'NUMBER', label: 'Angka' },
+  { type: 'DATE', label: 'Tanggal' },
+  { type: 'START_TIME', label: 'Waktu mulai' },
+  { type: 'END_TIME', label: 'Waktu selesai' },
+  { type: 'URL', label: 'URL' },
+  { type: 'FILES', label: 'File & media' },
+];
+
+export const DEFAULT_STATUS_OPTIONS = ['Belum Mulai', 'Sedang Dikerjakan', 'Selesai'] as const;
+export const DEFAULT_CATEGORY_OPTIONS = ['Task tim', 'Breakdown', 'Pribadi'] as const;
+
+export function getCategoryBadgeStyle(cat: string | null | undefined): { bg: string; text: string } {
+  const c = (cat || '').toLowerCase().trim();
+  if (c === 'task tim' || c === 'task' || c === 'tim') {
+    return { bg: 'bg-violet-100 text-violet-700', text: 'text-violet-700' };
+  }
+  if (c === 'breakdown' || c === 'proyek' || c === 'project') {
+    return { bg: 'bg-blue-100 text-blue-700', text: 'text-blue-700' };
+  }
+  if (c === 'pribadi' || c === 'personal' || c === 'custom') {
+    return { bg: 'bg-gray-100 text-gray-600', text: 'text-gray-600' };
+  }
+  if (c === 'kerja' || c === 'work') {
+    return { bg: 'bg-emerald-100 text-emerald-700', text: 'text-emerald-700' };
+  }
+  return { bg: 'bg-amber-100 text-amber-800', text: 'text-amber-800' };
+}
+
+export function getStatusBadgeStyle(status: string | null | undefined): { bg: string; text: string; dot: string } {
+  const s = (status || '').toLowerCase().trim();
+  if (!s || s === 'belum mulai' || s === 'not started' || s === 'to do') {
+    return { bg: 'bg-gray-100 hover:bg-gray-200/80', text: 'text-gray-700', dot: 'bg-gray-400' };
+  }
+  if (s === 'sedang dikerjakan' || s === 'in progress' || s === 'doing') {
+    return { bg: 'bg-blue-50 hover:bg-blue-100/80 border border-blue-200/60', text: 'text-blue-700', dot: 'bg-blue-500' };
+  }
+  if (s === 'selesai' || s === 'done' || s === 'completed') {
+    return { bg: 'bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-200/60', text: 'text-emerald-700', dot: 'bg-emerald-500' };
+  }
+  return { bg: 'bg-violet-50 hover:bg-violet-100/80 border border-violet-200/60', text: 'text-violet-700', dot: 'bg-violet-500' };
+}
+
+export function CopyIcon({ className = 'h-4 w-4' }: { className?: string }) {
+  return (
+    <Base className={className}>
+      <rect x="5.5" y="5.5" width="8" height="8" rx="1.5" />
+      <path d="M3.5 10.5h-1a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v1" />
+    </Base>
+  );
+}
+
+export function CheckIcon({ className = 'h-4 w-4' }: { className?: string }) {
+  return (
+    <Base className={className}>
+      <path d="M3.5 8.5l3 3 6-6" />
+    </Base>
+  );
+}
+
+export function SearchIcon({ className = 'h-4 w-4' }: { className?: string }) {
+  return (
+    <Base className={className}>
+      <circle cx="7" cy="7" r="4.2" />
+      <path d="M10.2 10.2l3.3 3.3" />
+    </Base>
+  );
+}
+
+export function CloseIcon({ className = 'h-4 w-4' }: { className?: string }) {
+  return (
+    <Base className={className}>
+      <path d="M4 4l8 8M12 4l-8 8" />
+    </Base>
+  );
+}
+
+
