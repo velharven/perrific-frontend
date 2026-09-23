@@ -80,6 +80,15 @@ export type PendingTask = Task & {
   project: Pick<Project, 'id' | 'name'>;
 };
 
+export type AssignedTeamTask = Task & {
+  project?: {
+    id: string;
+    name: string;
+    team?: { id: string; name: string };
+  };
+  dailyActivities?: { id: string; date: string; startTime?: string | null; endTime?: string | null }[];
+};
+
 export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
 export type ApprovalStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 
@@ -194,6 +203,26 @@ export interface DailyActivity {
   checklistItems: ChecklistItem[];
   task?: Pick<Task, 'id' | 'title' | 'priority'> | null;
   customValues?: Record<string, string | number | boolean> | null;
+  googleEventId?: string | null;
+}
+
+export interface GoogleCalendarStatus {
+  connected: boolean;
+  email?: string | null;
+  name?: string | null;
+  avatarUrl?: string | null;
+  syncedAt?: string | null;
+}
+
+export interface GoogleCalendarEvent {
+  id: string;
+  title: string;
+  description?: string | null;
+  location?: string | null;
+  htmlLink?: string | null;
+  start?: string;
+  end?: string;
+  allDay?: boolean;
 }
 
 export type DailyColumnType =

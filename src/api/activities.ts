@@ -8,6 +8,7 @@ export interface ActivityQuery {
   status?: string;
   search?: string;
   type?: string;
+  limit?: number;
 }
 
 function toQueryString(q?: ActivityQuery): string {
@@ -19,6 +20,7 @@ function toQueryString(q?: ActivityQuery): string {
   if (q.status) params.set('status', q.status);
   if (q.search) params.set('search', q.search);
   if (q.type) params.set('type', q.type);
+  if (typeof q.limit === 'number') params.set('limit', String(q.limit));
   const s = params.toString();
   return s ? `?${s}` : '';
 }

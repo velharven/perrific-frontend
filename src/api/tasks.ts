@@ -1,9 +1,11 @@
 import { api } from '@/lib/api';
-import type { Task, Comment, Attachment, TaskActivity, User } from '@/types';
+import type { Task, Comment, Attachment, TaskActivity, User, AssignedTeamTask } from '@/types';
 
 export type TaskWatcher = Pick<User, 'id' | 'name' | 'avatarUrl'>;
 
 export const taskApi = {
+  listMyAssigned: () =>
+    api.get<{ data: AssignedTeamTask[] }>('/tasks/assigned/me').then((r) => r.data.data),
   get: (taskId: string) =>
     api.get<{ data: Task }>(`/tasks/${taskId}`).then((r) => r.data.data),
   update: (taskId: string, body: Partial<Task>) =>

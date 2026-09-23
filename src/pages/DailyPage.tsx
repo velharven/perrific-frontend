@@ -38,7 +38,9 @@ import {
 } from '@/components/icons';
 import { showToast } from '@/components/ui/Toast';
 import PersonCell from '@/components/table/PersonCell';
+import CalendarView from '@/components/daily/CalendarView';
 import { UndoStackProvider, useUndo } from '@/hooks/useUndoStack';
+import { useSocket } from '@/store/socket';
 import type { DailyActivity, DailyColumn, DailyColumnType } from '@/types';
 
 // Helpers
@@ -96,6 +98,7 @@ function SortableRow({
   onToggleCheck,
   checkLabel,
   onAddBelow,
+  isUnscheduled,
   children,
 }: {
   id: string;
@@ -104,6 +107,7 @@ function SortableRow({
   onToggleCheck: () => void;
   checkLabel: string;
   onAddBelow: () => void;
+  isUnscheduled?: boolean;
   children: ReactNode;
 }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } =
@@ -118,7 +122,13 @@ function SortableRow({
         transition,
         opacity: isDragging ? 0.4 : undefined,
       }}
-      className={`group scroll-mt-24 transition hover:bg-gray-50/70 ${selected ? 'bg-green-50/40' : ''}`}
+      className={`group scroll-mt-24 transition ${
+        selected
+          ? 'bg-green-50/40'
+          : isUnscheduled
+            ? 'bg-amber-50/60 hover:bg-amber-100/50'
+            : 'hover:bg-gray-50/70'
+      }`}
     >
       <td className="relative w-10 whitespace-nowrap border-b border-gray-200 p-1">
         <span className="flex items-center justify-center">
@@ -199,11 +209,11 @@ function DraggableTh({
 }
 
 // Kolom bawaan (fixed) yang ikut bisa digeser. Entri urutan: `fix:<id>` atau id kolom kustom.
-const FIXED_IDS = ['title', 'start', 'end', 'type', 'status'] as const;
+const FIXED_IDS = ['title', 'date', 'start', 'end', 'type', 'status'] as const;
 type FixedId = (typeof FIXED_IDS)[number];
 const fixKey = (id: FixedId) => `fix:${id}`;
-const ORDER_KEY = 'daily-column-order-v1';
-const FIXED_CONFIG_KEY = 'daily-fixed-columns-meta-v1';
+const ORDER_KEY = 'daily-column-order-v2';
+const FIXED_CONFIG_KEY = 'daily-fixed-columns-meta-v2';
 
 interface FixedColumnMeta {
   name: string;
@@ -213,6 +223,7 @@ interface FixedColumnMeta {
 
 const DEFAULT_FIXED_CONFIG: Record<FixedId, FixedColumnMeta> = {
   title: { name: 'Kegiatan', type: 'TEXT', icon: null },
+  date: { name: 'Tanggal', type: 'DATE', icon: 'calendar' },
   start: { name: 'Waktu Mulai', type: 'START_TIME', icon: 'clock' },
   end: { name: 'Waktu Selesai', type: 'END_TIME', icon: 'clock' },
   type: { name: 'Kategori', type: 'CATEGORY', icon: 'folder' },
@@ -235,6 +246,17 @@ function mergeDisplayOrder(saved: string[], customs: DailyColumn[]): string[] {
   const customIds = customs.map((c) => c.id);
   const known = new Set([...fixedKeys, ...customIds]);
   const merged = saved.filter((id) => known.has(id));
+
+  // Pastikan fix:date masuk setelah fix:title jika belum ada di saved
+  if (!merged.includes(fixKey('date'))) {
+    const titleIdx = merged.indexOf(fixKey('title'));
+    if (titleIdx >= 0) {
+      merged.splice(titleIdx + 1, 0, fixKey('date'));
+    } else {
+      merged.push(fixKey('date'));
+    }
+  }
+
   for (const id of [...fixedKeys, ...customIds]) {
     if (!merged.includes(id)) merged.push(id);
   }
@@ -243,6 +265,7 @@ function mergeDisplayOrder(saved: string[], customs: DailyColumn[]): string[] {
 
 const FIXED_TD_CLASS: Record<FixedId, string> = {
   title: 'border-b border-l border-gray-200 p-2',
+  date: 'whitespace-nowrap border-b border-l border-gray-200 p-2 text-xs',
   start: 'whitespace-nowrap border-b border-l border-gray-200 p-2 text-xs',
   end: 'whitespace-nowrap border-b border-l border-gray-200 p-2 text-xs',
   type: 'border-b border-l border-gray-200 p-2',
@@ -974,6 +997,7 @@ function ColumnMenu({
 }
 
 function DailyPageInner() {
+  const [activeView, setActiveView] = useState<'table' | 'calendar'>('table');
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
   const dateISO = useMemo(() => toISODate(selectedDate), [selectedDate]);
   const [activities, setActivities] = useState<DailyActivity[]>([]);
@@ -1102,6 +1126,7 @@ function DailyPageInner() {
   }, [widths]);
   const DEFAULT_COL_WIDTHS: Record<string, number> = {
     'fix:title': 280,
+    'fix:date': 140,
     'fix:start': 120,
     'fix:end': 120,
     'fix:type': 130,
@@ -1209,22 +1234,49 @@ function DailyPageInner() {
     };
   }, [displayOrder, columns, fixedMeta]);
 
-  const fetchActivities = async () => {
-    setLoading(true);
+  const { socket } = useSocket();
+
+  const fetchActivities = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
-      const data = await activityApi.listMine({ date: dateISO });
+      const data = await activityApi.listMine({ limit: 500 });
       setActivities(data);
     } catch {
-      setActivities([]);
+      if (!silent) setActivities([]);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchActivities();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dateISO]);
+  }, []);
+
+  // Seluruh kegiatan yang secara presisi berada pada 1 hari yang dipilih
+  const tableActivities = useMemo(() => {
+    return activities.filter((act) => {
+      if (!act.date) return false;
+      const d = new Date(act.date);
+      return (
+        d.getFullYear() === selectedDate.getFullYear() &&
+        d.getMonth() === selectedDate.getMonth() &&
+        d.getDate() === selectedDate.getDate()
+      );
+    });
+  }, [activities, selectedDate]);
+
+  // Pembaruan real-time via WebSocket saat terjadi sinkronisasi atau perubahan aktivitas
+  useEffect(() => {
+    if (!socket) return;
+    const handleSync = () => {
+      void fetchActivities(true);
+    };
+    socket.on('calendar:synced', handleSync);
+    return () => {
+      socket.off('calendar:synced', handleSync);
+    };
+  }, [socket]);
 
   // Properti kustom milik user (lintas tanggal, seperti kolom Notion).
   const fetchColumns = async () => {
@@ -1270,10 +1322,12 @@ function DailyPageInner() {
 
   // ---- actions ----
   // Halaman baru ala Notion: langsung jadi baris lalu fokus edit judulnya.
-  async function handleNewPage() {
+  async function handleNewPage(targetDate?: Date) {
+    const d = targetDate ?? selectedDate;
+    const iso = toISODate(d);
     const created = await activityApi.create({
       title: 'Tanpa judul',
-      date: new Date(`${dateISO}T00:00:00`).toISOString(),
+      date: new Date(`${iso}T00:00:00`).toISOString(),
       icon: 'note',
     });
     setActivities((prev) => [...prev, created].sort((a, b) => a.order - b.order));
@@ -1286,9 +1340,10 @@ function DailyPageInner() {
 
   // Tambah baris tepat di bawah baris acuan (tombol + di gutter).
   async function handleAddBelow(after: DailyActivity) {
+    const actDate = after.date ? new Date(after.date).toISOString() : new Date(`${dateISO}T00:00:00`).toISOString();
     const created = await activityApi.create({
       title: 'Tanpa judul',
-      date: new Date(`${dateISO}T00:00:00`).toISOString(),
+      date: actDate,
       icon: 'note',
       order: after.order + 0.5,
     });
@@ -1519,9 +1574,16 @@ function DailyPageInner() {
   }
 
   function toggleSelectAll() {
-    setSelectedIds((prev) =>
-      prev.size === activities.length ? new Set() : new Set(activities.map((a) => a.id)),
-    );
+    setSelectedIds((prev) => {
+      const allSelected = tableActivities.length > 0 && tableActivities.every((a) => prev.has(a.id));
+      const next = new Set(prev);
+      if (allSelected) {
+        for (const a of tableActivities) next.delete(a.id);
+      } else {
+        for (const a of tableActivities) next.add(a.id);
+      }
+      return next;
+    });
   }
 
   // Hapus massal ala note/tabel: langsung hilang tanpa confirm,
@@ -1812,10 +1874,22 @@ function DailyPageInner() {
 
   function renderBodyCell(entry: string, a: DailyActivity, isEditing: boolean) {
     if (entry === fixKey('title')) {
+      const isUnscheduled = !a.startTime && !a.endTime;
       return (
         <td key={entry} className={FIXED_TD_CLASS.title}>
           <div className="flex min-w-0 items-center gap-1.5">
-            <ActivityIcon name={a.icon} className="h-4 w-4 shrink-0 text-gray-400" />
+            {isUnscheduled ? (
+              <span
+                title="Belum ditambahkan ke kalender (jam mulai & selesai belum diisi)"
+                className="flex h-4 w-4 shrink-0 items-center justify-center text-amber-500"
+              >
+                <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor">
+                  <path d="M7.938 2.016a.13.13 0 0 1 .125 0l6.857 11.856c.026.045.026.1 0 .145a.14.14 0 0 1-.125.073H1.205a.14.14 0 0 1-.125-.073.17.17 0 0 1 0-.145L7.938 2.016zm.854 4.484a.5.5 0 0 0-.992 0l-.3 3.5a.5.5 0 0 0 .992.08l.3-3.58zm-.496 5.5a.65.65 0 1 0 0 1.3.65.65 0 0 0 0-1.3z" />
+                </svg>
+              </span>
+            ) : (
+              <ActivityIcon name={a.icon} className="h-4 w-4 shrink-0 text-gray-400" />
+            )}
             {isEditing ? (
               <input
                 autoFocus
@@ -1841,6 +1915,26 @@ function DailyPageInner() {
             )}
           </div>
           {a.description && <p className="mt-0.5 truncate pl-6 text-xs text-gray-400">{a.description}</p>}
+        </td>
+      );
+    }
+    if (entry === fixKey('date')) {
+      return (
+        <td key={entry} className={FIXED_TD_CLASS.date}>
+          <input
+            type="date"
+            value={a.date ? toISODate(new Date(a.date)) : ''}
+            onChange={async (e) => {
+              const val = e.target.value;
+              if (!val) return;
+              const newDate = new Date(`${val}T00:00:00`).toISOString();
+              const updated = await activityApi.update(a.id, { date: newDate });
+              setActivities((prev) => prev.map((item) => (item.id === a.id ? updated : item)));
+            }}
+            onClick={(e) => e.stopPropagation()}
+            title="Klik untuk ubah tanggal"
+            className="cursor-pointer rounded border border-transparent bg-transparent px-1 py-0.5 text-xs text-gray-700 hover:border-gray-300 hover:bg-white focus:border-violet-400 focus:bg-white focus:outline-none"
+          />
         </td>
       );
     }
@@ -1920,37 +2014,99 @@ function DailyPageInner() {
 
   return (
     <div className="w-full space-y-4">
-      {/* Judul database ala Notion */}
-      <div>
-        <h1 className="flex items-center gap-2 text-3xl font-bold tracking-tight text-gray-900">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true" className="text-gray-900">
-            <rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" strokeWidth="2" />
-            <path d="M3 10h18M8 3v4M16 3v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-          </svg>
-          Jadwal Harian
-        </h1>
-        <p className="mt-1 text-sm text-gray-500">{formatHumanDay(selectedDate)}</p>
+      {/* Judul database ala Notion & Navigasi Tanggal */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="flex items-center gap-2 text-3xl font-bold tracking-tight text-gray-900">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true" className="text-gray-900">
+              <rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" strokeWidth="2" />
+              <path d="M3 10h18M8 3v4M16 3v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+            Jadwal Harian
+          </h1>
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+            <div className="flex items-center rounded-lg border border-gray-200 bg-white p-0.5 shadow-2xs">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedDate((prev) => {
+                    const next = new Date(prev);
+                    next.setDate(next.getDate() - 1);
+                    return next;
+                  });
+                }}
+                title="Hari sebelumnya"
+                aria-label="Hari sebelumnya"
+                className="rounded p-1 text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition"
+              >
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                  <path d="M10 12L6 8l4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedDate((prev) => {
+                    const next = new Date(prev);
+                    next.setDate(next.getDate() + 1);
+                    return next;
+                  });
+                }}
+                title="Hari berikutnya"
+                aria-label="Hari berikutnya"
+                className="rounded p-1 text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition"
+              >
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                  <path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setSelectedDate(new Date())}
+              className="rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 transition shadow-2xs"
+            >
+              Hari Ini
+            </button>
+
+            <span className="text-sm font-medium text-gray-700">
+              {formatHumanDay(selectedDate)}
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* Toolbar: tab view + ikon + Baru */}
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex items-center gap-1" role="tablist" aria-label="Tampilan database">
-          <span
+          <button
+            type="button"
             role="tab"
-            aria-selected="true"
-            className="flex items-center gap-1.5 rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white"
+            aria-selected={activeView === 'table'}
+            onClick={() => setActiveView('table')}
+            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition ${
+              activeView === 'table'
+                ? 'bg-gray-900 text-white'
+                : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+            }`}
           >
             <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
               <rect x="2" y="2.5" width="12" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
               <path d="M2 6h12M6 6v7.5" stroke="currentColor" strokeWidth="1.5" />
             </svg>
             Semua Kegiatan
-          </span>
+          </button>
           <button
             type="button"
-            disabled
-            title="Segera hadir"
-            className="flex cursor-not-allowed items-center gap-1.5 rounded-md px-3 py-1.5 text-sm text-gray-400"
+            role="tab"
+            aria-selected={activeView === 'calendar'}
+            onClick={() => setActiveView('calendar')}
+            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition ${
+              activeView === 'calendar'
+                ? 'bg-gray-900 text-white'
+                : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+            }`}
           >
             <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
               <rect x="2" y="3" width="12" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
@@ -2017,9 +2173,33 @@ function DailyPageInner() {
         </span>
       </div>
 
-      {/* Database tabel */}
+      {/* Database tabel atau Kalender */}
       {loading ? (
         <p className="py-8 text-center text-sm text-gray-500">Memuat…</p>
+      ) : activeView === 'calendar' ? (
+        <CalendarView
+          activities={activities}
+          selectedDate={selectedDate}
+          onSelectDate={(d) => {
+            setSelectedDate(d);
+          }}
+          onCreateActivity={(d) => {
+            setSelectedDate(d);
+            void handleNewPage(d);
+          }}
+          onOpenActivity={(act) => {
+            if (act.date) {
+              setSelectedDate(new Date(act.date));
+            }
+            setEditingId(act.id);
+            setEditingTitle(act.title);
+            setActiveView('table');
+            requestAnimationFrame(() => {
+              document.getElementById(`activity-${act.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            });
+          }}
+          onRefreshActivities={() => void fetchActivities(true)}
+        />
       ) : (
         <div className="relative">
           {selectedIds.size > 0 && (
@@ -2058,12 +2238,19 @@ function DailyPageInner() {
                 <th className="w-10 border-b border-gray-200 p-1 text-center font-medium">
                   <input
                     type="checkbox"
-                    checked={activities.length > 0 && selectedIds.size >= activities.length}
+                    checked={tableActivities.length > 0 && tableActivities.every((a) => selectedIds.has(a.id))}
                     ref={(el) => {
-                      if (el) el.indeterminate = selectedIds.size > 0 && selectedIds.size < activities.length;
+                      if (el) {
+                        const count = tableActivities.filter((a) => selectedIds.has(a.id)).length;
+                        el.indeterminate = count > 0 && count < tableActivities.length;
+                      }
                     }}
                     onChange={toggleSelectAll}
-                    title={selectedIds.size > 0 ? 'Batalkan semua pilihan' : 'Pilih semua aktivitas'}
+                    title={
+                      tableActivities.length > 0 && tableActivities.every((a) => selectedIds.has(a.id))
+                        ? 'Batalkan semua pilihan'
+                        : 'Pilih semua aktivitas'
+                    }
                     aria-label="Pilih semua aktivitas"
                     className={`h-3.5 w-3.5 rounded border-gray-300 text-violet-600 transition ${selectedIds.size > 0 ? 'opacity-100' : 'opacity-0 focus:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100 max-sm:opacity-100'}`}
                   />
@@ -2084,9 +2271,9 @@ function DailyPageInner() {
                 </th>
               </tr>
             </thead>
-            <SortableContext items={activities.map((a) => `${ROW_PREFIX}${a.id}`)} strategy={verticalListSortingStrategy}>
+            <SortableContext items={tableActivities.map((a) => `${ROW_PREFIX}${a.id}`)} strategy={verticalListSortingStrategy}>
             <tbody>
-              {activities.map((a) => {
+              {tableActivities.map((a) => {
                 const isEditing = editingId === a.id;
                 return (
                   <SortableRow
@@ -2097,6 +2284,7 @@ function DailyPageInner() {
                     onToggleCheck={() => toggleSelect(a.id)}
                     checkLabel={`Pilih ${a.title}`}
                     onAddBelow={() => void handleAddBelow(a)}
+                    isUnscheduled={!a.startTime && !a.endTime}
                   >
                     {displayOrder.map((entry) => renderBodyCell(entry, a, isEditing))}
                     <td aria-hidden="true" className="border-b border-gray-200" />
