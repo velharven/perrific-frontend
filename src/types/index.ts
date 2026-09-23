@@ -179,6 +179,21 @@ export interface DailyActivity {
   order: number;
   checklistItems: ChecklistItem[];
   task?: Pick<Task, 'id' | 'title' | 'priority'> | null;
+  customValues?: Record<string, string | number | boolean> | null;
+}
+
+export type DailyColumnType = 'TEXT' | 'NUMBER' | 'DATE' | 'SELECT' | 'CHECKBOX';
+
+export interface DailyColumn {
+  id: string;
+  userId: string;
+  name: string;
+  type: DailyColumnType;
+  icon?: string | null;
+  options?: string[] | null;
+  order: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export type NotificationType =

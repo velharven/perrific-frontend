@@ -1,5 +1,5 @@
 import { api } from '@/lib/api';
-import type { DailyActivity, ChecklistItem } from '@/types';
+import type { DailyActivity, DailyColumn, ChecklistItem } from '@/types';
 
 export interface ActivityQuery {
   date?: string; // YYYY-MM-DD
@@ -44,4 +44,20 @@ export const activityApi = {
     api.patch<{ data: ChecklistItem }>(`/activities/checklist/${itemId}`, body).then((r) => r.data.data),
   removeChecklist: (itemId: string) =>
     api.delete<{ data: { id: string } }>(`/activities/checklist/${itemId}`).then((r) => r.data.data),
+
+  // Properti kustom database harian (user-scoped)
+  listColumns: () =>
+    api.get<{ data: DailyColumn[] }>('/activities/columns').then((r) => r.data.data),
+  createColumn: (body: { name: string; type?: DailyColumn['type']; icon?: string; options?: string[] }) =>
+    api.post<{ data: DailyColumn }>('/activities/columns', body).then((r) => r.data.data),
+  updateColumn: (columnId: string, body: Partial<Pick<DailyColumn, 'name' | 'type' | 'icon' | 'options'>>) =>
+    api.patch<{ data: DailyColumn }>(`/activities/columns/${columnId}`, body).then((r) => r.data.data),
+  deleteColumn: (columnId: string) =>
+    api.delete<{ data: { id: string } }>(`/activities/columns/${columnId}`).then((r) => r.data.data),
+  reorderColumns: (orderedIds: string[]) =>
+    api.post<{ data: { orderedIds: string[] } }>('/activities/columns/reorder', { orderedIds }).then((r) => r.data.data),
+  setCellValue: (activityId: string, columnId: string, value: string | number | boolean | null) =>
+    api
+      .patch<{ data: DailyActivity }>(`/activities/${activityId}/values`, { columnId, value })
+      .then((r) => r.data.data),
 };
