@@ -204,6 +204,8 @@ export interface DailyActivity {
   task?: Pick<Task, 'id' | 'title' | 'priority'> | null;
   customValues?: Record<string, string | number | boolean> | null;
   googleEventId?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface GoogleCalendarStatus {

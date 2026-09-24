@@ -17,6 +17,7 @@ interface CalendarViewProps {
   onOpenActivity?: (activity: DailyActivity) => void;
   onCreateActivity?: (date: Date, time?: { startTime: string; endTime: string }) => void;
   onRefreshActivities?: () => void;
+  onDeleteActivity?: (activityId: string) => void;
 }
 
 const MONTH_NAMES = [
@@ -34,7 +35,7 @@ const MONTH_NAMES = [
   'Desember',
 ];
 
-const DAY_NAMES = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+const DAY_NAMES = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
 const FULL_DAY_NAMES = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const HOUR_HEIGHT = 60; // 60px per jam => 1 menit = 1px
@@ -137,38 +138,62 @@ function computeTimedItemsLayout(items: CombinedItem[]): TimedItemGeometry[] {
 
   parsed.sort((a, b) => a.startMin - b.startMin || (b.endMin - b.startMin) - (a.endMin - a.startMin));
 
-  const columns: typeof parsed[] = [];
+  if (parsed.length === 0) return [];
 
-  for (const p of parsed) {
-    let placed = false;
-    for (let c = 0; c < columns.length; c++) {
-      const lastInCol = columns[c][columns[c].length - 1];
-      if (lastInCol.endMin <= p.startMin) {
-        columns[c].push(p);
-        placed = true;
-        break;
+  // 1. Kelompokkan ke dalam kluster event yang saling tumpang tindih
+  const clusters: (typeof parsed)[] = [];
+  let currentCluster: typeof parsed = [];
+  let clusterEnd = -1;
+
+  for (const item of parsed) {
+    if (currentCluster.length === 0) {
+      currentCluster.push(item);
+      clusterEnd = item.endMin;
+    } else {
+      if (item.startMin < clusterEnd) {
+        // Tumpang tindih dengan kluster saat ini
+        currentCluster.push(item);
+        clusterEnd = Math.max(clusterEnd, item.endMin);
+      } else {
+        // Kluster baru
+        clusters.push(currentCluster);
+        currentCluster = [item];
+        clusterEnd = item.endMin;
       }
-    }
-    if (!placed) {
-      columns.push([p]);
     }
   }
+  if (currentCluster.length > 0) {
+    clusters.push(currentCluster);
+  }
 
+  // 2. Untuk setiap kluster, alokasikan sub-kolom secara rapi
   const result: TimedItemGeometry[] = [];
-  for (let c = 0; c < columns.length; c++) {
-    for (const p of columns[c]) {
-      let overlaps = 0;
-      for (let otherC = 0; otherC < columns.length; otherC++) {
-        const hasOverlap = columns[otherC].some(
-          (other) => Math.max(p.startMin, other.startMin) < Math.min(p.endMin, other.endMin),
-        );
-        if (hasOverlap) overlaps++;
+  for (const cluster of clusters) {
+    const columns: (typeof parsed)[] = [];
+    for (const item of cluster) {
+      let placed = false;
+      for (let c = 0; c < columns.length; c++) {
+        const lastInCol = columns[c][columns[c].length - 1];
+        if (lastInCol.endMin <= item.startMin) {
+          columns[c].push(item);
+          placed = true;
+          break;
+        }
       }
-      result.push({
-        ...p,
-        colIndex: c,
-        totalCols: Math.max(1, overlaps, c + 1),
-      });
+      if (!placed) {
+        columns.push([item]);
+      }
+    }
+
+    const totalCols = Math.max(1, columns.length);
+    for (let c = 0; c < columns.length; c++) {
+      for (const item of columns[c]) {
+        result.push({
+          ...item,
+          colIndex: c,
+          totalCols,
+        });
+      }
     }
   }
 
@@ -182,6 +207,7 @@ export default function CalendarView({
   onOpenActivity,
   onCreateActivity,
   onRefreshActivities,
+  onDeleteActivity,
 }: CalendarViewProps) {
   const [currentYear, setCurrentYear] = useState(selectedDate.getFullYear());
   const [currentMonth, setCurrentMonth] = useState(selectedDate.getMonth()); // 0-indexed
@@ -192,6 +218,13 @@ export default function CalendarView({
   const [selectedCardItem, setSelectedCardItem] = useState<CombinedItem | null>(null);
   const [importing, setImporting] = useState(false);
   const [now, setNow] = useState(new Date());
+
+  // Ref untuk mencatat id aktivitas & event google yang dihapus agar langsung hilang dari UI secara optimistik
+  const deletedActivityIdsRef = useRef<Set<string>>(new Set());
+  const deletedGoogleIdsRef = useRef<Set<string>>(new Set());
+  const deletingIdsRef = useRef<Set<string>>(new Set());
+  const nextUndoIdRef = useRef(1);
+  const isUndoingRef = useRef(false);
 
   const {
     status: gcalStatus,
@@ -230,7 +263,9 @@ export default function CalendarView({
     }
     try {
       const events = await fetchEvents(rangeStart.toISOString(), rangeEnd.toISOString());
-      setGoogleEvents(events);
+      // Filter keluar event yang sudah dihapus oleh pengguna
+      const activeEvents = events.filter((g) => !deletedGoogleIdsRef.current.has(g.id));
+      setGoogleEvents(activeEvents);
     } catch (e) {
       console.error('Gagal memuat event Google Calendar:', e);
     }
@@ -281,11 +316,13 @@ export default function CalendarView({
   // Tipe aksi riwayat untuk undo (Ctrl+Z)
   type UndoAction =
     | {
+        id?: number;
         type: 'delete';
         item: CombinedItem;
         title: string;
       }
     | {
+        id?: number;
         type: 'drag-from-sidebar-item';
         activityId: string;
         title: string;
@@ -294,11 +331,13 @@ export default function CalendarView({
         prevEndTime: string | null;
       }
     | {
+        id?: number;
         type: 'drag-from-sidebar-team-task';
         createdActivityId: string;
         title: string;
       }
     | {
+        id?: number;
         type: 'move-calendar-card';
         itemType: 'activity' | 'google';
         rawId: string;
@@ -313,126 +352,165 @@ export default function CalendarView({
 
   // Fungsi membatalkan aksi terakhir (Undo / Ctrl+Z)
   const handleUndo = useCallback(async () => {
+    if (isUndoingRef.current) return;
     if (undoStackRef.current.length === 0) {
       showToast('Tidak ada kegiatan yang bisa diurungkan.');
       return;
     }
 
-    const last = undoStackRef.current.pop();
-    if (!last) return;
+    isUndoingRef.current = true;
+    try {
+      const last = undoStackRef.current.pop();
+      if (!last) return;
 
-    if (last.type === 'move-calendar-card') {
-      try {
-        if (last.itemType === 'activity') {
-          await activityApi.update(last.rawId, {
-            ...(last.prevDate ? { date: last.prevDate } : {}),
-            startTime: last.prevStartTime,
-            endTime: last.prevEndTime,
-          });
+      if (last.type === 'move-calendar-card') {
+        try {
+          if (last.itemType === 'activity') {
+            await activityApi.update(last.rawId, {
+              ...(last.prevDate ? { date: last.prevDate } : {}),
+              startTime: last.prevStartTime,
+              endTime: last.prevEndTime,
+            });
 
-          if (onRefreshActivities) onRefreshActivities();
-        } else {
-          await calendarApi.updateEvent(last.rawId, {
-            ...(last.prevDate ? { date: last.prevDate } : {}),
-            startTime: last.prevStartTime,
-            endTime: last.prevEndTime,
-          });
+            if (onRefreshActivities) onRefreshActivities();
+          } else {
+            await calendarApi.updateEvent(last.rawId, {
+              ...(last.prevDate ? { date: last.prevDate } : {}),
+              startTime: last.prevStartTime,
+              endTime: last.prevEndTime,
+            });
 
-          void loadGoogleEvents();
+            void loadGoogleEvents();
+          }
+
+          selectedCardItemRef.current = null;
+          setSelectedCardItem(null);
+          showToast(`Posisi kegiatan "${last.title}" dikembalikan.`);
+        } catch (err) {
+          console.error('[CalendarView] Gagal mengembalikan posisi kegiatan:', err);
+          showToast('Gagal mengembalikan posisi kegiatan.');
         }
-
-        setSelectedCardItem(null);
-        showToast(`Posisi kegiatan "${last.title}" dikembalikan.`);
-      } catch (err) {
-        console.error('[CalendarView] Gagal mengembalikan posisi kegiatan:', err);
-        showToast('Gagal mengembalikan posisi kegiatan.');
+        return;
       }
-      return;
-    }
 
-    if (last.type === 'drag-from-sidebar-item') {
-      try {
-        await activityApi.update(last.activityId, {
-          startTime: null,
-          endTime: null,
-          ...(last.prevDate ? { date: last.prevDate } : {}),
-        });
-
-        if (onRefreshActivities) onRefreshActivities();
-        setSelectedCardItem(null);
-        showToast(`"${last.title}" dikembalikan ke menu "Belum di kalender".`);
-      } catch (err) {
-        console.error('[CalendarView] Gagal mengembalikan item ke menu:', err);
-        showToast('Gagal mengembalikan item ke menu.');
-      }
-      return;
-    }
-
-    if (last.type === 'drag-from-sidebar-team-task') {
-      try {
-        await activityApi.remove(last.createdActivityId);
-
-        if (onRefreshActivities) onRefreshActivities();
-        setSelectedCardItem(null);
-        showToast(`Tugas "${last.title}" dikembalikan ke menu "Belum di kalender".`);
-      } catch (err) {
-        console.error('[CalendarView] Gagal mengembalikan tugas ke menu:', err);
-        showToast('Gagal mengembalikan tugas ke menu.');
-      }
-      return;
-    }
-
-    if (last.type === 'delete') {
-      const { item, title } = last;
-      try {
-        if (item.type === 'activity') {
-          const act = item.act;
-          const restored = await activityApi.create({
-            title: act.title || 'Tanpa judul',
-            description: act.description || undefined,
-            date: act.date ? new Date(act.date).toISOString() : new Date().toISOString(),
-            startTime: act.startTime || undefined,
-            endTime: act.endTime || undefined,
-            type: act.type || 'CUSTOM',
-            taskId: act.taskId || undefined,
-            icon: act.icon || undefined,
-            checklist: act.checklistItems?.length ? act.checklistItems.map((c) => ({ text: c.text })) : undefined,
+      if (last.type === 'drag-from-sidebar-item') {
+        try {
+          await activityApi.update(last.activityId, {
+            startTime: null,
+            endTime: null,
+            ...(last.prevDate ? { date: last.prevDate } : {}),
           });
 
           if (onRefreshActivities) onRefreshActivities();
-          setSelectedCardItem({
-            type: 'activity',
-            id: `act-${restored.id}`,
-            act: restored,
-            time: restored.startTime,
-          });
-        } else {
-          const gEv = item.gEv;
-          const restored = await activityApi.create({
-            title: gEv.title || 'Event Google',
-            description: gEv.description || undefined,
-            date: gEv.start ? new Date(gEv.start).toISOString() : new Date().toISOString(),
-            startTime: gEv.start && gEv.start.includes('T') ? gEv.start : undefined,
-            endTime: gEv.end && gEv.end.includes('T') ? gEv.end : undefined,
-            type: 'CUSTOM',
-          });
-
-          if (onRefreshActivities) onRefreshActivities();
-          void loadGoogleEvents();
-          setSelectedCardItem({
-            type: 'activity',
-            id: `act-${restored.id}`,
-            act: restored,
-            time: restored.startTime,
-          });
+          selectedCardItemRef.current = null;
+          setSelectedCardItem(null);
+          showToast(`"${last.title}" dikembalikan ke menu "Belum di kalender".`);
+        } catch (err) {
+          console.error('[CalendarView] Gagal mengembalikan item ke menu:', err);
+          showToast('Gagal mengembalikan item ke menu.');
         }
-
-        showToast(`Kegiatan "${title}" dipulihkan.`);
-      } catch (err) {
-        console.error('[CalendarView] Gagal memulihkan kegiatan:', err);
-        showToast('Gagal memulihkan kegiatan.');
+        return;
       }
-      return;
+
+      if (last.type === 'drag-from-sidebar-team-task') {
+        try {
+          await activityApi.remove(last.createdActivityId);
+
+          if (onRefreshActivities) onRefreshActivities();
+          selectedCardItemRef.current = null;
+          setSelectedCardItem(null);
+          showToast(`Tugas "${last.title}" dikembalikan ke menu "Belum di kalender".`);
+        } catch (err) {
+          console.error('[CalendarView] Gagal mengembalikan tugas ke menu:', err);
+          showToast('Gagal mengembalikan tugas ke menu.');
+        }
+        return;
+      }
+
+      if (last.type === 'delete') {
+        const { item, title } = last;
+        try {
+          if (item.type === 'activity') {
+            const act = item.act;
+            deletedActivityIdsRef.current.delete(act.id);
+            if (act.googleEventId) deletedGoogleIdsRef.current.delete(act.googleEventId);
+
+            const restored = await activityApi.create({
+              title: act.title || 'Tanpa judul',
+              description: act.description || undefined,
+              date: act.date ? new Date(act.date).toISOString() : new Date().toISOString(),
+              startTime: act.startTime || undefined,
+              endTime: act.endTime || undefined,
+              type: act.type || 'CUSTOM',
+              status: act.status || 'PENDING',
+              taskId: act.taskId || undefined,
+              icon: act.icon || undefined,
+              order: act.order ?? 0,
+              createdAt: act.createdAt || undefined,
+              customValues: act.customValues ?? undefined,
+              checklist: act.checklistItems?.length ? act.checklistItems.map((c) => ({ text: c.text })) : undefined,
+            });
+
+            deletedActivityIdsRef.current.delete(restored.id);
+            if (restored.googleEventId) {
+              deletedGoogleIdsRef.current.delete(restored.googleEventId);
+            }
+
+            if (onRefreshActivities) onRefreshActivities();
+            void loadGoogleEvents();
+            setSelectedCardItem({
+              type: 'activity',
+              id: `act-${restored.id}`,
+              act: restored,
+              time: restored.startTime,
+            });
+          } else {
+            const gEv = item.gEv;
+            deletedGoogleIdsRef.current.delete(gEv.id);
+            setGoogleEvents((prev) => (prev.some((g) => g.id === gEv.id) ? prev : [...prev, gEv]));
+
+            let createdG: { id: string } | null = null;
+            try {
+              // Pulihkan langsung ke Google Calendar
+              createdG = await calendarApi.createEvent({
+                title: gEv.title || 'Event Google',
+                description: gEv.description || undefined,
+                date: gEv.start && !gEv.start.includes('T') ? gEv.start : undefined,
+                startTime: gEv.start && gEv.start.includes('T') ? gEv.start : undefined,
+                endTime: gEv.end && gEv.end.includes('T') ? gEv.end : undefined,
+              });
+
+              if (createdG?.id) {
+                const newId = createdG.id;
+                deletedGoogleIdsRef.current.delete(newId);
+                setGoogleEvents((prev) =>
+                  prev.map((g) => (g.id === gEv.id ? { ...g, id: newId } : g)),
+                );
+              }
+            } catch (err) {
+              console.error('[CalendarView] Gagal membuat ulang event di Google Calendar:', err);
+            }
+
+            const finalGId = createdG?.id || gEv.id;
+            const restoredGEv = { ...gEv, id: finalGId };
+            void loadGoogleEvents();
+            setSelectedCardItem({
+              type: 'google',
+              id: `gcal-${finalGId}`,
+              gEv: restoredGEv,
+              time: restoredGEv.start,
+            });
+          }
+
+          showToast(`Kegiatan "${title}" dipulihkan.`);
+        } catch (err) {
+          console.error('[CalendarView] Gagal memulihkan kegiatan:', err);
+          showToast('Gagal memulihkan kegiatan.');
+        }
+        return;
+      }
+    } finally {
+      isUndoingRef.current = false;
     }
   }, [onRefreshActivities, loadGoogleEvents]);
 
@@ -444,30 +522,62 @@ export default function CalendarView({
       const gEv = !isAct ? itemToDelete.gEv : null;
       const title = (isAct ? act?.title : gEv?.title) || 'Tanpa judul';
 
+      const targetActId = isAct ? act?.id : null;
+      const targetGoogleId = isAct ? act?.googleEventId : gEv?.id;
+      const targetId = targetActId || targetGoogleId;
+      if (!targetId) return;
+
+      if (deletingIdsRef.current.has(targetId)) return;
+      deletingIdsRef.current.add(targetId);
+
+      // Segera reset kartu terpilih agar event keyboard/klik berikutnya tidak menghapus ganda kartu yang sama
+      selectedCardItemRef.current = null;
+      setSelectedCardItem(null);
+
+      // 1. Dorong ke stack undo secara SINKRON seketika (menjamin 100% urutan LIFO penghapusan)
+      const actionId = nextUndoIdRef.current++;
+      undoStackRef.current.push({ id: actionId, type: 'delete', item: itemToDelete, title });
+
+      // 2. Optimistic delete: langsung sembunyikan kartu dari UI
+      if (targetActId) {
+        deletedActivityIdsRef.current.add(targetActId);
+        onDeleteActivity?.(targetActId);
+      }
+      if (targetGoogleId) {
+        deletedGoogleIdsRef.current.add(targetGoogleId);
+        setGoogleEvents((prev) => prev.filter((g) => g.id !== targetGoogleId));
+      }
+
+      showToast(`Kegiatan "${title}" dihapus`, {
+        label: 'Urungkan (Ctrl+Z)',
+        onAction: () => {
+          void handleUndo();
+        },
+      });
+
       try {
         if (isAct && act) {
           await activityApi.remove(act.id);
         } else if (gEv) {
           await calendarApi.deleteEvent(gEv.id);
-          void loadGoogleEvents();
         }
 
-        undoStackRef.current.push({ type: 'delete', item: itemToDelete, title });
-        setSelectedCardItem(null);
         if (onRefreshActivities) onRefreshActivities();
-
-        showToast(`Kegiatan "${title}" dihapus`, {
-          label: 'Urungkan (Ctrl+Z)',
-          onAction: () => {
-            void handleUndo();
-          },
-        });
+        void loadGoogleEvents();
       } catch (err) {
         console.error('[CalendarView] Gagal menghapus kegiatan:', err);
+        // Rollback optimistic delete & keluarkan entri dari stack jika request gagal
+        undoStackRef.current = undoStackRef.current.filter((a) => a.id !== actionId);
+        if (targetActId) deletedActivityIdsRef.current.delete(targetActId);
+        if (targetGoogleId) deletedGoogleIdsRef.current.delete(targetGoogleId);
+        if (onRefreshActivities) onRefreshActivities();
+        void loadGoogleEvents();
         showToast('Gagal menghapus kegiatan.');
+      } finally {
+        deletingIdsRef.current.delete(targetId);
       }
     },
-    [onRefreshActivities, handleUndo, loadGoogleEvents],
+    [onRefreshActivities, onDeleteActivity, handleUndo, loadGoogleEvents],
   );
 
   // Tangani kartu yang di-drop ke kalender dari sidebar atau perpindahan kartu kalender
@@ -516,6 +626,17 @@ export default function CalendarView({
         const newDateStr = new Date(newStart.getFullYear(), newStart.getMonth(), newStart.getDate(), 0, 0, 0, 0).toISOString();
 
         if (payload.itemType === 'activity') {
+          const originalAct = activities.find((a) => a.id === payload.id);
+          if (originalAct?.googleEventId) {
+            setGoogleEvents((prev) =>
+              prev.map((g) =>
+                g.id === originalAct.googleEventId
+                  ? { ...g, start: newStartTimeStr, end: newEndTimeStr }
+                  : g,
+              ),
+            );
+          }
+
           await activityApi.update(payload.id, {
             date: newDateStr,
             startTime: newStartTimeStr,
@@ -525,7 +646,16 @@ export default function CalendarView({
           if (onRefreshActivities) {
             onRefreshActivities();
           }
+          void loadGoogleEvents();
         } else {
+          setGoogleEvents((prev) =>
+            prev.map((g) =>
+              g.id === payload.id
+                ? { ...g, start: newStartTimeStr, end: newEndTimeStr }
+                : g,
+            ),
+          );
+
           await calendarApi.updateEvent(payload.id, {
             date: newDateStr,
             startTime: newStartTimeStr,
@@ -565,12 +695,19 @@ export default function CalendarView({
         const prevDate = originalAct?.date || null;
         const prevStartTime = originalAct?.startTime || null;
         const prevEndTime = originalAct?.endTime || null;
+        if (originalAct?.googleEventId) {
+          deletedGoogleIdsRef.current.delete(originalAct.googleEventId);
+        }
 
-        await activityApi.update(payload.id, {
+        const updated = await activityApi.update(payload.id, {
           date: dateStr,
           startTime: startTimeStr,
           endTime: endTimeStr,
         });
+
+        if (updated?.googleEventId) {
+          deletedGoogleIdsRef.current.delete(updated.googleEventId);
+        }
 
         undoStackRef.current.push({
           type: 'drag-from-sidebar-item',
@@ -615,6 +752,7 @@ export default function CalendarView({
       if (onRefreshActivities) {
         onRefreshActivities();
       }
+      void loadGoogleEvents();
     } catch (e) {
       console.error('[CalendarView] Gagal menjadwalkan kartu ke kalender:', e);
       showToast('Gagal menyimpan waktu kegiatan. Silakan coba lagi.');
@@ -698,9 +836,13 @@ export default function CalendarView({
 
       if (isInput) return;
 
+      // Cegah eksekusi berulang dari key repeat OS saat tombol ditekan lama
+      if (e.repeat) return;
+
       // Pintasan Undo: Ctrl+Z atau Cmd+Z
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
         e.preventDefault();
+        e.stopImmediatePropagation();
         void handleUndo();
         return;
       }
@@ -708,6 +850,7 @@ export default function CalendarView({
       // Pintasan Hapus: Delete atau Backspace saat ada kartu yang dipilih
       if (selectedCardItemRef.current && (e.key === 'Delete' || e.key === 'Backspace')) {
         e.preventDefault();
+        e.stopImmediatePropagation();
         void handleDeleteCard(selectedCardItemRef.current);
         return;
       }
@@ -715,6 +858,7 @@ export default function CalendarView({
       // Pintasan Escape: Deselect kartu terpilih
       if (e.key === 'Escape' && selectedCardItemRef.current) {
         e.preventDefault();
+        selectedCardItemRef.current = null;
         setSelectedCardItem(null);
         return;
       }
@@ -732,11 +876,10 @@ export default function CalendarView({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleUndo, handleDeleteCard]);
 
-  // Hitung 7 hari untuk mode minggu aktif
+  // Hitung 7 hari untuk mode minggu aktif (Minggu s.d. Sabtu seperti Google Calendar)
   const weekDays = useMemo(() => {
     const start = new Date(selectedDate);
-    let dayOfWeek = start.getDay() - 1;
-    if (dayOfWeek === -1) dayOfWeek = 6;
+    const dayOfWeek = start.getDay(); // 0 = Minggu, 1 = Senin, ..., 6 = Sabtu
     start.setDate(start.getDate() - dayOfWeek);
     start.setHours(0, 0, 0, 0);
 
@@ -835,14 +978,31 @@ export default function CalendarView({
   // Sinkronisasi real-time via WebSocket saat server memancarkan event calendar:synced
   useEffect(() => {
     if (!socket) return;
-    const handleRemoteSync = () => {
+    const handleRemoteSync = (payload?: {
+      action?: string;
+      eventId?: string;
+      activityId?: string;
+      googleEventId?: string;
+    }) => {
+      if (payload?.action === 'delete') {
+        const delGId = payload.eventId || payload.googleEventId;
+        if (delGId) {
+          deletedGoogleIdsRef.current.add(delGId);
+          setGoogleEvents((prev) => prev.filter((g) => g.id !== delGId));
+        }
+        if (payload.activityId) {
+          deletedActivityIdsRef.current.add(payload.activityId);
+          onDeleteActivity?.(payload.activityId);
+        }
+      }
       void loadGoogleEvents();
+      if (onRefreshActivities) onRefreshActivities();
     };
     socket.on('calendar:synced', handleRemoteSync);
     return () => {
       socket.off('calendar:synced', handleRemoteSync);
     };
-  }, [socket, loadGoogleEvents]);
+  }, [socket, loadGoogleEvents, onRefreshActivities, onDeleteActivity]);
 
   // Sinkronisasi otomatis saat terjadi perubahan pada aktivitas lokal
   useEffect(() => {
@@ -904,23 +1064,96 @@ export default function CalendarView({
   }
 
   // Helper untuk mendapatkan gabungan aktivitas & Google event pada suatu hari
+  // Set seluruh ID event Google yang tertaut dengan kegiatan lokal Purrific
+  const linkedGoogleEventIds = useMemo(() => {
+    const set = new Set<string>();
+    for (const act of activities) {
+      if (act.googleEventId) {
+        set.add(act.googleEventId);
+      }
+    }
+    return set;
+  }, [activities]);
+
   const getDayItems = useCallback(
     (dayDate: Date): CombinedItem[] => {
       const dayActivities = activities.filter((act) => {
+        if (deletedActivityIdsRef.current.has(act.id)) return false;
+        if (act.googleEventId && deletedGoogleIdsRef.current.has(act.googleEventId)) return false;
         const itemDateStr = act.startTime || act.date;
         if (!itemDateStr) return false;
         const actDate = new Date(itemDateStr);
         return isSameDay(actDate, dayDate);
       });
 
+      // De-duplikasi internal pada dayActivities agar tidak ada 2 kartu lokal identik yang muncul berdampingan
+      const uniqueDayActivities: DailyActivity[] = [];
+      for (const act of dayActivities) {
+        const normTitle = (act.title || '').replace(/\s*\(purrific\)\s*/gi, '').trim().toLowerCase();
+        const actTime = act.startTime ? new Date(act.startTime).getTime() : null;
+
+        const isDuplicate = uniqueDayActivities.some((existing) => {
+          if (
+            act.googleEventId &&
+            existing.googleEventId &&
+            (act.googleEventId === existing.googleEventId ||
+              act.googleEventId.split('_')[0] === existing.googleEventId.split('_')[0])
+          ) {
+            return true;
+          }
+          const existingNormTitle = (existing.title || '').replace(/\s*\(purrific\)\s*/gi, '').trim().toLowerCase();
+          if (normTitle && existingNormTitle && normTitle === existingNormTitle) {
+            const existingTime = existing.startTime ? new Date(existing.startTime).getTime() : null;
+            if (actTime && existingTime && Math.abs(actTime - existingTime) <= 15 * 60 * 1000) {
+              return true;
+            }
+            if (!actTime && !existingTime) {
+              return true;
+            }
+          }
+          return false;
+        });
+
+        if (!isDuplicate) {
+          uniqueDayActivities.push(act);
+        }
+      }
+
       const dayGoogleEvents = googleEvents.filter((gEv) => {
+        if (deletedGoogleIdsRef.current.has(gEv.id)) return false;
+        // Hanya filter jika ID spesifik sudah tertaut di aktivitas
+        if (linkedGoogleEventIds.has(gEv.id)) return false;
         if (!gEv.start) return false;
-        const gDate = new Date(gEv.start);
-        return isSameDay(gDate, dayDate) && !dayActivities.some((act) => act.googleEventId === gEv.id);
+        const gStartStr = gEv.start;
+        const gDate = new Date(gStartStr);
+        if (!isSameDay(gDate, dayDate)) return false;
+
+        const baseGId = gEv.id.includes('_') ? gEv.id.split('_')[0] : gEv.id;
+
+        // De-duplikasi terhadap aktivitas lokal HARI INI:
+        // Jika pada hari ini sudah ada aktivitas lokal yang tertaut recurrence ini, atau memiliki nama & jam yang sama
+        const isDuplicateOfActivity = uniqueDayActivities.some((act) => {
+          if (act.googleEventId && (act.googleEventId === gEv.id || act.googleEventId === baseGId)) {
+            return true;
+          }
+          const actTitle = (act.title || '').replace(/\s*\(purrific\)\s*/gi, '').trim().toLowerCase();
+          const gTitle = (gEv.title || '').replace(/\s*\(purrific\)\s*/gi, '').trim().toLowerCase();
+          if (actTitle && gTitle && actTitle === gTitle) {
+            const actTime = act.startTime ? new Date(act.startTime).getTime() : null;
+            const gTime = gStartStr.includes('T') ? new Date(gStartStr).getTime() : null;
+            // Jika kedua-duanya punya jam pelaksanaan dalam rentang selisih <= 15 menit
+            if (actTime && gTime && Math.abs(actTime - gTime) <= 15 * 60 * 1000) return true;
+            // Jika kedua-duanya all-day tanpa jam
+            if (!act.startTime && (!gStartStr.includes('T') || gEv.allDay)) return true;
+          }
+          return false;
+        });
+
+        return !isDuplicateOfActivity;
       });
 
       const items: CombinedItem[] = [
-        ...dayActivities.map((act) => ({
+        ...uniqueDayActivities.map((act) => ({
           type: 'activity' as const,
           id: `act-${act.id}`,
           act,
@@ -936,13 +1169,18 @@ export default function CalendarView({
 
       return items;
     },
-    [activities, googleEvents],
+    [activities, googleEvents, linkedGoogleEventIds],
   );
 
   const today = new Date();
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
   const currentTimeTop = (currentMinutes / 60) * HOUR_HEIGHT;
   const currentTimeLabel = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+
+  // Indeks kolom hari ini dalam 7 hari minggu aktif (-1 jika tidak di minggu ini)
+  const todayWeekIndex = useMemo(() => {
+    return weekDays.findIndex((d) => isSameDay(d, today));
+  }, [weekDays, today]);
 
   // Render card kegiatan pada timeline bergaya Notion Calendar
   function renderEventCard(geo: TimedItemGeometry, cardDate: Date) {
@@ -1286,7 +1524,7 @@ export default function CalendarView({
                 <div
                   key={idx}
                   onClick={() => onSelectDate(dayDate)}
-                  className={`py-2 px-1 text-center border-r border-gray-100 last:border-r-0 cursor-pointer select-none transition ${
+                  className={`py-2 px-1 text-center border-r border-gray-200 last:border-r-0 cursor-pointer select-none transition ${
                     isSelected ? 'bg-blue-50/40' : 'hover:bg-gray-50'
                   }`}
                 >
@@ -1327,7 +1565,7 @@ export default function CalendarView({
                   <div
                     key={hour}
                     style={{ height: `${HOUR_HEIGHT}px` }}
-                    className="border-b border-gray-100 text-right pr-2 text-[11px] font-mono text-gray-400 pt-1 select-none"
+                    className="border-b border-gray-200 text-right pr-2 text-[11px] font-mono text-gray-400 pt-1 select-none"
                   >
                     {String(hour).padStart(2, '0')}:00
                   </div>
@@ -1365,7 +1603,7 @@ export default function CalendarView({
                     onDrop={(e) => {
                       handleTimelineDrop(e, dayDate, e.currentTarget);
                     }}
-                    className={`relative border-r border-gray-100 last:border-r-0 ${
+                    className={`relative border-r border-gray-200 last:border-r-0 ${
                       isSelected ? 'bg-blue-50/10' : 'bg-white'
                     }`}
                   >
@@ -1380,12 +1618,9 @@ export default function CalendarView({
                           style={{ height: `${HOUR_HEIGHT}px` }}
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (onCreateActivity) {
-                              const target = new Date(dayDate);
-                              target.setHours(hour, 0, 0, 0);
-                              const end = new Date(target.getTime() + 3600000);
-                              onCreateActivity(target, { startTime: target.toISOString(), endTime: end.toISOString() });
-                            }
+                            setSelectedCardItem(null);
+                            selectedCardItemRef.current = null;
+                            onSelectDate(dayDate);
                           }}
                           onDragOver={(e) => {
                             e.preventDefault();
@@ -1407,10 +1642,9 @@ export default function CalendarView({
                             const timelineColumn = e.currentTarget.parentElement;
                             if (timelineColumn) handleTimelineDrop(e, dayDate, timelineColumn);
                           }}
-                          className={`border-b border-gray-100 transition cursor-pointer ${
+                          className={`border-b border-gray-200 transition ${
                             isDragOver ? 'bg-violet-100/70 ring-1 ring-inset ring-violet-400' : 'hover:bg-gray-50/60'
                           }`}
-                          title={`Tambah kegiatan pada ${String(hour).padStart(2, '0')}:00`}
                         />
                       );
                     })}
@@ -1429,14 +1663,29 @@ export default function CalendarView({
                 );
               })}
 
-              {/* Garis Horizontal Waktu Sekarang (Merah ala Notion Calendar) - diletakkan setelah kolom hari dengan z-30 agar kartu saat di-hover tetap di belakang garis */}
-              <div
-                style={{ top: `${currentTimeTop}px`, left: '64px', right: 0 }}
-                className="absolute z-30 pointer-events-none flex items-center"
-              >
-                <div className="h-2 w-2 rounded-full bg-red-600 -ml-1 shrink-0" />
-                <div className="h-[2px] w-full bg-red-500 shadow-xs" />
-              </div>
+              {/* Garis Horizontal Waktu Sekarang (Merah ala Notion Calendar jika minggu aktif mencakup hari ini) */}
+              {todayWeekIndex !== -1 && (
+                <div
+                  style={{ top: `${currentTimeTop}px`, left: '64px', right: 0 }}
+                  className="absolute z-30 pointer-events-none flex items-center"
+                >
+                  {/* Label "Hari ini" di samping kanan titik merah di atas garis */}
+                  <div
+                    style={{ left: `calc(${(todayWeekIndex / 7) * 100}% + 6px)` }}
+                    className="absolute -top-5 flex items-center"
+                  >
+                    <span className="rounded-md bg-red-600 px-1.5 py-0.5 text-[9px] font-bold text-white shadow-xs leading-none select-none tracking-wide whitespace-nowrap">
+                      Hari ini
+                    </span>
+                  </div>
+                  {/* Titik merah penanda di awal kolom hari ini */}
+                  <div
+                    style={{ left: `calc(${(todayWeekIndex / 7) * 100}% - 4px)` }}
+                    className="absolute h-2 w-2 rounded-full bg-red-600"
+                  />
+                  <div className="h-[2px] w-full bg-red-500 shadow-xs" />
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -1496,7 +1745,7 @@ export default function CalendarView({
                   <div
                     key={hour}
                     style={{ height: `${HOUR_HEIGHT}px` }}
-                    className="border-b border-gray-100 text-right pr-2 text-[11px] font-mono text-gray-400 pt-1 select-none"
+                    className="border-b border-gray-200 text-right pr-2 text-[11px] font-mono text-gray-400 pt-1 select-none"
                   >
                     {String(hour).padStart(2, '0')}:00
                   </div>
@@ -1541,12 +1790,8 @@ export default function CalendarView({
                       style={{ height: `${HOUR_HEIGHT}px` }}
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (onCreateActivity) {
-                          const target = new Date(selectedDate);
-                          target.setHours(hour, 0, 0, 0);
-                          const end = new Date(target.getTime() + 3600000);
-                          onCreateActivity(target, { startTime: target.toISOString(), endTime: end.toISOString() });
-                        }
+                        setSelectedCardItem(null);
+                        selectedCardItemRef.current = null;
                       }}
                       onDragOver={(e) => {
                         e.preventDefault();
@@ -1568,10 +1813,9 @@ export default function CalendarView({
                         const timelineColumn = e.currentTarget.parentElement;
                         if (timelineColumn) handleTimelineDrop(e, selectedDate, timelineColumn);
                       }}
-                      className={`border-b border-gray-100 transition cursor-pointer ${
+                      className={`border-b border-gray-200 transition ${
                         isDragOver ? 'bg-violet-100/70 ring-1 ring-inset ring-violet-400' : 'hover:bg-gray-50/60'
                       }`}
-                      title={`Tambah kegiatan pada ${String(hour).padStart(2, '0')}:00`}
                     />
                   );
                 })}
@@ -1590,12 +1834,17 @@ export default function CalendarView({
                 )}
               </div>
 
-              {/* Garis Horizontal Waktu Sekarang (Merah ala Notion Calendar jika hari ini) - diletakkan setelah kolom hari dengan z-30 agar kartu saat di-hover tetap di belakang garis */}
+              {/* Garis Horizontal Waktu Sekarang (Merah ala Notion Calendar jika hari ini) */}
               {isSameDay(selectedDate, today) && (
                 <div
                   style={{ top: `${currentTimeTop}px`, left: '64px', right: 0 }}
                   className="absolute z-30 pointer-events-none flex items-center"
                 >
+                  <div className="absolute left-2 -top-5 flex items-center">
+                    <span className="rounded-md bg-red-600 px-1.5 py-0.5 text-[9px] font-bold text-white shadow-xs leading-none select-none tracking-wide whitespace-nowrap">
+                      Hari ini
+                    </span>
+                  </div>
                   <div className="h-2 w-2 rounded-full bg-red-600 -ml-1 shrink-0" />
                   <div className="h-[2px] w-full bg-red-500 shadow-xs" />
                 </div>

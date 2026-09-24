@@ -45,6 +45,14 @@ export const calendarApi = {
       })
       .then((r) => r.data.data),
 
+  createEvent: (data: {
+    title: string;
+    description?: string | null;
+    date?: string;
+    startTime?: string | null;
+    endTime?: string | null;
+  }) => api.post<{ data: { id: string } }>('/calendar/google/events', data).then((r) => r.data.data),
+
   updateEvent: (
     eventId: string,
     data: {

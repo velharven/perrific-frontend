@@ -163,6 +163,7 @@ export default function CalendarCardSettings({
     try {
       if (onDelete) {
         await onDelete(selectedItem);
+        onClose();
       } else {
         if (!window.confirm(`Hapus kegiatan "${title || 'Tanpa judul'}"?`)) {
           setDeleting(false);

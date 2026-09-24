@@ -2201,6 +2201,9 @@ function DailyPageInner() {
             });
           }}
           onRefreshActivities={() => void fetchActivities(true)}
+          onDeleteActivity={(activityId) => {
+            setActivities((prev) => prev.filter((a) => a.id !== activityId));
+          }}
         />
       ) : (
         <div className="relative">
