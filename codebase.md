@@ -19,8 +19,9 @@ purrific-frontend/
 │   ├── components/
 │   │   ├── auth/                # Komponen alur autentikasi (GoogleAuthButton, UsernameModal)
 │   │   ├── daily/               # Komponen kalender dan penjadwalan harian
+│   │   │   ├── CalendarCardSettings.tsx # Modal popover pengaturan kartu kalender terpadu (Purrific & Google Calendar)
 │   │   │   ├── CalendarSidebar.tsx # Menu samping drag & drop untuk Item dan Team Task belum terjadwal
-│   │   │   └── CalendarView.tsx    # Tampilan kalender (Bulan, Minggu, Hari) ala Notion Calendar
+│   │   │   └── CalendarView.tsx    # Tampilan kalender (Minggu, Hari) ala Notion Calendar dengan drag & drop dan Undo
 │   │   ├── dashboard/           # Komponen widget dasbor personal
 │   │   │   ├── blocks/          # Blok individual (Focus, Greeting, Progress, Teams, Today)
 │   │   │   ├── AddBlockModal.tsx
@@ -176,7 +177,10 @@ Frontend menggunakan pendekatan state management yang modular:
 
 ### 4. State lokal komponen dan custom hook
 - Halaman kanban (`BoardPage.tsx`) mengelola state lokal kartu tugas, kolom aktif, modal pembuatan tugas, dan filter pencarian.
-- Halaman aktivitas harian (`DailyPage.tsx`) mengelola state kalender tanggal terpilih, daftar checklist, dan mode input waktu.
+- Halaman aktivitas harian (`DailyPage.tsx`) mengelola state kalender tanggal terpilih, daftar checklist, mode input waktu, dan alih tampilan antara tabel database 'Semua Kegiatan' dan 'Kalender' Notion-style.
+- Kalender aktivitas harian (`CalendarView.tsx`) mengelola mode tampilan ('week' dan 'day'), penataan layout kegiatan bertumpuk (`computeTimedItemsLayout`), garis horizontal penunjuk waktu sekarang ala Notion Calendar, interaksi drag & drop kartu kalender, penargetan koordinat jam presisi (`HOUR_HEIGHT`), serta pintasan keyboard (`Delete`/`Backspace` untuk hapus, `Ctrl+Z`/`Cmd+Z` untuk stack undo riwayat pembatalan, dan `0`/`w` serta `1`/`d` untuk beralih mode minggu/hari).
+- Menu samping penjadwalan (`CalendarSidebar.tsx`) mengelola daftar item personal dan tugas tim yang belum terjadwal di kalender dengan pencarian instan, kuota scroll, dan payload draggable.
+- Pengaturan kartu kalender terpadu (`CalendarCardSettings.tsx`) menyediakan modal popover terpadu untuk kartu Purrific (`DailyActivity`) maupun kartu Google Calendar (`GoogleCalendarEvent`), menyamakan pengaturan waktu, judul, deskripsi, sub-checklist, tautan Google Calendar, serta aksi hapus dan buka detail.
 - Grid tabel basis data (`TableGrid.tsx` dan `useTableData.ts`) mengelola struktur kolom, baris data, dan auto-save ke backend.
 
 ## Lapisan komunikasi jaringan (API layer)
@@ -185,15 +189,16 @@ Pemanggilan API backend dipusatkan melalui Axios di `src/lib/api.ts`:
 - Base URL diambil dari variabel lingkungan `VITE_API_URL` (default: `http://localhost:4000`).
 - Interceptor request secara otomatis menyisipkan header `Authorization: Bearer <token>` bila token ditemukan di penyimpanan lokal.
 - Interceptor response menangkap status HTTP `401 Unauthorized` untuk membersihkan sesi kedaluwarsa dan mengarahkan pengguna kembali ke halaman login.
-- File-file pemanggil API di `src/api/` membungkus endpoint sesuai domain (activities, notes, notifications, projects, tasks, teams) dan mengembalikan data terstruktur.
+- File-file pemanggil API di `src/api/` membungkus endpoint sesuai domain (activities, calendar, notes, notifications, projects, tasks, teams) dan mengembalikan data terstruktur. Modul `calendar.ts` mendukung URL auth, callback OAuth, status koneksi, pengambilan event, sinkronisasi dua arah, dan sinkronisasi instan per-aktivitas (`syncActivity`).
 
-## Interaksi drag and drop (`@dnd-kit`)
+## Interaksi drag and drop
 
-Aplikasi menggunakan pustaka `@dnd-kit/core` dan `@dnd-kit/sortable` untuk menangani manipulasi posisi secara langsung:
-1. Papan kanban (`KanbanBoard.tsx`): Kartu tugas dapat dipindahkan antar-kolom maupun diatur ulang urutannya di dalam kolom yang sama. Sensor penunjuk dikonfigurasi dengan toleransi pergerakan minimal agar tidak mengganggu klik biasa.
+Aplikasi memadukan pustaka `@dnd-kit` untuk komponen berbasis modul serta HTML5 Drag and Drop API native untuk visualisasi timeline kalender:
+1. Papan kanban (`KanbanBoard.tsx`): Menggunakan `@dnd-kit/core` dan `@dnd-kit/sortable`. Kartu tugas dapat dipindahkan antar-kolom maupun diatur ulang urutannya di dalam kolom yang sama. Sensor penunjuk dikonfigurasi dengan toleransi pergerakan minimal agar tidak mengganggu klik biasa.
 2. Kolom kanban (`BoardColumnEditor.tsx`): Urutan kolom kanban pada menu pengaturan dapat digeser secara horizontal atau vertikal.
 3. Tabel data personal (`SortableRow.tsx` dan `SortableTh.tsx`): Baris dan kolom tabel dapat diatur ulang urutannya dengan drag and drop.
 4. Blok dasbor personal (`SortableBlock.tsx`): Pengguna dapat menyusun ulang urutan kartu widget pada halaman dasbor.
+5. Kalender timeline dan sidebar penjadwalan (`CalendarView.tsx` dan `CalendarSidebar.tsx`): Memanfaatkan HTML5 Drag and Drop native untuk memindahkan kartu kalender antar slot jam dan tanggal dengan pelestarian durasi otomatis serta penataan kegiatan berdampingan (side-by-side) ala Notion Calendar, sekaligus mendukung penarikan item tertunda dari sidebar ke kisi kalender secara presisi berdasarkan posisi vertikal (`HOUR_HEIGHT` 60px/jam) yang dilengkapi dukungan stack undo (`Ctrl+Z`).
 
 ## Tata gaya dan sistem desain
 

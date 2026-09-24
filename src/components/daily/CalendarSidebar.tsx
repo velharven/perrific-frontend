@@ -1,12 +1,11 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import type { DailyActivity, AssignedTeamTask } from '@/types';
 import { taskApi } from '@/api/tasks';
 import { ActivityIcon } from '@/components/icons';
+import { useSocket } from '@/store/socket';
 
 interface CalendarSidebarProps {
   activities: DailyActivity[];
-  isOpen: boolean;
-  onToggle: () => void;
   onRefresh?: () => void;
 }
 
@@ -32,30 +31,66 @@ function formatShortDate(dateStr?: string | null): string {
 
 export default function CalendarSidebar({
   activities,
-  isOpen,
-  onToggle,
 }: CalendarSidebarProps) {
   const [activeTab, setActiveTab] = useState<'item' | 'teamTask'>('item');
   const [teamTasks, setTeamTasks] = useState<AssignedTeamTask[]>([]);
   const [loadingTasks, setLoadingTasks] = useState(false);
   const [search, setSearch] = useState('');
+  const hasLoadedRef = useRef(false);
 
-  // Muat tugas tim yang di-assign ke user
-  const fetchAssignedTasks = async () => {
+  // Muat tugas tim yang di-assign ke user (silent = true tidak mengganti tampilan menjadi spinner memuat)
+  const fetchAssignedTasks = useCallback(async (silent = false) => {
     try {
-      setLoadingTasks(true);
+      if (!silent) {
+        setLoadingTasks(true);
+      }
       const data = await taskApi.listMyAssigned();
       setTeamTasks(data);
-    } catch {
-      setTeamTasks([]);
+    } catch (err) {
+      console.error('[CalendarSidebar] Gagal memuat tugas tim:', err);
+      if (!silent) {
+        setTeamTasks([]);
+      }
     } finally {
-      setLoadingTasks(false);
+      if (!silent) {
+        setLoadingTasks(false);
+      }
     }
-  };
-
-  useEffect(() => {
-    void fetchAssignedTasks();
   }, []);
+
+  // Muat awal saat komponen pertama kali dipasang
+  useEffect(() => {
+    if (!hasLoadedRef.current) {
+      hasLoadedRef.current = true;
+      void fetchAssignedTasks(false);
+    }
+  }, [fetchAssignedTasks]);
+
+  // Polling latar belakang berkala (silent) setiap 60 detik saat tab teamTask dibuka
+  useEffect(() => {
+    if (activeTab !== 'teamTask') return;
+    const interval = setInterval(() => {
+      void fetchAssignedTasks(true);
+    }, 60000);
+    return () => clearInterval(interval);
+  }, [activeTab, fetchAssignedTasks]);
+
+  // Dengarkan event socket 'task:assigned' secara real-time (assign, unassign, atau update task)
+  const { socket } = useSocket();
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleTaskAssigned = () => {
+      // Perbarui daftar tugas tim di latar belakang secara mulus tanpa mengganggu pengguna
+      void fetchAssignedTasks(true);
+    };
+
+    socket.on('task:assigned', handleTaskAssigned);
+
+    return () => {
+      socket.off('task:assigned', handleTaskAssigned);
+    };
+  }, [socket, fetchAssignedTasks]);
 
   // Item kegiatan personal yang belum memiliki jam (belum ditambahkan ke kalender)
   const unscheduledItems = useMemo(() => {
@@ -70,9 +105,10 @@ export default function CalendarSidebar({
   // Tugas tim yang belum dimasukkan ke kegiatan berwaktu di kalender
   const unscheduledTeamTasks = useMemo(() => {
     return teamTasks.filter((t) => {
-      // Periksa apakah task ini sudah memiliki dailyActivity yang terjadwal dengan jam
-      const isScheduled = t.dailyActivities && t.dailyActivities.some((da) => da.startTime || da.endTime);
-      if (isScheduled) return false;
+      // Periksa apakah task ini sudah memiliki dailyActivity yang terjadwal dengan jam (baik di server maupun di activities lokal)
+      const isScheduledInTask = t.dailyActivities && t.dailyActivities.some((da) => da.startTime || da.endTime);
+      const isScheduledInActivities = activities.some((a) => a.taskId === t.id && (a.startTime || a.endTime));
+      if (isScheduledInTask || isScheduledInActivities) return false;
       if (!search.trim()) return true;
       const q = search.toLowerCase();
       return (
@@ -80,63 +116,29 @@ export default function CalendarSidebar({
         (t.project?.name && t.project.name.toLowerCase().includes(q))
       );
     });
-  }, [teamTasks, search]);
+  }, [teamTasks, activities, search]);
 
-  if (!isOpen) {
-    return (
-      <button
-        type="button"
-        onClick={onToggle}
-        title="Buka panel item & tugas belum terjadwal"
-        aria-label="Buka panel item & tugas belum terjadwal"
-        className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700 shadow-2xs transition hover:border-gray-300 hover:bg-gray-50 hover:text-gray-900"
-      >
-        <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" className="text-amber-500">
-          <path d="M7.938 2.016a.13.13 0 0 1 .125 0l6.857 11.856c.026.045.026.1 0 .145a.14.14 0 0 1-.125.073H1.205a.14.14 0 0 1-.125-.073.17.17 0 0 1 0-.145L7.938 2.016zm.854 4.484a.5.5 0 0 0-.992 0l-.3 3.5a.5.5 0 0 0 .992.08l.3-3.58zm-.496 5.5a.65.65 0 1 0 0 1.3.65.65 0 0 0 0-1.3z" />
-        </svg>
-        <span>Belum di Kalender</span>
-        {(unscheduledItems.length > 0 || unscheduledTeamTasks.length > 0) && (
-          <span className="rounded-full bg-amber-100 px-1.5 py-0.2 text-[10px] font-bold text-amber-800">
-            {unscheduledItems.length + unscheduledTeamTasks.length}
-          </span>
-        )}
-        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" className="text-gray-400">
-          <path d="M6 12l4-4-4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </button>
-    );
-  }
+  const totalUnscheduled = unscheduledItems.length + unscheduledTeamTasks.length;
 
   return (
     <aside
       aria-label="Panel item belum terjadwal"
-      className="flex w-80 shrink-0 flex-col rounded-xl border border-gray-200 bg-white shadow-sm transition-all"
+      className="flex w-full shrink-0 flex-col rounded-2xl border border-gray-200 bg-white shadow-sm"
     >
-      {/* Header Menu Samping */}
-      <div className="flex items-center justify-between border-b border-gray-200 p-3">
+      {/* Header */}
+      <div className="flex items-center justify-between border-b border-gray-200 p-3 bg-gray-50/80 rounded-t-2xl">
         <div className="flex items-center gap-2">
-          <div className="flex h-6 w-6 items-center justify-center rounded-md bg-amber-50 text-amber-600">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor">
               <path d="M7.938 2.016a.13.13 0 0 1 .125 0l6.857 11.856c.026.045.026.1 0 .145a.14.14 0 0 1-.125.073H1.205a.14.14 0 0 1-.125-.073.17.17 0 0 1 0-.145L7.938 2.016zm.854 4.484a.5.5 0 0 0-.992 0l-.3 3.5a.5.5 0 0 0 .992.08l.3-3.58zm-.496 5.5a.65.65 0 1 0 0 1.3.65.65 0 0 0 0-1.3z" />
             </svg>
           </div>
+
           <div>
-            <h2 className="text-xs font-bold text-gray-900">Belum di Kalender</h2>
-            <p className="text-[10px] text-gray-500">Seret kartu ke jadwal kalender</p>
+            <h2 className="text-xs font-bold text-gray-900 leading-tight">Belum di Kalender</h2>
+            <p className="text-[10px] text-gray-500">{totalUnscheduled} item tertunda</p>
           </div>
         </div>
-
-        <button
-          type="button"
-          onClick={onToggle}
-          title="Tutup menu samping"
-          aria-label="Tutup menu samping"
-          className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition"
-        >
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-            <path d="M12 4L4 12M4 4l8 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
       </div>
 
       {/* Tab Navigasi: Item & Team Task */}
@@ -180,9 +182,9 @@ export default function CalendarSidebar({
         </button>
       </div>
 
-      {/* Input Pencarian */}
-      <div className="p-2 border-b border-gray-100">
-        <div className="relative">
+      {/* Input Pencarian & Tombol Segarkan */}
+      <div className="flex items-center gap-1.5 border-b border-gray-100 p-2">
+        <div className="relative flex-1">
           <input
             type="text"
             value={search}
@@ -200,10 +202,35 @@ export default function CalendarSidebar({
             </button>
           )}
         </div>
+
+        {activeTab === 'teamTask' && (
+          <button
+            type="button"
+            onClick={() => void fetchAssignedTasks(false)}
+            disabled={loadingTasks}
+            title="Segarkan daftar tugas tim"
+            aria-label="Segarkan daftar tugas tim"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-gray-200 bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-gray-800 transition disabled:opacity-50"
+          >
+            <svg
+              className={`h-3.5 w-3.5 ${loadingTasks ? 'animate-spin text-violet-600' : ''}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </button>
+        )}
       </div>
 
-      {/* Daftar Kartu (Draggable) */}
-      <div className="flex-1 overflow-y-auto p-2.5 space-y-2 max-h-[560px]">
+      {/* Daftar Kartu (Draggable - dibatasi maks 2 kartu, selebihnya di-scroll) */}
+      <div
+        className={`min-h-0 overflow-y-auto nice-scroll p-2.5 space-y-2 ${
+          activeTab === 'item' ? 'max-h-[160px]' : 'max-h-[190px]'
+        }`}
+      >
         {activeTab === 'item' && (
           <>
             {unscheduledItems.length === 0 ? (
@@ -219,16 +246,15 @@ export default function CalendarSidebar({
                     key={a.id}
                     draggable
                     onDragStart={(e) => {
-                      e.dataTransfer.setData(
-                        'application/json',
-                        JSON.stringify({
-                          source: 'item',
-                          id: a.id,
-                          title: a.title,
-                          type: a.type,
-                          date: a.date,
-                        })
-                      );
+                      const jsonPayload = JSON.stringify({
+                        source: 'item',
+                        id: a.id,
+                        title: a.title,
+                        type: a.type,
+                        date: a.date,
+                      });
+                      e.dataTransfer.setData('application/json', jsonPayload);
+                      e.dataTransfer.setData('text/plain', jsonPayload);
                       e.dataTransfer.effectAllowed = 'copyMove';
                     }}
                     className="group relative cursor-grab rounded-lg border border-amber-200/80 bg-amber-50/40 p-2.5 shadow-2xs transition hover:border-amber-300 hover:bg-amber-50 hover:shadow-xs active:cursor-grabbing"
@@ -273,8 +299,14 @@ export default function CalendarSidebar({
 
         {activeTab === 'teamTask' && (
           <>
-            {loadingTasks ? (
-              <p className="py-8 text-center text-xs text-gray-400">Memuat tugas tim…</p>
+            {loadingTasks && teamTasks.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center text-xs text-gray-400">
+                <svg className="mb-2 h-5 w-5 animate-spin text-violet-500" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                </svg>
+                <p>Memuat tugas tim…</p>
+              </div>
             ) : unscheduledTeamTasks.length === 0 ? (
               <div className="py-8 text-center text-xs text-gray-400">
                 <p>Tidak ada tugas tim yang tertunda.</p>
@@ -288,16 +320,15 @@ export default function CalendarSidebar({
                     key={task.id}
                     draggable
                     onDragStart={(e) => {
-                      e.dataTransfer.setData(
-                        'application/json',
-                        JSON.stringify({
-                          source: 'team-task',
-                          id: task.id,
-                          taskId: task.id,
-                          title: task.title,
-                          type: 'TASK',
-                        })
-                      );
+                      const jsonPayload = JSON.stringify({
+                        source: 'team-task',
+                        id: task.id,
+                        taskId: task.id,
+                        title: task.title,
+                        type: 'TASK',
+                      });
+                      e.dataTransfer.setData('application/json', jsonPayload);
+                      e.dataTransfer.setData('text/plain', jsonPayload);
                       e.dataTransfer.effectAllowed = 'copyMove';
                     }}
                     className="group relative cursor-grab rounded-lg border border-violet-200/80 bg-violet-50/30 p-2.5 shadow-2xs transition hover:border-violet-300 hover:bg-violet-50/70 hover:shadow-xs active:cursor-grabbing"

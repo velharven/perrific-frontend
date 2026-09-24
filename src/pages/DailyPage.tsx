@@ -1322,12 +1322,14 @@ function DailyPageInner() {
 
   // ---- actions ----
   // Halaman baru ala Notion: langsung jadi baris lalu fokus edit judulnya.
-  async function handleNewPage(targetDate?: Date) {
+  async function handleNewPage(targetDate?: Date, time?: { startTime?: string; endTime?: string }) {
     const d = targetDate ?? selectedDate;
     const iso = toISODate(d);
     const created = await activityApi.create({
       title: 'Tanpa judul',
       date: new Date(`${iso}T00:00:00`).toISOString(),
+      startTime: time?.startTime,
+      endTime: time?.endTime,
       icon: 'note',
     });
     setActivities((prev) => [...prev, created].sort((a, b) => a.order - b.order));
@@ -2183,9 +2185,9 @@ function DailyPageInner() {
           onSelectDate={(d) => {
             setSelectedDate(d);
           }}
-          onCreateActivity={(d) => {
+          onCreateActivity={(d, time) => {
             setSelectedDate(d);
-            void handleNewPage(d);
+            void handleNewPage(d, time);
           }}
           onOpenActivity={(act) => {
             if (act.date) {

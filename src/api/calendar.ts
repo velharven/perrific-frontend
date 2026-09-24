@@ -44,5 +44,19 @@ export const calendarApi = {
         endDate,
       })
       .then((r) => r.data.data),
+
+  updateEvent: (
+    eventId: string,
+    data: {
+      title?: string;
+      description?: string | null;
+      date?: string;
+      startTime?: string | null;
+      endTime?: string | null;
+    },
+  ) => api.patch<{ data: { id: string } }>(`/calendar/google/events/${eventId}`, data).then((r) => r.data.data),
+
+  deleteEvent: (eventId: string) =>
+    api.delete<{ data: { id: string } }>(`/calendar/google/events/${eventId}`).then((r) => r.data.data),
 };
 

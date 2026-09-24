@@ -1,18 +1,21 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, type DragEvent } from 'react';
 import type { DailyActivity, GoogleCalendarEvent } from '@/types';
 import { useGoogleCalendar } from '@/hooks/useGoogleCalendar';
 import { useSocket } from '@/store/socket';
 import { activityApi } from '@/api/activities';
+import { calendarApi } from '@/api/calendar';
+import { showToast } from '@/components/ui/Toast';
 import CalendarSidebar from './CalendarSidebar';
+import CalendarCardSettings, { type CombinedItem } from './CalendarCardSettings';
 
-export type CalendarViewMode = 'day' | 'week' | 'month';
+export type CalendarViewMode = 'day' | 'week';
 
 interface CalendarViewProps {
   activities: DailyActivity[];
   selectedDate: Date;
   onSelectDate: (date: Date) => void;
   onOpenActivity?: (activity: DailyActivity) => void;
-  onCreateActivity?: (date: Date) => void;
+  onCreateActivity?: (date: Date, time?: { startTime: string; endTime: string }) => void;
   onRefreshActivities?: () => void;
 }
 
@@ -35,6 +38,20 @@ const DAY_NAMES = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
 const FULL_DAY_NAMES = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const HOUR_HEIGHT = 60; // 60px per jam => 1 menit = 1px
+const DROP_SNAP_MINUTES = 15;
+
+function getSnappedDropMinutes(clientY: number, timelineColumn: HTMLElement): number {
+  const rect = timelineColumn.getBoundingClientRect();
+  const rawMinutes = ((clientY - rect.top) / HOUR_HEIGHT) * 60;
+  const snappedMinutes = Math.round(rawMinutes / DROP_SNAP_MINUTES) * DROP_SNAP_MINUTES;
+  return Math.min(24 * 60 - DROP_SNAP_MINUTES, Math.max(0, snappedMinutes));
+}
+
+function dateAtMinutes(date: Date, minutes: number): Date {
+  const result = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
+  result.setMinutes(minutes);
+  return result;
+}
 
 function toISODate(d: Date): string {
   const year = d.getFullYear();
@@ -75,10 +92,6 @@ function parseTimeToMinutes(timeStr?: string | null): number | null {
   }
   return null;
 }
-
-type CombinedItem =
-  | { type: 'activity'; id: string; act: DailyActivity; time?: string | null }
-  | { type: 'google'; id: string; gEv: GoogleCalendarEvent; time?: string };
 
 interface TimedItemGeometry {
   item: CombinedItem;
@@ -154,7 +167,7 @@ function computeTimedItemsLayout(items: CombinedItem[]): TimedItemGeometry[] {
       result.push({
         ...p,
         colIndex: c,
-        totalCols: Math.max(1, overlaps),
+        totalCols: Math.max(1, overlaps, c + 1),
       });
     }
   }
@@ -172,75 +185,20 @@ export default function CalendarView({
 }: CalendarViewProps) {
   const [currentYear, setCurrentYear] = useState(selectedDate.getFullYear());
   const [currentMonth, setCurrentMonth] = useState(selectedDate.getMonth()); // 0-indexed
-  const [viewMode, setViewMode] = useState<CalendarViewMode>('month');
+  const [viewMode, setViewMode] = useState<CalendarViewMode>('week');
   const [isViewMenuOpen, setIsViewMenuOpen] = useState(false);
-  const [dayModalDate, setDayModalDate] = useState<Date | null>(null);
   const [googleEvents, setGoogleEvents] = useState<GoogleCalendarEvent[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<GoogleCalendarEvent | null>(null);
+  const [selectedCardItem, setSelectedCardItem] = useState<CombinedItem | null>(null);
   const [importing, setImporting] = useState(false);
   const [now, setNow] = useState(new Date());
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [dragOverDate, setDragOverDate] = useState<string | null>(null);
-  const [dragOverSlot, setDragOverSlot] = useState<{ dayDate: string; hour: number } | null>(null);
-
-  // Tangani kartu yang di-drop ke kalender dari sidebar
-  const handleDropPayload = async (targetDate: Date, hour: number | null, rawJson: string) => {
-    if (!rawJson) return;
-    try {
-      const payload = JSON.parse(rawJson) as {
-        source: 'item' | 'team-task';
-        id: string;
-        title: string;
-        taskId?: string;
-        type?: DailyActivity['type'];
-      };
-
-      const startH = hour !== null ? hour : 9;
-      const endH = hour !== null ? (hour + 1) % 24 : 10;
-
-      const dateISO = toISODate(targetDate);
-      const dateStr = new Date(`${dateISO}T00:00:00`).toISOString();
-
-      const startTime = new Date(targetDate);
-      startTime.setHours(startH, 0, 0, 0);
-      const endTime = new Date(targetDate);
-      endTime.setHours(endH, 0, 0, 0);
-
-      if (payload.source === 'item') {
-        await activityApi.update(payload.id, {
-          date: dateStr,
-          startTime: startTime.toISOString(),
-          endTime: endTime.toISOString(),
-        });
-      } else if (payload.source === 'team-task') {
-        await activityApi.create({
-          title: payload.title,
-          taskId: payload.taskId,
-          type: 'TASK',
-          date: dateStr,
-          startTime: startTime.toISOString(),
-          endTime: endTime.toISOString(),
-          icon: 'check',
-        });
-      }
-
-      if (onRefreshActivities) {
-        onRefreshActivities();
-      }
-    } catch (e) {
-      console.error('[CalendarView] Gagal menjadwalkan kartu ke kalender:', e);
-    }
-  };
-
-  const viewMenuRef = useRef<HTMLDivElement>(null);
-  const timelineScrollRef = useRef<HTMLDivElement>(null);
-  const isSyncingRef = useRef(false);
-  const isInitialActivitiesMount = useRef(true);
 
   const {
     status: gcalStatus,
+    loading: gcalLoading,
     connecting: gcalConnecting,
     connect: connectGcal,
+    disconnect: disconnectGcal,
     fetchEvents,
     importEvents,
     autoSync,
@@ -248,120 +206,21 @@ export default function CalendarView({
 
   const { socket } = useSocket();
 
-  // Sinkronkan state tahun & bulan saat selectedDate berubah dari luar
-  useEffect(() => {
-    setCurrentYear(selectedDate.getFullYear());
-    setCurrentMonth(selectedDate.getMonth());
-  }, [selectedDate]);
-
-  // Pembaruan waktu sekarang setiap menit untuk garis merah Notion Calendar
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setNow(new Date());
-    }, 60000);
-    return () => clearInterval(timer);
-  }, []);
-
-  // Otomatis gulir timeline ke jam saat ini / jam 08:00 saat masuk mode Minggu atau Hari
-  useEffect(() => {
-    if (viewMode === 'week' || viewMode === 'day') {
-      const scrollHour = Math.max(0, new Date().getHours() - 1);
-      const targetScrollTop = scrollHour * HOUR_HEIGHT;
-      if (timelineScrollRef.current) {
-        timelineScrollRef.current.scrollTop = targetScrollTop;
-      }
-    }
-  }, [viewMode]);
-
-  // Tutup dropdown menu saat klik di luar
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (viewMenuRef.current && !viewMenuRef.current.contains(e.target as Node)) {
-        setIsViewMenuOpen(false);
-      }
-    }
-    if (isViewMenuOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [isViewMenuOpen]);
-
-  // Dukungan pintasan keyboard: 1/D (Hari), 0/W (Minggu), M (Bulan)
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      const target = e.target as HTMLElement | null;
-      if (
-        target &&
-        (target.tagName === 'INPUT' ||
-          target.tagName === 'TEXTAREA' ||
-          target.tagName === 'SELECT' ||
-          target.isContentEditable)
-      ) {
-        return;
-      }
-
-      if (e.key === '1' || e.key.toLowerCase() === 'd') {
-        setViewMode('day');
-        setIsViewMenuOpen(false);
-      } else if (e.key === '0' || e.key.toLowerCase() === 'w') {
-        setViewMode('week');
-        setIsViewMenuOpen(false);
-      } else if (e.key.toLowerCase() === 'm') {
-        setViewMode('month');
-        setIsViewMenuOpen(false);
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
-
-  // Hitung rentang tanggal kalender bulan aktif
-  const { days, rangeStart, rangeEnd } = useMemo(() => {
+  // Rentang waktu sinkronisasi Google Calendar berdasarkan bulan aktif
+  const { rangeStart, rangeEnd } = useMemo(() => {
     const firstDayOfMonth = new Date(currentYear, currentMonth, 1);
     const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0);
 
-    let startDayOfWeek = firstDayOfMonth.getDay() - 1;
-    if (startDayOfWeek === -1) startDayOfWeek = 6;
-
     const startDate = new Date(firstDayOfMonth);
-    startDate.setDate(startDate.getDate() - startDayOfWeek);
+    startDate.setDate(startDate.getDate() - 7);
     startDate.setHours(0, 0, 0, 0);
 
-    let endDayOfWeek = lastDayOfMonth.getDay() - 1;
-    if (endDayOfWeek === -1) endDayOfWeek = 6;
-
-    const daysToAdd = 6 - endDayOfWeek;
     const endDate = new Date(lastDayOfMonth);
-    endDate.setDate(endDate.getDate() + daysToAdd);
+    endDate.setDate(endDate.getDate() + 7);
     endDate.setHours(23, 59, 59, 999);
 
-    const result: Date[] = [];
-    const curr = new Date(startDate);
-    while (curr <= endDate) {
-      result.push(new Date(curr));
-      curr.setDate(curr.getDate() + 1);
-    }
-
-    return { days: result, rangeStart: startDate, rangeEnd: endDate };
+    return { rangeStart: startDate, rangeEnd: endDate };
   }, [currentYear, currentMonth]);
-
-  // Hitung 7 hari untuk mode minggu aktif
-  const weekDays = useMemo(() => {
-    const start = new Date(selectedDate);
-    let dayOfWeek = start.getDay() - 1;
-    if (dayOfWeek === -1) dayOfWeek = 6;
-    start.setDate(start.getDate() - dayOfWeek);
-    start.setHours(0, 0, 0, 0);
-
-    const result: Date[] = [];
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(start);
-      d.setDate(d.getDate() + i);
-      result.push(d);
-    }
-    return result;
-  }, [selectedDate]);
 
   // Muat event Google Calendar jika terhubung
   const loadGoogleEvents = useCallback(async () => {
@@ -381,16 +240,518 @@ export default function CalendarView({
     void loadGoogleEvents();
   }, [loadGoogleEvents]);
 
+  // Sinkronkan data kartu yang sedang dipilih saat data aktivitas/googleEvents diperbarui
+  useEffect(() => {
+    if (!selectedCardItem) return;
+    if (selectedCardItem.type === 'activity') {
+      const updated = activities.find((a) => a.id === selectedCardItem.act.id);
+      if (updated) {
+        setSelectedCardItem({
+          type: 'activity',
+          id: `act-${updated.id}`,
+          act: updated,
+          time: updated.startTime,
+        });
+      } else {
+        setSelectedCardItem(null);
+      }
+    } else if (selectedCardItem.type === 'google') {
+      const updated = googleEvents.find((g) => g.id === selectedCardItem.gEv.id);
+      if (updated) {
+        setSelectedCardItem({
+          type: 'google',
+          id: `gcal-${updated.id}`,
+          gEv: updated,
+          time: updated.start,
+        });
+      }
+    }
+  }, [activities, googleEvents]);
+
+  const [dragOverSlot, setDragOverSlot] = useState<{ dayDate: string; startMinutes: number } | null>(null);
+
+  const [dragOverCardId, setDragOverCardId] = useState<string | null>(null);
+  const [draggingCardId, setDraggingCardId] = useState<string | null>(null);
+
+  // Tangani kartu yang di-drop ke kalender dari sidebar atau ke atas kartu lain
+  // Ref untuk item yang sedang dipilih agar event listener selalu mendapatkan nilai terbaru
+  const selectedCardItemRef = useRef<CombinedItem | null>(null);
+  selectedCardItemRef.current = selectedCardItem;
+
+  // Tipe aksi riwayat untuk undo (Ctrl+Z)
+  type UndoAction =
+    | {
+        type: 'delete';
+        item: CombinedItem;
+        title: string;
+      }
+    | {
+        type: 'drag-from-sidebar-item';
+        activityId: string;
+        title: string;
+        prevDate: string | null;
+        prevStartTime: string | null;
+        prevEndTime: string | null;
+      }
+    | {
+        type: 'drag-from-sidebar-team-task';
+        createdActivityId: string;
+        title: string;
+      }
+    | {
+        type: 'move-calendar-card';
+        itemType: 'activity' | 'google';
+        rawId: string;
+        title: string;
+        prevDate: string | null;
+        prevStartTime: string | null;
+        prevEndTime: string | null;
+      };
+
+  // Stack riwayat untuk undo (Ctrl+Z)
+  const undoStackRef = useRef<UndoAction[]>([]);
+
+  // Fungsi membatalkan aksi terakhir (Undo / Ctrl+Z)
+  const handleUndo = useCallback(async () => {
+    if (undoStackRef.current.length === 0) {
+      showToast('Tidak ada kegiatan yang bisa diurungkan.');
+      return;
+    }
+
+    const last = undoStackRef.current.pop();
+    if (!last) return;
+
+    if (last.type === 'move-calendar-card') {
+      try {
+        if (last.itemType === 'activity') {
+          await activityApi.update(last.rawId, {
+            ...(last.prevDate ? { date: last.prevDate } : {}),
+            startTime: last.prevStartTime,
+            endTime: last.prevEndTime,
+          });
+
+          if (onRefreshActivities) onRefreshActivities();
+        } else {
+          await calendarApi.updateEvent(last.rawId, {
+            ...(last.prevDate ? { date: last.prevDate } : {}),
+            startTime: last.prevStartTime,
+            endTime: last.prevEndTime,
+          });
+
+          void loadGoogleEvents();
+        }
+
+        setSelectedCardItem(null);
+        showToast(`Posisi kegiatan "${last.title}" dikembalikan.`);
+      } catch (err) {
+        console.error('[CalendarView] Gagal mengembalikan posisi kegiatan:', err);
+        showToast('Gagal mengembalikan posisi kegiatan.');
+      }
+      return;
+    }
+
+    if (last.type === 'drag-from-sidebar-item') {
+      try {
+        await activityApi.update(last.activityId, {
+          startTime: null,
+          endTime: null,
+          ...(last.prevDate ? { date: last.prevDate } : {}),
+        });
+
+        if (onRefreshActivities) onRefreshActivities();
+        setSelectedCardItem(null);
+        showToast(`"${last.title}" dikembalikan ke menu "Belum di kalender".`);
+      } catch (err) {
+        console.error('[CalendarView] Gagal mengembalikan item ke menu:', err);
+        showToast('Gagal mengembalikan item ke menu.');
+      }
+      return;
+    }
+
+    if (last.type === 'drag-from-sidebar-team-task') {
+      try {
+        await activityApi.remove(last.createdActivityId);
+
+        if (onRefreshActivities) onRefreshActivities();
+        setSelectedCardItem(null);
+        showToast(`Tugas "${last.title}" dikembalikan ke menu "Belum di kalender".`);
+      } catch (err) {
+        console.error('[CalendarView] Gagal mengembalikan tugas ke menu:', err);
+        showToast('Gagal mengembalikan tugas ke menu.');
+      }
+      return;
+    }
+
+    if (last.type === 'delete') {
+      const { item, title } = last;
+      try {
+        if (item.type === 'activity') {
+          const act = item.act;
+          const restored = await activityApi.create({
+            title: act.title || 'Tanpa judul',
+            description: act.description || undefined,
+            date: act.date ? new Date(act.date).toISOString() : new Date().toISOString(),
+            startTime: act.startTime || undefined,
+            endTime: act.endTime || undefined,
+            type: act.type || 'CUSTOM',
+            taskId: act.taskId || undefined,
+            icon: act.icon || undefined,
+            checklist: act.checklistItems?.length ? act.checklistItems.map((c) => ({ text: c.text })) : undefined,
+          });
+
+          if (onRefreshActivities) onRefreshActivities();
+          setSelectedCardItem({
+            type: 'activity',
+            id: `act-${restored.id}`,
+            act: restored,
+            time: restored.startTime,
+          });
+        } else {
+          const gEv = item.gEv;
+          const restored = await activityApi.create({
+            title: gEv.title || 'Event Google',
+            description: gEv.description || undefined,
+            date: gEv.start ? new Date(gEv.start).toISOString() : new Date().toISOString(),
+            startTime: gEv.start && gEv.start.includes('T') ? gEv.start : undefined,
+            endTime: gEv.end && gEv.end.includes('T') ? gEv.end : undefined,
+            type: 'CUSTOM',
+          });
+
+          if (onRefreshActivities) onRefreshActivities();
+          void loadGoogleEvents();
+          setSelectedCardItem({
+            type: 'activity',
+            id: `act-${restored.id}`,
+            act: restored,
+            time: restored.startTime,
+          });
+        }
+
+        showToast(`Kegiatan "${title}" dipulihkan.`);
+      } catch (err) {
+        console.error('[CalendarView] Gagal memulihkan kegiatan:', err);
+        showToast('Gagal memulihkan kegiatan.');
+      }
+      return;
+    }
+  }, [onRefreshActivities, loadGoogleEvents]);
+
+  // Fungsi menghapus kartu terpilih
+  const handleDeleteCard = useCallback(
+    async (itemToDelete: CombinedItem) => {
+      const isAct = itemToDelete.type === 'activity';
+      const act = isAct ? itemToDelete.act : null;
+      const gEv = !isAct ? itemToDelete.gEv : null;
+      const title = (isAct ? act?.title : gEv?.title) || 'Tanpa judul';
+
+      try {
+        if (isAct && act) {
+          await activityApi.remove(act.id);
+        } else if (gEv) {
+          await calendarApi.deleteEvent(gEv.id);
+          void loadGoogleEvents();
+        }
+
+        undoStackRef.current.push({ type: 'delete', item: itemToDelete, title });
+        setSelectedCardItem(null);
+        if (onRefreshActivities) onRefreshActivities();
+
+        showToast(`Kegiatan "${title}" dihapus`, {
+          label: 'Urungkan (Ctrl+Z)',
+          onAction: () => {
+            void handleUndo();
+          },
+        });
+      } catch (err) {
+        console.error('[CalendarView] Gagal menghapus kegiatan:', err);
+        showToast('Gagal menghapus kegiatan.');
+      }
+    },
+    [onRefreshActivities, handleUndo, loadGoogleEvents],
+  );
+
+  // Tangani kartu yang di-drop ke kalender dari sidebar atau perpindahan kartu kalender
+  const handleDropPayload = async (
+    targetDate: Date,
+    requestedStartMinutes: number,
+    rawJson: string,
+  ) => {
+    if (!rawJson) return;
+    try {
+      const payload = JSON.parse(rawJson) as {
+        source: 'item' | 'team-task' | 'calendar-card';
+        id: string;
+        title: string;
+        taskId?: string;
+        type?: DailyActivity['type'];
+        itemType?: 'activity' | 'google';
+        fullId?: string;
+        originalDate?: string | null;
+        originalStartTime?: string | null;
+        originalEndTime?: string | null;
+        durationMinutes?: number;
+      };
+
+      const durationMinutes = payload.source === 'calendar-card' ? payload.durationMinutes || 60 : 60;
+      const latestStartMinutes = Math.max(0, 24 * 60 - durationMinutes);
+      const startMinutes = Math.min(requestedStartMinutes, latestStartMinutes);
+      const newStart = dateAtMinutes(targetDate, startMinutes);
+      const newEnd = new Date(newStart.getTime() + durationMinutes * 60 * 1000);
+
+      // 1. Kasus pemindahan kartu kalender (Drag & Drop antar slot atau tanggal)
+      if (payload.source === 'calendar-card') {
+        const newStartTimeStr = newStart.toISOString();
+        const newEndTimeStr = newEnd.toISOString();
+
+        // Cek apakah posisi dan waktu sama persis (tidak ada perpindahan)
+        if (
+          payload.originalStartTime &&
+          new Date(payload.originalStartTime).getTime() === newStart.getTime() &&
+          payload.originalEndTime &&
+          new Date(payload.originalEndTime).getTime() === newEnd.getTime()
+        ) {
+          return;
+        }
+
+        const newDateStr = new Date(newStart.getFullYear(), newStart.getMonth(), newStart.getDate(), 0, 0, 0, 0).toISOString();
+
+        if (payload.itemType === 'activity') {
+          await activityApi.update(payload.id, {
+            date: newDateStr,
+            startTime: newStartTimeStr,
+            endTime: newEndTimeStr,
+          });
+
+          if (onRefreshActivities) {
+            onRefreshActivities();
+          }
+        } else {
+          await calendarApi.updateEvent(payload.id, {
+            date: newDateStr,
+            startTime: newStartTimeStr,
+            endTime: newEndTimeStr,
+          });
+
+          void loadGoogleEvents();
+        }
+
+        undoStackRef.current.push({
+          type: 'move-calendar-card',
+          itemType: payload.itemType || 'activity',
+          rawId: payload.id,
+          title: payload.title,
+          prevDate: payload.originalDate || null,
+          prevStartTime: payload.originalStartTime || null,
+          prevEndTime: payload.originalEndTime || null,
+        });
+
+        showToast(`Kegiatan "${payload.title}" dipindahkan`, {
+          label: 'Urungkan (Ctrl+Z)',
+          onAction: () => {
+            void handleUndo();
+          },
+        });
+        return;
+      }
+
+      // 2. Kasus drop dari sidebar (item atau team-task)
+      const dateStr = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), 0, 0, 0, 0).toISOString();
+
+      const startTimeStr = newStart.toISOString();
+      const endTimeStr = newEnd.toISOString();
+
+      if (payload.source === 'item') {
+        const originalAct = activities.find((a) => a.id === payload.id);
+        const prevDate = originalAct?.date || null;
+        const prevStartTime = originalAct?.startTime || null;
+        const prevEndTime = originalAct?.endTime || null;
+
+        await activityApi.update(payload.id, {
+          date: dateStr,
+          startTime: startTimeStr,
+          endTime: endTimeStr,
+        });
+
+        undoStackRef.current.push({
+          type: 'drag-from-sidebar-item',
+          activityId: payload.id,
+          title: payload.title,
+          prevDate,
+          prevStartTime,
+          prevEndTime,
+        });
+
+        showToast(`"${payload.title}" dijadwalkan ke kalender`, {
+          label: 'Urungkan (Ctrl+Z)',
+          onAction: () => {
+            void handleUndo();
+          },
+        });
+      } else if (payload.source === 'team-task') {
+        const created = await activityApi.create({
+          title: payload.title,
+          taskId: payload.taskId,
+          type: 'TASK',
+          date: dateStr,
+          startTime: startTimeStr,
+          endTime: endTimeStr,
+          icon: 'check',
+        });
+
+        undoStackRef.current.push({
+          type: 'drag-from-sidebar-team-task',
+          createdActivityId: created.id,
+          title: payload.title,
+        });
+
+        showToast(`Tugas "${payload.title}" dijadwalkan ke kalender`, {
+          label: 'Urungkan (Ctrl+Z)',
+          onAction: () => {
+            void handleUndo();
+          },
+        });
+      }
+
+      if (onRefreshActivities) {
+        onRefreshActivities();
+      }
+    } catch (e) {
+      console.error('[CalendarView] Gagal menjadwalkan kartu ke kalender:', e);
+      showToast('Gagal menyimpan waktu kegiatan. Silakan coba lagi.');
+    }
+  };
+
+  const handleTimelineDrop = (
+    event: DragEvent<HTMLDivElement>,
+    targetDate: Date,
+    timelineColumn: HTMLElement,
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setDragOverSlot(null);
+    setDragOverCardId(null);
+
+    const raw = event.dataTransfer.getData('application/json') || event.dataTransfer.getData('text/plain');
+    if (!raw) return;
+
+    const startMinutes = getSnappedDropMinutes(event.clientY, timelineColumn);
+    void handleDropPayload(targetDate, startMinutes, raw);
+  };
+
+  const viewMenuRef = useRef<HTMLDivElement>(null);
+  const timelineScrollRef = useRef<HTMLDivElement>(null);
+  const calendarContainerRef = useRef<HTMLDivElement>(null);
+  const isSyncingRef = useRef(false);
+  const isInitialActivitiesMount = useRef(true);
+
+
+  // Sinkronkan state tahun & bulan saat selectedDate berubah dari luar
+  useEffect(() => {
+    setCurrentYear(selectedDate.getFullYear());
+    setCurrentMonth(selectedDate.getMonth());
+  }, [selectedDate]);
+
+  // Pembaruan waktu sekarang setiap menit untuk garis merah Notion Calendar
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNow(new Date());
+    }, 60000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Otomatis gulir halaman ke jam saat ini saat masuk mode Minggu atau Hari
+  useEffect(() => {
+    if (viewMode === 'week' || viewMode === 'day') {
+      const scrollHour = Math.max(0, new Date().getHours() - 1);
+      const targetOffset = scrollHour * HOUR_HEIGHT;
+      if (timelineScrollRef.current) {
+        const rect = timelineScrollRef.current.getBoundingClientRect();
+        const absoluteTop = rect.top + window.scrollY;
+        window.scrollTo({ top: absoluteTop + targetOffset, behavior: 'smooth' });
+      }
+    }
+  }, [viewMode]);
+
+  // Tutup dropdown menu saat klik di luar
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (viewMenuRef.current && !viewMenuRef.current.contains(e.target as Node)) {
+        setIsViewMenuOpen(false);
+      }
+    }
+    if (isViewMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [isViewMenuOpen]);
+
+  // Dukungan pintasan keyboard: 1/D (Hari), 0/W (Minggu), Delete/Backspace (Hapus kartu), Ctrl+Z (Undo), Escape (Deselect)
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      const target = e.target as HTMLElement | null;
+      const isInput =
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable);
+
+      if (isInput) return;
+
+      // Pintasan Undo: Ctrl+Z atau Cmd+Z
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        void handleUndo();
+        return;
+      }
+
+      // Pintasan Hapus: Delete atau Backspace saat ada kartu yang dipilih
+      if (selectedCardItemRef.current && (e.key === 'Delete' || e.key === 'Backspace')) {
+        e.preventDefault();
+        void handleDeleteCard(selectedCardItemRef.current);
+        return;
+      }
+
+      // Pintasan Escape: Deselect kartu terpilih
+      if (e.key === 'Escape' && selectedCardItemRef.current) {
+        e.preventDefault();
+        setSelectedCardItem(null);
+        return;
+      }
+
+      if (e.key === '1' || e.key.toLowerCase() === 'd') {
+        setViewMode('day');
+        setIsViewMenuOpen(false);
+      } else if (e.key === '0' || e.key.toLowerCase() === 'w') {
+        setViewMode('week');
+        setIsViewMenuOpen(false);
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleUndo, handleDeleteCard]);
+
+  // Hitung 7 hari untuk mode minggu aktif
+  const weekDays = useMemo(() => {
+    const start = new Date(selectedDate);
+    let dayOfWeek = start.getDay() - 1;
+    if (dayOfWeek === -1) dayOfWeek = 6;
+    start.setDate(start.getDate() - dayOfWeek);
+    start.setHours(0, 0, 0, 0);
+
+    const result: Date[] = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(start);
+      d.setDate(d.getDate() + i);
+      result.push(d);
+    }
+    return result;
+  }, [selectedDate]);
+
   // Navigasi prev sesuai mode tampilan
   function handlePrev() {
-    if (viewMode === 'month') {
-      if (currentMonth === 0) {
-        setCurrentMonth(11);
-        setCurrentYear((y) => y - 1);
-      } else {
-        setCurrentMonth((m) => m - 1);
-      }
-    } else if (viewMode === 'week') {
+    if (viewMode === 'week') {
       const nextDate = new Date(selectedDate);
       nextDate.setDate(nextDate.getDate() - 7);
       onSelectDate(nextDate);
@@ -407,14 +768,7 @@ export default function CalendarView({
 
   // Navigasi next sesuai mode tampilan
   function handleNext() {
-    if (viewMode === 'month') {
-      if (currentMonth === 11) {
-        setCurrentMonth(0);
-        setCurrentYear((y) => y + 1);
-      } else {
-        setCurrentMonth((m) => m + 1);
-      }
-    } else if (viewMode === 'week') {
+    if (viewMode === 'week') {
       const nextDate = new Date(selectedDate);
       nextDate.setDate(nextDate.getDate() + 7);
       onSelectDate(nextDate);
@@ -438,9 +792,6 @@ export default function CalendarView({
 
   // Judul dinamis pada toolbar
   const headerTitle = useMemo(() => {
-    if (viewMode === 'month') {
-      return `${MONTH_NAMES[currentMonth]} ${currentYear}`;
-    }
     if (viewMode === 'week') {
       const first = weekDays[0];
       const last = weekDays[6];
@@ -451,19 +802,14 @@ export default function CalendarView({
     }
     const dayName = FULL_DAY_NAMES[selectedDate.getDay()];
     return `${dayName}, ${selectedDate.getDate()} ${MONTH_NAMES[selectedDate.getMonth()]} ${selectedDate.getFullYear()}`;
-  }, [viewMode, currentMonth, currentYear, weekDays, selectedDate]);
+  }, [viewMode, weekDays, selectedDate]);
 
-  // Sinkronisasi 2 arah untuk 1 hari (hari yang dipilih / hari ini) tanpa perlu reload halaman
+  // Sinkronisasi 2 arah otomatis untuk seluruh rentang kalender aktif
   const triggerAutoSync = useCallback(async () => {
     if (!gcalStatus.connected || isSyncingRef.current) return;
     isSyncingRef.current = true;
     try {
-      const dayStart = new Date(selectedDate);
-      dayStart.setHours(0, 0, 0, 0);
-      const dayEnd = new Date(selectedDate);
-      dayEnd.setHours(23, 59, 59, 999);
-
-      await autoSync(dayStart.toISOString(), dayEnd.toISOString());
+      await autoSync(rangeStart.toISOString(), rangeEnd.toISOString());
       await loadGoogleEvents();
       if (onRefreshActivities) onRefreshActivities();
     } catch (err) {
@@ -471,7 +817,7 @@ export default function CalendarView({
     } finally {
       isSyncingRef.current = false;
     }
-  }, [gcalStatus.connected, autoSync, selectedDate, loadGoogleEvents, onRefreshActivities]);
+  }, [gcalStatus.connected, autoSync, rangeStart, rangeEnd, loadGoogleEvents, onRefreshActivities]);
 
   // Otomatis sinkron saat pertama kali terhubung atau kalender dibuka, dan berjalan rutin setiap 15 detik
   useEffect(() => {
@@ -561,7 +907,9 @@ export default function CalendarView({
   const getDayItems = useCallback(
     (dayDate: Date): CombinedItem[] => {
       const dayActivities = activities.filter((act) => {
-        const actDate = new Date(act.date);
+        const itemDateStr = act.startTime || act.date;
+        if (!itemDateStr) return false;
+        const actDate = new Date(itemDateStr);
         return isSameDay(actDate, dayDate);
       });
 
@@ -597,23 +945,72 @@ export default function CalendarView({
   const currentTimeLabel = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
 
   // Render card kegiatan pada timeline bergaya Notion Calendar
-  function renderEventCard(geo: TimedItemGeometry) {
+  function renderEventCard(geo: TimedItemGeometry, cardDate: Date) {
     const { item, top, height, colIndex, totalCols } = geo;
     const isAct = item.type === 'activity';
-    const isDone = isAct && item.act.status === 'COMPLETED';
-    const isSkipped = isAct && item.act.status === 'SKIPPED';
     const hasGoogle = isAct && Boolean(item.act.googleEventId);
+    const isDragOverThis = dragOverCardId === item.id;
+    const isDraggingThis = draggingCardId === item.id;
+
+    // Periksa apakah kartu sudah melewati garis merah (waktu sekarang)
+    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+    const startOfCardDay = new Date(cardDate.getFullYear(), cardDate.getMonth(), cardDate.getDate()).getTime();
+    const isDayInPast = startOfCardDay < startOfToday;
+    const isToday = startOfCardDay === startOfToday;
+    const isPassedRedLine = isDayInPast || (isToday && geo.startMin < currentMinutes);
 
     const widthPercent = 100 / totalCols;
     const leftPercent = colIndex * widthPercent;
 
+    const isSelectedCard = selectedCardItem?.id === item.id;
+
     return (
       <div
         key={item.id}
+        draggable={true}
+        onDragStart={(e) => {
+          e.stopPropagation();
+          const durationMinutes = Math.max(15, (geo.endMin - geo.startMin) || 60);
+          const rawId = isAct ? item.act.id : item.gEv.id;
+          const cardPayload = {
+            source: 'calendar-card' as const,
+            itemType: isAct ? ('activity' as const) : ('google' as const),
+            id: rawId,
+            fullId: item.id,
+            title: (isAct ? item.act.title : item.gEv.title) || 'Tanpa judul',
+            originalDate: isAct ? (item.act.date || null) : (item.gEv.start || null),
+            originalStartTime: isAct ? (item.act.startTime || null) : (item.gEv.start || null),
+            originalEndTime: isAct ? (item.act.endTime || null) : (item.gEv.end || null),
+            durationMinutes,
+          };
+          e.dataTransfer.setData('application/json', JSON.stringify(cardPayload));
+          e.dataTransfer.setData('text/plain', JSON.stringify(cardPayload));
+          e.dataTransfer.effectAllowed = 'move';
+          setDraggingCardId(item.id);
+        }}
+        onDragEnd={() => {
+          setDraggingCardId(null);
+          setDragOverCardId(null);
+          setDragOverSlot(null);
+        }}
         onClick={(e) => {
           e.stopPropagation();
-          if (isAct && onOpenActivity) onOpenActivity(item.act);
-          if (!isAct) setSelectedEvent(item.gEv);
+          setSelectedCardItem(item);
+        }}
+        onDragOver={(e) => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+          setDragOverCardId(item.id);
+        }}
+        onDragLeave={(e) => {
+          e.stopPropagation();
+          if (dragOverCardId === item.id) {
+            setDragOverCardId(null);
+          }
+        }}
+        onDrop={(e) => {
+          const timelineColumn = e.currentTarget.parentElement;
+          if (timelineColumn) handleTimelineDrop(e, cardDate, timelineColumn);
         }}
         style={{
           top: `${top}px`,
@@ -621,30 +1018,33 @@ export default function CalendarView({
           left: `calc(${leftPercent}% + 2px)`,
           width: `calc(${widthPercent}% - 4px)`,
         }}
-        className={`absolute z-10 overflow-hidden rounded-md border-l-[3.5px] px-2 py-1 text-xs cursor-pointer select-none transition-all shadow-xs hover:shadow-md hover:z-20 ${
-          !isAct
-            ? 'border-emerald-500 bg-emerald-50/90 text-emerald-950 border-r border-t border-b border-emerald-200/60 hover:bg-emerald-100'
-            : isDone
-              ? 'border-gray-400 bg-gray-100/90 text-gray-500 line-through border-r border-t border-b border-gray-200'
-              : isSkipped
-                ? 'border-amber-500 bg-amber-50/90 text-amber-950 border-r border-t border-b border-amber-200/60'
-                : 'border-blue-600 bg-blue-50/90 text-blue-950 border-r border-t border-b border-blue-200/60 hover:bg-blue-100'
+        className={`absolute z-10 overflow-hidden rounded-md border-l-[3.5px] px-2 py-1 text-xs cursor-grab active:cursor-grabbing select-none transition-all shadow-xs hover:shadow-md hover:z-20 ${
+          isDraggingThis
+            ? 'opacity-40 scale-[0.98] ring-2 ring-blue-400 z-40 !cursor-grabbing'
+            : isSelectedCard
+              ? 'ring-2 ring-blue-600 shadow-md z-30 scale-[1.01] !opacity-100'
+              : isPassedRedLine
+                ? 'opacity-40 hover:opacity-100'
+                : 'opacity-100'
+        } ${
+          isDragOverThis
+            ? 'ring-2 ring-violet-500 bg-violet-100/95 shadow-md z-30 scale-[1.01] !opacity-100'
+            : 'border-blue-600 bg-blue-50/90 text-blue-950 border-r border-t border-b border-blue-200/60 hover:bg-blue-100'
         }`}
         title={isAct ? item.act.title : item.gEv.title}
       >
+        {isDragOverThis && (
+          <div className="absolute inset-0 bg-violet-600/15 backdrop-blur-[0.5px] flex items-center justify-center pointer-events-none z-20">
+            <span className="rounded bg-violet-700 px-1.5 py-0.5 text-[9px] font-bold text-white shadow-xs animate-pulse">
+              Letakkan di waktu ini
+            </span>
+          </div>
+        )}
         <div className="flex items-center gap-1 leading-tight">
-          {!isAct && (
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" className="shrink-0">
-              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
-              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-            </svg>
-          )}
           <span className="truncate font-semibold text-[11px]">
             {isAct ? item.act.title : item.gEv.title}
           </span>
-          {hasGoogle && (
+          {(hasGoogle || !isAct) && (
             <span title="Tersinkron ke Google Calendar" className="shrink-0 text-blue-500">
               <svg width="8" height="8" viewBox="0 0 16 16" fill="currentColor">
                 <path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z" />
@@ -713,7 +1113,7 @@ export default function CalendarView({
               aria-expanded={isViewMenuOpen}
               className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 transition shadow-none hover:shadow-xs"
             >
-              <span>{viewMode === 'day' ? 'Hari' : viewMode === 'week' ? 'Minggu' : 'Bulan'}</span>
+              <span>{viewMode === 'day' ? 'Hari' : 'Minggu'}</span>
               <svg
                 width="10"
                 height="10"
@@ -774,28 +1174,6 @@ export default function CalendarView({
                   </div>
                   <span className="text-[11px] font-mono text-gray-400">0 atau W</span>
                 </button>
-
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    setViewMode('month');
-                    setIsViewMenuOpen(false);
-                  }}
-                  className={`flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left transition ${
-                    viewMode === 'month'
-                      ? 'bg-blue-50 font-semibold text-blue-700'
-                      : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="w-3.5 text-center text-blue-600 font-bold">
-                      {viewMode === 'month' ? '✓' : ''}
-                    </span>
-                    <span>Bulan</span>
-                  </div>
-                  <span className="text-[11px] font-mono text-gray-400">M</span>
-                </button>
               </div>
             )}
           </div>
@@ -846,6 +1224,15 @@ export default function CalendarView({
                   )}
                 </div>
               </div>
+              <button
+                type="button"
+                disabled={gcalLoading}
+                onClick={() => void disconnectGcal()}
+                className="inline-flex items-center rounded-lg border border-red-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-red-600 shadow-xs transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                title="Putuskan akun Google Calendar"
+              >
+                {gcalLoading ? 'Memutuskan…' : 'Putuskan'}
+              </button>
             </div>
           ) : (
             <button
@@ -876,184 +1263,10 @@ export default function CalendarView({
         </div>
       </div>
 
-      {/* Kontainer Utama: Kalender di sisi kiri & Menu Samping di sisi kanan */}
-      <div className="flex gap-4 items-start">
+      {/* Kontainer Utama: Kalender + Sidebar "Belum di Kalender" */}
+      <div ref={calendarContainerRef} className="flex gap-4 w-full min-w-0 items-start">
         <div className="flex-1 min-w-0 space-y-4">
-          {/* ============================================================== */}
-          {/* 1. TAMPILAN BULAN (MONTH VIEW)                                 */}
-          {/* ============================================================== */}
-          {viewMode === 'month' && (
-            <div className="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm">
-              {/* Nama-nama hari */}
-              <div className="grid grid-cols-7 border-b border-gray-200 bg-gray-50/80 text-center text-xs font-medium text-gray-500 py-2">
-                {DAY_NAMES.map((name) => (
-                  <div key={name}>{name}</div>
-                ))}
-              </div>
 
-              {/* Kotak-kotak tanggal */}
-              <div className="grid grid-cols-7 divide-x divide-y divide-gray-100">
-                {days.map((dayDate, idx) => {
-                  const isCurrentMonth = dayDate.getMonth() === currentMonth;
-                  const isToday = isSameDay(dayDate, today);
-                  const isSelected = isSameDay(dayDate, selectedDate);
-                  const isDragOver = dragOverDate === toISODate(dayDate);
-
-                  const allItems = getDayItems(dayDate);
-                  const totalItems = allItems.length;
-
-                  // Aturan format tampilan bulanan:
-                  // Jika <= 4 kegiatan: tampilkan 4 kegiatan penuh di 1 hari.
-                  // Jika > 4 kegiatan (misal 5): tampilkan 3 kegiatan lalu teks "2 lagi" (total - 3).
-                  const visibleItems = totalItems <= 4 ? allItems : allItems.slice(0, 3);
-                  const remainingCount = totalItems > 4 ? totalItems - 3 : 0;
-
-                  return (
-                    <div
-                      key={idx}
-                      onClick={() => onSelectDate(dayDate)}
-                      onDragOver={(e) => {
-                        e.preventDefault();
-                        e.dataTransfer.dropEffect = 'move';
-                        setDragOverDate(toISODate(dayDate));
-                      }}
-                      onDragLeave={() => setDragOverDate(null)}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        setDragOverDate(null);
-                        const raw = e.dataTransfer.getData('application/json');
-                        void handleDropPayload(dayDate, null, raw);
-                      }}
-                      className={`group min-h-[116px] p-1.5 flex flex-col transition cursor-pointer select-none ${
-                        isCurrentMonth ? 'bg-white' : 'bg-gray-50/40 text-gray-400'
-                      } ${
-                        isDragOver
-                          ? 'ring-2 ring-violet-500 bg-violet-50/40'
-                          : isSelected
-                            ? 'ring-2 ring-inset ring-blue-500 bg-blue-50/20'
-                            : 'hover:bg-gray-50/70'
-                      }`}
-                    >
-                  {/* Header kotak tanggal: angka + tombol tambah */}
-                  <div className="flex items-center justify-between mb-1">
-                    <span
-                      className={`inline-flex items-center justify-center text-xs font-semibold ${
-                        isToday
-                          ? 'h-5 w-5 rounded-full bg-blue-600 text-white'
-                          : isCurrentMonth
-                            ? 'text-gray-800'
-                            : 'text-gray-400'
-                      }`}
-                    >
-                      {dayDate.getDate()}
-                    </span>
-
-                    {onCreateActivity && (
-                      <button
-                        type="button"
-                        title="Tambah kegiatan di tanggal ini"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onCreateActivity(dayDate);
-                        }}
-                        className="opacity-0 group-hover:opacity-100 rounded p-0.5 text-gray-400 hover:text-blue-600 hover:bg-gray-100 transition"
-                      >
-                        <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
-                          <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                        </svg>
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Daftar item kegiatan lokal & event Google */}
-                  <div className="flex flex-col gap-1 overflow-hidden pr-0.5">
-                    {visibleItems.map((item) => {
-                      if (item.type === 'activity') {
-                        const act = item.act;
-                        const isDone = act.status === 'COMPLETED';
-                        const hasGoogle = Boolean(act.googleEventId);
-
-                        return (
-                          <div
-                            key={item.id}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (onOpenActivity) onOpenActivity(act);
-                            }}
-                            className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] leading-tight transition ${
-                              isDone
-                                ? 'bg-gray-100 text-gray-400 line-through'
-                                : 'bg-blue-50/80 text-blue-900 hover:bg-blue-100'
-                            }`}
-                          >
-                            <span
-                              className={`h-1.5 w-1.5 shrink-0 rounded-full ${
-                                isDone ? 'bg-gray-400' : 'bg-blue-500'
-                              }`}
-                            />
-                            <span className="truncate flex-1 font-medium">{act.title}</span>
-                            {hasGoogle && (
-                              <span title="Tersinkron ke Google Calendar" className="shrink-0 text-blue-500">
-                                <svg width="9" height="9" viewBox="0 0 16 16" fill="currentColor">
-                                  <path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z" />
-                                </svg>
-                              </span>
-                            )}
-                            {act.startTime && (
-                              <span className="text-[10px] text-gray-500 shrink-0">
-                                {formatTime(act.startTime)}
-                              </span>
-                            )}
-                          </div>
-                        );
-                      }
-
-                      const gEv = item.gEv;
-                      return (
-                        <div
-                          key={item.id}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedEvent(gEv);
-                          }}
-                          className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] leading-tight bg-emerald-50 text-emerald-900 border border-emerald-200/60 hover:bg-emerald-100 transition"
-                        >
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" className="shrink-0">
-                            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-                            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-                            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
-                            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-                          </svg>
-                          <span className="truncate flex-1 font-medium">{gEv.title}</span>
-                          {gEv.start && gEv.start.includes('T') && (
-                            <span className="text-[10px] text-emerald-700 shrink-0">
-                              {formatTime(gEv.start)}
-                            </span>
-                          )}
-                        </div>
-                      );
-                    })}
-
-                    {/* Tombol N lagi jika kegiatan > 4 */}
-                    {remainingCount > 0 && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDayModalDate(dayDate);
-                        }}
-                        className="mt-0.5 text-left text-[11px] font-semibold text-blue-600 hover:text-blue-800 hover:underline px-1 py-0.5 rounded hover:bg-blue-50/70 transition"
-                      >
-                        {remainingCount} lagi
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       {/* ============================================================== */}
       {/* 2. TAMPILAN MINGGU ALA NOTION CALENDAR (WHITE BACKGROUND)       */}
@@ -1098,50 +1311,11 @@ export default function CalendarView({
             })}
           </div>
 
-          {/* Baris Sepanjang Hari (All-day) */}
-          <div className="grid grid-cols-[64px_repeat(7,1fr)] border-b border-gray-200 bg-gray-50/60 min-h-[38px]">
-            <div className="px-2 py-1.5 border-r border-gray-200 text-[10px] font-medium text-gray-400 flex items-center justify-center text-center">
-              Sepanjang hari
-            </div>
-            {weekDays.map((dayDate, idx) => {
-              const items = getDayItems(dayDate);
-              const allDayItems = items.filter((it) => parseTimeToMinutes(it.time) === null);
-
-              return (
-                <div
-                  key={idx}
-                  onClick={() => onSelectDate(dayDate)}
-                  className="p-1 border-r border-gray-100 last:border-r-0 flex flex-col gap-1 min-h-[36px]"
-                >
-                  {allDayItems.map((it) => {
-                    const isAct = it.type === 'activity';
-                    return (
-                      <div
-                        key={it.id}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (isAct && onOpenActivity) onOpenActivity(it.act);
-                          if (!isAct) setSelectedEvent(it.gEv);
-                        }}
-                        className={`truncate rounded px-1.5 py-0.5 text-[10px] font-medium cursor-pointer border ${
-                          isAct
-                            ? 'bg-blue-50 text-blue-900 border-blue-200 hover:bg-blue-100'
-                            : 'bg-emerald-50 text-emerald-900 border-emerald-200 hover:bg-emerald-100'
-                        }`}
-                      >
-                        {isAct ? it.act.title : it.gEv.title}
-                      </div>
-                    );
-                  })}
-                </div>
-              );
-            })}
-          </div>
 
           {/* Timeline Grid Jam Vertikal 24 Jam */}
           <div
             ref={timelineScrollRef}
-            className="overflow-y-auto max-h-[620px] bg-white relative select-none"
+            className="bg-white relative select-none"
           >
             <div
               className="grid grid-cols-[64px_repeat(7,1fr)] relative"
@@ -1180,6 +1354,17 @@ export default function CalendarView({
                   <div
                     key={idx}
                     onClick={() => onSelectDate(dayDate)}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = 'move';
+                      setDragOverSlot({
+                        dayDate: toISODate(dayDate),
+                        startMinutes: getSnappedDropMinutes(e.clientY, e.currentTarget),
+                      });
+                    }}
+                    onDrop={(e) => {
+                      handleTimelineDrop(e, dayDate, e.currentTarget);
+                    }}
                     className={`relative border-r border-gray-100 last:border-r-0 ${
                       isSelected ? 'bg-blue-50/10' : 'bg-white'
                     }`}
@@ -1187,7 +1372,8 @@ export default function CalendarView({
                     {/* Garis kisi per jam */}
                     {HOURS.map((hour) => {
                       const isDragOver =
-                        dragOverSlot?.dayDate === toISODate(dayDate) && dragOverSlot?.hour === hour;
+                        dragOverSlot?.dayDate === toISODate(dayDate) &&
+                        Math.floor(dragOverSlot.startMinutes / 60) === hour;
                       return (
                         <div
                           key={hour}
@@ -1197,20 +1383,29 @@ export default function CalendarView({
                             if (onCreateActivity) {
                               const target = new Date(dayDate);
                               target.setHours(hour, 0, 0, 0);
-                              onCreateActivity(target);
+                              const end = new Date(target.getTime() + 3600000);
+                              onCreateActivity(target, { startTime: target.toISOString(), endTime: end.toISOString() });
                             }
                           }}
                           onDragOver={(e) => {
                             e.preventDefault();
                             e.dataTransfer.dropEffect = 'move';
-                            setDragOverSlot({ dayDate: toISODate(dayDate), hour });
+                            const timelineColumn = e.currentTarget.parentElement;
+                            if (timelineColumn) {
+                              setDragOverSlot({
+                                dayDate: toISODate(dayDate),
+                                startMinutes: getSnappedDropMinutes(e.clientY, timelineColumn),
+                              });
+                            }
                           }}
-                          onDragLeave={() => setDragOverSlot(null)}
+                          onDragLeave={(e) => {
+                            if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                              setDragOverSlot(null);
+                            }
+                          }}
                           onDrop={(e) => {
-                            e.preventDefault();
-                            setDragOverSlot(null);
-                            const raw = e.dataTransfer.getData('application/json');
-                            void handleDropPayload(dayDate, hour, raw);
+                            const timelineColumn = e.currentTarget.parentElement;
+                            if (timelineColumn) handleTimelineDrop(e, dayDate, timelineColumn);
                           }}
                           className={`border-b border-gray-100 transition cursor-pointer ${
                             isDragOver ? 'bg-violet-100/70 ring-1 ring-inset ring-violet-400' : 'hover:bg-gray-50/60'
@@ -1220,8 +1415,16 @@ export default function CalendarView({
                       );
                     })}
 
+                    {dragOverSlot?.dayDate === toISODate(dayDate) && (
+                      <div
+                        aria-hidden="true"
+                        className="pointer-events-none absolute left-0 right-0 z-40 border-t-2 border-violet-500"
+                        style={{ top: `${dragOverSlot.startMinutes}px` }}
+                      />
+                    )}
+
                     {/* Blok-blok kegiatan terpeta sesuai jam */}
-                    {timedItems.map((geo) => renderEventCard(geo))}
+                    {timedItems.map((geo) => renderEventCard(geo, dayDate))}
                   </div>
                 );
               })}
@@ -1277,46 +1480,11 @@ export default function CalendarView({
             </div>
           </div>
 
-          {/* Baris Sepanjang Hari (All-day) */}
-          {(() => {
-            const items = getDayItems(selectedDate);
-            const allDayItems = items.filter((it) => parseTimeToMinutes(it.time) === null);
-            if (allDayItems.length === 0) return null;
-
-            return (
-              <div className="grid grid-cols-[64px_1fr] border-b border-gray-200 bg-gray-50/60 min-h-[38px]">
-                <div className="px-2 py-1.5 border-r border-gray-200 text-[10px] font-medium text-gray-400 flex items-center justify-center text-center">
-                  Sepanjang hari
-                </div>
-                <div className="p-1.5 flex flex-wrap gap-1.5">
-                  {allDayItems.map((it) => {
-                    const isAct = it.type === 'activity';
-                    return (
-                      <div
-                        key={it.id}
-                        onClick={() => {
-                          if (isAct && onOpenActivity) onOpenActivity(it.act);
-                          if (!isAct) setSelectedEvent(it.gEv);
-                        }}
-                        className={`rounded-md px-2.5 py-1 text-xs font-medium cursor-pointer border ${
-                          isAct
-                            ? 'bg-blue-50 text-blue-900 border-blue-200 hover:bg-blue-100'
-                            : 'bg-emerald-50 text-emerald-900 border-emerald-200 hover:bg-emerald-100'
-                        }`}
-                      >
-                        {isAct ? it.act.title : it.gEv.title}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })()}
 
           {/* Timeline Grid Jam Vertikal 24 Jam */}
           <div
             ref={timelineScrollRef}
-            className="overflow-y-auto max-h-[620px] bg-white relative select-none"
+            className="bg-white relative select-none"
           >
             <div
               className="grid grid-cols-[64px_1fr] relative"
@@ -1348,11 +1516,25 @@ export default function CalendarView({
               </div>
 
               {/* Kolom Tunggal Hari Terpilih */}
-              <div className="relative bg-white">
+              <div
+                className="relative bg-white"
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = 'move';
+                  setDragOverSlot({
+                    dayDate: toISODate(selectedDate),
+                    startMinutes: getSnappedDropMinutes(e.clientY, e.currentTarget),
+                  });
+                }}
+                onDrop={(e) => {
+                  handleTimelineDrop(e, selectedDate, e.currentTarget);
+                }}
+              >
                 {/* Garis kisi per jam */}
                 {HOURS.map((hour) => {
                   const isDragOver =
-                    dragOverSlot?.dayDate === toISODate(selectedDate) && dragOverSlot?.hour === hour;
+                    dragOverSlot?.dayDate === toISODate(selectedDate) &&
+                    Math.floor(dragOverSlot.startMinutes / 60) === hour;
                   return (
                     <div
                       key={hour}
@@ -1362,20 +1544,29 @@ export default function CalendarView({
                         if (onCreateActivity) {
                           const target = new Date(selectedDate);
                           target.setHours(hour, 0, 0, 0);
-                          onCreateActivity(target);
+                          const end = new Date(target.getTime() + 3600000);
+                          onCreateActivity(target, { startTime: target.toISOString(), endTime: end.toISOString() });
                         }
                       }}
                       onDragOver={(e) => {
                         e.preventDefault();
                         e.dataTransfer.dropEffect = 'move';
-                        setDragOverSlot({ dayDate: toISODate(selectedDate), hour });
+                        const timelineColumn = e.currentTarget.parentElement;
+                        if (timelineColumn) {
+                          setDragOverSlot({
+                            dayDate: toISODate(selectedDate),
+                            startMinutes: getSnappedDropMinutes(e.clientY, timelineColumn),
+                          });
+                        }
                       }}
-                      onDragLeave={() => setDragOverSlot(null)}
+                      onDragLeave={(e) => {
+                        if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                          setDragOverSlot(null);
+                        }
+                      }}
                       onDrop={(e) => {
-                        e.preventDefault();
-                        setDragOverSlot(null);
-                        const raw = e.dataTransfer.getData('application/json');
-                        void handleDropPayload(selectedDate, hour, raw);
+                        const timelineColumn = e.currentTarget.parentElement;
+                        if (timelineColumn) handleTimelineDrop(e, selectedDate, timelineColumn);
                       }}
                       className={`border-b border-gray-100 transition cursor-pointer ${
                         isDragOver ? 'bg-violet-100/70 ring-1 ring-inset ring-violet-400' : 'hover:bg-gray-50/60'
@@ -1385,9 +1576,17 @@ export default function CalendarView({
                   );
                 })}
 
+                {dragOverSlot?.dayDate === toISODate(selectedDate) && (
+                  <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute left-0 right-0 z-40 border-t-2 border-violet-500"
+                    style={{ top: `${dragOverSlot.startMinutes}px` }}
+                  />
+                )}
+
                 {/* Blok-blok kegiatan terpeta sesuai jam */}
                 {computeTimedItemsLayout(getDayItems(selectedDate)).map((geo) =>
-                  renderEventCard(geo),
+                  renderEventCard(geo, selectedDate),
                 )}
               </div>
 
@@ -1407,154 +1606,29 @@ export default function CalendarView({
       )}
         </div>
 
-        {/* Menu Samping: Item & Team Task belum terjadwal (sisi kanan) */}
-        <CalendarSidebar
-          activities={activities}
-          isOpen={isSidebarOpen}
-          onToggle={() => setIsSidebarOpen((v) => !v)}
-          onRefresh={onRefreshActivities}
-        />
+        {/* Kolom Kanan: Sidebar Item belum terjadwal + Settings Card Terpilih */}
+        <div className="sticky top-6 flex w-80 shrink-0 flex-col gap-3 self-start">
+          <CalendarSidebar
+            activities={activities}
+            onRefresh={onRefreshActivities}
+          />
+
+          {selectedCardItem && (
+            <CalendarCardSettings
+              selectedItem={selectedCardItem}
+              onClose={() => setSelectedCardItem(null)}
+              onRefresh={() => {
+                if (onRefreshActivities) onRefreshActivities();
+                void loadGoogleEvents();
+              }}
+              onOpenActivity={onOpenActivity}
+              onDelete={handleDeleteCard}
+            />
+          )}
+        </div>
       </div>
 
-      {/* ============================================================== */}
-      {/* 4. MODAL SEMUA KEGIATAN PER TANGGAL (Pemicu: "X lagi")        */}
-      {/* ============================================================== */}
-      {dayModalDate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-2xl border border-gray-100 flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-start justify-between gap-3 border-b border-gray-100 pb-3">
-              <div>
-                <span className="text-xs font-semibold uppercase tracking-wider text-blue-600">
-                  Daftar Lengkap Kegiatan
-                </span>
-                <h3 className="text-base font-bold text-gray-900">
-                  {FULL_DAY_NAMES[dayModalDate.getDay()]}, {dayModalDate.getDate()}{' '}
-                  {MONTH_NAMES[dayModalDate.getMonth()]} {dayModalDate.getFullYear()}
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setDayModalDate(null)}
-                className="rounded-lg p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition"
-              >
-                ✕
-              </button>
-            </div>
 
-            <div className="flex flex-col gap-2 max-h-[360px] overflow-y-auto pr-1">
-              {getDayItems(dayModalDate).map((item) => {
-                if (item.type === 'activity') {
-                  const act = item.act;
-                  const isDone = act.status === 'COMPLETED';
-                  const hasGoogle = Boolean(act.googleEventId);
-
-                  return (
-                    <div
-                      key={item.id}
-                      onClick={() => {
-                        setDayModalDate(null);
-                        if (onOpenActivity) onOpenActivity(act);
-                      }}
-                      className={`flex items-center justify-between gap-2 rounded-lg border p-2.5 cursor-pointer transition ${
-                        isDone
-                          ? 'border-gray-200 bg-gray-50 text-gray-400'
-                          : 'border-blue-100 bg-blue-50/50 hover:bg-blue-100/60'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span
-                          className={`h-2 w-2 shrink-0 rounded-full ${
-                            isDone ? 'bg-gray-400' : 'bg-blue-600'
-                          }`}
-                        />
-                        <span className={`text-xs font-medium truncate ${isDone ? 'line-through' : 'text-gray-900'}`}>
-                          {act.title}
-                        </span>
-                        {hasGoogle && (
-                          <span title="Tersinkron ke Google Calendar" className="shrink-0 text-blue-500">
-                            <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor">
-                              <path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z" />
-                            </svg>
-                          </span>
-                        )}
-                      </div>
-                      {act.startTime && (
-                        <span className="text-[11px] font-mono text-gray-500 shrink-0">
-                          {formatTime(act.startTime)}
-                        </span>
-                      )}
-                    </div>
-                  );
-                }
-
-                const gEv = item.gEv;
-                return (
-                  <div
-                    key={item.id}
-                    onClick={() => {
-                      setDayModalDate(null);
-                      setSelectedEvent(gEv);
-                    }}
-                    className="flex items-center justify-between gap-2 rounded-lg border border-emerald-200 bg-emerald-50/60 p-2.5 cursor-pointer hover:bg-emerald-100/60 transition"
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" className="shrink-0">
-                        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-                        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-                        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
-                        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-                      </svg>
-                      <span className="text-xs font-medium text-emerald-950 truncate">
-                        {gEv.title}
-                      </span>
-                    </div>
-                    {gEv.start && gEv.start.includes('T') && (
-                      <span className="text-[11px] font-mono text-emerald-700 shrink-0">
-                        {formatTime(gEv.start)}
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="flex items-center justify-between gap-2 border-t border-gray-100 pt-3">
-              <button
-                type="button"
-                onClick={() => {
-                  onSelectDate(dayModalDate);
-                  setViewMode('day');
-                  setDayModalDate(null);
-                }}
-                className="text-xs font-semibold text-blue-600 hover:text-blue-800 hover:underline"
-              >
-                Buka Tampilan Hari Ini →
-              </button>
-              <div className="flex items-center gap-2">
-                {onCreateActivity && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onCreateActivity(dayModalDate);
-                      setDayModalDate(null);
-                    }}
-                    className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 transition"
-                  >
-                    + Tambah Kegiatan
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setDayModalDate(null)}
-                  className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition"
-                >
-                  Tutup
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ============================================================== */}
       {/* 5. MODAL DETAIL EVENT GOOGLE CALENDAR                           */}

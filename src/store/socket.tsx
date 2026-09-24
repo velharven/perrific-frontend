@@ -20,6 +20,10 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       console.log('[socket] task updated', payload);
     });
 
+    socket?.on('task:assigned', (payload: unknown) => {
+      console.log('[socket] task assigned/unassigned', payload);
+    });
+
     return () => {
       disconnectSocket();
     };
