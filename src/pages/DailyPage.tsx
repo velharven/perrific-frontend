@@ -1001,6 +1001,7 @@ function DailyPageInner() {
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
   const dateISO = useMemo(() => toISODate(selectedDate), [selectedDate]);
   const [activities, setActivities] = useState<DailyActivity[]>([]);
+  const activitiesRequestRef = useRef(0);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
@@ -1237,14 +1238,15 @@ function DailyPageInner() {
   const { socket } = useSocket();
 
   const fetchActivities = async (silent = false) => {
+    const requestId = ++activitiesRequestRef.current;
     if (!silent) setLoading(true);
     try {
       const data = await activityApi.listMine({ limit: 500 });
-      setActivities(data);
+      if (requestId === activitiesRequestRef.current) setActivities(data);
     } catch {
-      if (!silent) setActivities([]);
+      if (!silent && requestId === activitiesRequestRef.current) setActivities([]);
     } finally {
-      if (!silent) setLoading(false);
+      if (!silent && requestId === activitiesRequestRef.current) setLoading(false);
     }
   };
 
@@ -2202,6 +2204,8 @@ function DailyPageInner() {
           }}
           onRefreshActivities={() => void fetchActivities(true)}
           onDeleteActivity={(activityId) => {
+            // Abaikan respons fetch yang dimulai sebelum penghapusan optimistik.
+            activitiesRequestRef.current++;
             setActivities((prev) => prev.filter((a) => a.id !== activityId));
           }}
         />
@@ -2225,7 +2229,7 @@ function DailyPageInner() {
             </div>
           )}
           <DndContext sensors={sensors} collisionDetection={closestCenter} modifiers={[lockDragAxis]} onDragEnd={handleDragEnd}>
-          <div ref={tableWrapRef} className="min-h-[240px] [overflow-anchor:none]">
+          <div ref={tableWrapRef} className="min-h-[240px] max-w-full overflow-x-auto nice-scroll [overflow-anchor:none]">
           <table
             ref={tableRef}
             className="ml-10 table-fixed border-collapse text-left text-sm"

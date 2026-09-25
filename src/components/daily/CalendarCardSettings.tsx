@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import type { DailyActivity, GoogleCalendarEvent } from '@/types';
 import { activityApi } from '@/api/activities';
 import { calendarApi } from '@/api/calendar';
@@ -91,8 +91,9 @@ export default function CalendarCardSettings({
   const [startTimeStr, setStartTimeStr] = useState('09:00');
   const [endTimeStr, setEndTimeStr] = useState('10:00');
   const [isAllDay, setIsAllDay] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const savingPromiseRef = useRef<Promise<void> | null>(null);
+  const deletingRef = useRef(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   // Inisialisasi state dari item yang dipilih
@@ -120,10 +121,11 @@ export default function CalendarCardSettings({
   }, [isAllDay, startTimeStr, endTimeStr]);
 
   // Simpan perubahan ke backend
-  const handleSave = async () => {
-    if (saving) return;
-    setSaving(true);
-    try {
+  const handleSave = (): Promise<void> => {
+    if (deletingRef.current) return Promise.resolve();
+    if (savingPromiseRef.current) return savingPromiseRef.current;
+    const save = (async () => {
+      try {
       let startIso: string | null = null;
       let endIso: string | null = null;
 
@@ -148,19 +150,25 @@ export default function CalendarCardSettings({
         });
       }
 
-      onRefresh?.();
-    } catch (err) {
-      console.error('[CalendarCardSettings] Gagal menyimpan kegiatan:', err);
-    } finally {
-      setSaving(false);
-    }
+        onRefresh?.();
+      } catch (err) {
+        console.error('[CalendarCardSettings] Gagal menyimpan kegiatan:', err);
+      }
+    })();
+    savingPromiseRef.current = save;
+    void save.finally(() => {
+      if (savingPromiseRef.current === save) savingPromiseRef.current = null;
+    });
+    return save;
   };
 
   // Hapus kegiatan
   const handleDelete = async () => {
-    if (deleting) return;
+    if (deletingRef.current) return;
+    deletingRef.current = true;
     setDeleting(true);
     try {
+      await savingPromiseRef.current;
       if (onDelete) {
         await onDelete(selectedItem);
         onClose();
@@ -180,6 +188,7 @@ export default function CalendarCardSettings({
     } catch (err) {
       console.error('[CalendarCardSettings] Gagal menghapus kegiatan:', err);
     } finally {
+      deletingRef.current = false;
       setDeleting(false);
     }
   };
@@ -372,9 +381,13 @@ export default function CalendarCardSettings({
 
         <button
           type="button"
+          onMouseDown={(e) => {
+            // Cegah event blur pada input judul menyimpan ulang sebelum delete
+            e.preventDefault();
+          }}
           onClick={() => void handleDelete()}
           disabled={deleting}
-          className="rounded-lg p-1 text-gray-400 hover:bg-red-50 hover:text-red-600 transition cursor-pointer"
+          className="rounded-lg p-1 text-gray-400 hover:bg-red-50 hover:text-red-600 transition cursor-pointer disabled:opacity-50"
           title="Hapus kegiatan ini"
         >
           <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">

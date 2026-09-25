@@ -223,6 +223,7 @@ export default function CalendarView({
   const deletedActivityIdsRef = useRef<Set<string>>(new Set());
   const deletedGoogleIdsRef = useRef<Set<string>>(new Set());
   const deletingIdsRef = useRef<Set<string>>(new Set());
+  const googleEventsRequestRef = useRef(0);
   const nextUndoIdRef = useRef(1);
   const isUndoingRef = useRef(false);
 
@@ -257,13 +258,15 @@ export default function CalendarView({
 
   // Muat event Google Calendar jika terhubung
   const loadGoogleEvents = useCallback(async () => {
+    const requestId = ++googleEventsRequestRef.current;
     if (!gcalStatus.connected) {
       setGoogleEvents([]);
       return;
     }
     try {
       const events = await fetchEvents(rangeStart.toISOString(), rangeEnd.toISOString());
-      // Filter keluar event yang sudah dihapus oleh pengguna
+      if (requestId !== googleEventsRequestRef.current) return;
+      // ID instance berulang berbeda: jangan sembunyikan seluruh rangkaian.
       const activeEvents = events.filter((g) => !deletedGoogleIdsRef.current.has(g.id));
       setGoogleEvents(activeEvents);
     } catch (e) {
@@ -316,13 +319,14 @@ export default function CalendarView({
   // Tipe aksi riwayat untuk undo (Ctrl+Z)
   type UndoAction =
     | {
-        id?: number;
+        id: number;
         type: 'delete';
         item: CombinedItem;
         title: string;
+        pendingDelete: Promise<void>;
       }
     | {
-        id?: number;
+        id: number;
         type: 'drag-from-sidebar-item';
         activityId: string;
         title: string;
@@ -331,13 +335,13 @@ export default function CalendarView({
         prevEndTime: string | null;
       }
     | {
-        id?: number;
+        id: number;
         type: 'drag-from-sidebar-team-task';
         createdActivityId: string;
         title: string;
       }
     | {
-        id?: number;
+        id: number;
         type: 'move-calendar-card';
         itemType: 'activity' | 'google';
         rawId: string;
@@ -350,17 +354,26 @@ export default function CalendarView({
   // Stack riwayat untuk undo (Ctrl+Z)
   const undoStackRef = useRef<UndoAction[]>([]);
 
+  const recordUndo = (action: UndoAction) => {
+    const index = undoStackRef.current.findIndex((entry) => entry.id > action.id);
+    if (index < 0) undoStackRef.current.push(action);
+    else undoStackRef.current.splice(index, 0, action);
+  };
+
   // Fungsi membatalkan aksi terakhir (Undo / Ctrl+Z)
-  const handleUndo = useCallback(async () => {
+  const handleUndo = useCallback(async (actionId?: number) => {
     if (isUndoingRef.current) return;
-    if (undoStackRef.current.length === 0) {
+    const index = actionId === undefined
+      ? undoStackRef.current.length - 1
+      : undoStackRef.current.findIndex((action) => action.id === actionId);
+    if (index < 0) {
       showToast('Tidak ada kegiatan yang bisa diurungkan.');
       return;
     }
 
     isUndoingRef.current = true;
     try {
-      const last = undoStackRef.current.pop();
+      const [last] = undoStackRef.current.splice(index, 1);
       if (!last) return;
 
       if (last.type === 'move-calendar-card') {
@@ -389,6 +402,7 @@ export default function CalendarView({
         } catch (err) {
           console.error('[CalendarView] Gagal mengembalikan posisi kegiatan:', err);
           showToast('Gagal mengembalikan posisi kegiatan.');
+          recordUndo(last);
         }
         return;
       }
@@ -408,6 +422,7 @@ export default function CalendarView({
         } catch (err) {
           console.error('[CalendarView] Gagal mengembalikan item ke menu:', err);
           showToast('Gagal mengembalikan item ke menu.');
+          recordUndo(last);
         }
         return;
       }
@@ -423,6 +438,7 @@ export default function CalendarView({
         } catch (err) {
           console.error('[CalendarView] Gagal mengembalikan tugas ke menu:', err);
           showToast('Gagal mengembalikan tugas ke menu.');
+          recordUndo(last);
         }
         return;
       }
@@ -430,11 +446,10 @@ export default function CalendarView({
       if (last.type === 'delete') {
         const { item, title } = last;
         try {
+          // Delete yang dipicu tepat sebelum Ctrl+Z harus selesai dahulu.
+          await last.pendingDelete;
           if (item.type === 'activity') {
             const act = item.act;
-            deletedActivityIdsRef.current.delete(act.id);
-            if (act.googleEventId) deletedGoogleIdsRef.current.delete(act.googleEventId);
-
             const restored = await activityApi.create({
               title: act.title || 'Tanpa judul',
               description: act.description || undefined,
@@ -451,61 +466,42 @@ export default function CalendarView({
               checklist: act.checklistItems?.length ? act.checklistItems.map((c) => ({ text: c.text })) : undefined,
             });
 
-            deletedActivityIdsRef.current.delete(restored.id);
-            if (restored.googleEventId) {
-              deletedGoogleIdsRef.current.delete(restored.googleEventId);
+            if (act.googleEventId && !restored.googleEventId) {
+              try {
+                await calendarApi.syncActivity(restored.id);
+              } catch (syncError) {
+                // Jangan tinggalkan kartu lokal setengah dipulihkan yang akan
+                // terduplikasi saat pengguna mencoba undo lagi.
+                await activityApi.remove(restored.id);
+                throw syncError;
+              }
             }
 
-            if (onRefreshActivities) onRefreshActivities();
+            onRefreshActivities?.();
             void loadGoogleEvents();
-            setSelectedCardItem({
-              type: 'activity',
-              id: `act-${restored.id}`,
-              act: restored,
-              time: restored.startTime,
-            });
           } else {
             const gEv = item.gEv;
-            deletedGoogleIdsRef.current.delete(gEv.id);
-            setGoogleEvents((prev) => (prev.some((g) => g.id === gEv.id) ? prev : [...prev, gEv]));
-
-            let createdG: { id: string } | null = null;
-            try {
-              // Pulihkan langsung ke Google Calendar
-              createdG = await calendarApi.createEvent({
-                title: gEv.title || 'Event Google',
-                description: gEv.description || undefined,
-                date: gEv.start && !gEv.start.includes('T') ? gEv.start : undefined,
-                startTime: gEv.start && gEv.start.includes('T') ? gEv.start : undefined,
-                endTime: gEv.end && gEv.end.includes('T') ? gEv.end : undefined,
-              });
-
-              if (createdG?.id) {
-                const newId = createdG.id;
-                deletedGoogleIdsRef.current.delete(newId);
-                setGoogleEvents((prev) =>
-                  prev.map((g) => (g.id === gEv.id ? { ...g, id: newId } : g)),
-                );
-              }
-            } catch (err) {
-              console.error('[CalendarView] Gagal membuat ulang event di Google Calendar:', err);
-            }
-
-            const finalGId = createdG?.id || gEv.id;
-            const restoredGEv = { ...gEv, id: finalGId };
-            void loadGoogleEvents();
-            setSelectedCardItem({
-              type: 'google',
-              id: `gcal-${finalGId}`,
-              gEv: restoredGEv,
-              time: restoredGEv.start,
+            const createdG = await calendarApi.createEvent({
+              title: gEv.title || 'Event Google',
+              description: gEv.description || undefined,
+              date: gEv.start && !gEv.start.includes('T') ? gEv.start : undefined,
+              startTime: gEv.start && gEv.start.includes('T') ? gEv.start : undefined,
+              endTime: gEv.end && gEv.end.includes('T') ? gEv.end : undefined,
             });
+            const restoredGEv = { ...gEv, id: createdG.id };
+            googleEventsRequestRef.current++;
+            setGoogleEvents((prev) => prev.some((g) => g.id === createdG.id) ? prev : [...prev, restoredGEv]);
+            void loadGoogleEvents();
           }
 
           showToast(`Kegiatan "${title}" dipulihkan.`);
         } catch (err) {
           console.error('[CalendarView] Gagal memulihkan kegiatan:', err);
-          showToast('Gagal memulihkan kegiatan.');
+          // Delete yang gagal sudah di-rollback dan tidak boleh di-undo lagi.
+          if (!deletedActivityIdsRef.current.has(item.type === 'activity' ? item.act.id : '') &&
+              !deletedGoogleIdsRef.current.has(item.type === 'google' ? item.gEv.id : '')) return;
+          recordUndo(last);
+          showToast('Gagal memulihkan kegiatan. Coba urungkan lagi.');
         }
         return;
       }
@@ -534,33 +530,32 @@ export default function CalendarView({
       selectedCardItemRef.current = null;
       setSelectedCardItem(null);
 
-      // 1. Dorong ke stack undo secara SINKRON seketika (menjamin 100% urutan LIFO penghapusan)
       const actionId = nextUndoIdRef.current++;
-      undoStackRef.current.push({ id: actionId, type: 'delete', item: itemToDelete, title });
-
-      // 2. Optimistic delete: langsung sembunyikan kartu dari UI
+      // Sembunyikan kartu segera, lalu simpan urutan aksi saat tombol ditekan.
       if (targetActId) {
         deletedActivityIdsRef.current.add(targetActId);
         onDeleteActivity?.(targetActId);
       }
       if (targetGoogleId) {
+        googleEventsRequestRef.current++;
         deletedGoogleIdsRef.current.add(targetGoogleId);
         setGoogleEvents((prev) => prev.filter((g) => g.id !== targetGoogleId));
       }
 
+      const pendingDelete = isAct && act
+        ? activityApi.remove(act.id).then(() => undefined)
+        : calendarApi.deleteEvent(gEv!.id).then(() => undefined);
+      recordUndo({ id: actionId, type: 'delete', item: itemToDelete, title, pendingDelete });
+
       showToast(`Kegiatan "${title}" dihapus`, {
         label: 'Urungkan (Ctrl+Z)',
         onAction: () => {
-          void handleUndo();
+          void handleUndo(actionId);
         },
       });
 
       try {
-        if (isAct && act) {
-          await activityApi.remove(act.id);
-        } else if (gEv) {
-          await calendarApi.deleteEvent(gEv.id);
-        }
+        await pendingDelete;
 
         if (onRefreshActivities) onRefreshActivities();
         void loadGoogleEvents();
@@ -569,10 +564,13 @@ export default function CalendarView({
         // Rollback optimistic delete & keluarkan entri dari stack jika request gagal
         undoStackRef.current = undoStackRef.current.filter((a) => a.id !== actionId);
         if (targetActId) deletedActivityIdsRef.current.delete(targetActId);
-        if (targetGoogleId) deletedGoogleIdsRef.current.delete(targetGoogleId);
+        if (targetGoogleId) {
+          deletedGoogleIdsRef.current.delete(targetGoogleId);
+        }
         if (onRefreshActivities) onRefreshActivities();
         void loadGoogleEvents();
         showToast('Gagal menghapus kegiatan.');
+        throw err;
       } finally {
         deletingIdsRef.current.delete(targetId);
       }
@@ -587,6 +585,7 @@ export default function CalendarView({
     rawJson: string,
   ) => {
     if (!rawJson) return;
+    const actionId = nextUndoIdRef.current++;
     try {
       const payload = JSON.parse(rawJson) as {
         source: 'item' | 'team-task' | 'calendar-card';
@@ -665,7 +664,8 @@ export default function CalendarView({
           void loadGoogleEvents();
         }
 
-        undoStackRef.current.push({
+        recordUndo({
+          id: actionId,
           type: 'move-calendar-card',
           itemType: payload.itemType || 'activity',
           rawId: payload.id,
@@ -678,7 +678,7 @@ export default function CalendarView({
         showToast(`Kegiatan "${payload.title}" dipindahkan`, {
           label: 'Urungkan (Ctrl+Z)',
           onAction: () => {
-            void handleUndo();
+            void handleUndo(actionId);
           },
         });
         return;
@@ -709,7 +709,8 @@ export default function CalendarView({
           deletedGoogleIdsRef.current.delete(updated.googleEventId);
         }
 
-        undoStackRef.current.push({
+        recordUndo({
+          id: actionId,
           type: 'drag-from-sidebar-item',
           activityId: payload.id,
           title: payload.title,
@@ -721,7 +722,7 @@ export default function CalendarView({
         showToast(`"${payload.title}" dijadwalkan ke kalender`, {
           label: 'Urungkan (Ctrl+Z)',
           onAction: () => {
-            void handleUndo();
+            void handleUndo(actionId);
           },
         });
       } else if (payload.source === 'team-task') {
@@ -735,7 +736,8 @@ export default function CalendarView({
           icon: 'check',
         });
 
-        undoStackRef.current.push({
+        recordUndo({
+          id: actionId,
           type: 'drag-from-sidebar-team-task',
           createdActivityId: created.id,
           title: payload.title,
@@ -744,7 +746,7 @@ export default function CalendarView({
         showToast(`Tugas "${payload.title}" dijadwalkan ke kalender`, {
           label: 'Urungkan (Ctrl+Z)',
           onAction: () => {
-            void handleUndo();
+            void handleUndo(actionId);
           },
         });
       }
@@ -780,7 +782,6 @@ export default function CalendarView({
   const timelineScrollRef = useRef<HTMLDivElement>(null);
   const calendarContainerRef = useRef<HTMLDivElement>(null);
   const isSyncingRef = useRef(false);
-  const isInitialActivitiesMount = useRef(true);
 
 
   // Sinkronkan state tahun & bulan saat selectedDate berubah dari luar
@@ -872,8 +873,10 @@ export default function CalendarView({
       }
     }
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    // Capture mendahului UndoStackProvider di halaman tabel agar satu Ctrl+Z
+    // hanya menjalankan satu riwayat saat kalender aktif.
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
   }, [handleUndo, handleDeleteCard]);
 
   // Hitung 7 hari untuk mode minggu aktif (Minggu s.d. Sabtu seperti Google Calendar)
@@ -1004,21 +1007,6 @@ export default function CalendarView({
     };
   }, [socket, loadGoogleEvents, onRefreshActivities, onDeleteActivity]);
 
-  // Sinkronisasi otomatis saat terjadi perubahan pada aktivitas lokal
-  useEffect(() => {
-    if (isInitialActivitiesMount.current) {
-      isInitialActivitiesMount.current = false;
-      return;
-    }
-    if (!gcalStatus.connected) return;
-
-    const timer = setTimeout(() => {
-      void triggerAutoSync();
-    }, 1000);
-
-    return () => clearTimeout(timer);
-  }, [activities, gcalStatus.connected, triggerAutoSync]);
-
   // Sinkronisasi otomatis saat jendela/tab difokuskan kembali
   useEffect(() => {
     if (!gcalStatus.connected) return;
@@ -1120,6 +1108,7 @@ export default function CalendarView({
       }
 
       const dayGoogleEvents = googleEvents.filter((gEv) => {
+        const baseGId = gEv.id.includes('_') ? gEv.id.split('_')[0] : gEv.id;
         if (deletedGoogleIdsRef.current.has(gEv.id)) return false;
         // Hanya filter jika ID spesifik sudah tertaut di aktivitas
         if (linkedGoogleEventIds.has(gEv.id)) return false;
@@ -1127,8 +1116,6 @@ export default function CalendarView({
         const gStartStr = gEv.start;
         const gDate = new Date(gStartStr);
         if (!isSameDay(gDate, dayDate)) return false;
-
-        const baseGId = gEv.id.includes('_') ? gEv.id.split('_')[0] : gEv.id;
 
         // De-duplikasi terhadap aktivitas lokal HARI INI:
         // Jika pada hari ini sudah ada aktivitas lokal yang tertaut recurrence ini, atau memiliki nama & jam yang sama

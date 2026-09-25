@@ -83,7 +83,7 @@ export function useGoogleCalendar() {
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
         'Gagal memuat event dari Google Calendar.';
       setError(msg);
-      return [];
+      throw err;
     }
   }, []);
 
@@ -141,7 +141,7 @@ export function useGoogleCalendar() {
           (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
           'Gagal sinkronisasi otomatis Google Calendar.';
         setError(msg);
-        return { pushedCount: 0, importedCount: 0 };
+        throw err;
       } finally {
         setSyncing(false);
       }
