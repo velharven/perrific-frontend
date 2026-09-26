@@ -34,7 +34,8 @@ api.interceptors.response.use(
     // gangguan sesaat (network/5xx) tidak membuang token yang masih valid.
     const url = String(error.config?.url ?? '');
     const isAuthCall = url === '/auth/me' || url.endsWith('/auth/me') || url.includes('/auth/login') || url.includes('/auth/register') || url.includes('/auth/google');
-    if (error.response?.status === 401 && !isAuthCall && !window.location.pathname.startsWith('/login')) {
+    const isCalendarCall = url.includes('/calendar/google');
+    if (error.response?.status === 401 && !isAuthCall && !isCalendarCall && !window.location.pathname.startsWith('/login')) {
       clearToken();
       window.location.href = '/login';
     }

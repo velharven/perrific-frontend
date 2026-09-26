@@ -39,6 +39,7 @@ import {
 import { showToast } from '@/components/ui/Toast';
 import PersonCell from '@/components/table/PersonCell';
 import CalendarView from '@/components/daily/CalendarView';
+import TeamTaskView from '@/components/daily/TeamTaskView';
 import { UndoStackProvider, useUndo } from '@/hooks/useUndoStack';
 import { useSocket } from '@/store/socket';
 import type { DailyActivity, DailyColumn, DailyColumnType } from '@/types';
@@ -997,7 +998,7 @@ function ColumnMenu({
 }
 
 function DailyPageInner() {
-  const [activeView, setActiveView] = useState<'table' | 'calendar'>('table');
+  const [activeView, setActiveView] = useState<'table' | 'calendar' | 'team-tasks'>('table');
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
   const dateISO = useMemo(() => toISODate(selectedDate), [selectedDate]);
   const [activities, setActivities] = useState<DailyActivity[]>([]);
@@ -2120,19 +2121,23 @@ function DailyPageInner() {
           </button>
           <button
             type="button"
-            disabled
-            title="Segera hadir"
-            className="flex cursor-not-allowed items-center gap-1.5 rounded-md px-3 py-1.5 text-sm text-gray-400"
+            role="tab"
+            aria-selected={activeView === 'team-tasks'}
+            onClick={() => setActiveView('team-tasks')}
+            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition ${
+              activeView === 'team-tasks'
+                ? 'bg-gray-900 text-white'
+                : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+            }`}
           >
             <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <path d="M2 3.5h5M2 8h9M2 12.5h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-              <circle cx="11" cy="3.5" r="1.6" fill="currentColor" />
-              <circle cx="13.5" cy="8" r="1.6" fill="currentColor" />
-              <circle cx="11" cy="12.5" r="1.6" fill="currentColor" />
+              <rect x="2" y="2" width="5" height="12" rx="1" stroke="currentColor" strokeWidth="1.4" />
+              <rect x="9" y="2" width="5" height="7" rx="1" stroke="currentColor" strokeWidth="1.4" />
             </svg>
-            Timeline
+            Task Team
           </button>
         </div>
+        {activeView !== 'team-tasks' && (
         <span className="ml-auto flex items-center gap-0.5">
           <button
             type="button"
@@ -2175,11 +2180,14 @@ function DailyPageInner() {
             Baru ▾
           </button>
         </span>
+        )}
       </div>
 
-      {/* Database tabel atau Kalender */}
+      {/* Database tabel, Kalender, atau Task Team */}
       {loading ? (
         <p className="py-8 text-center text-sm text-gray-500">Memuat…</p>
+      ) : activeView === 'team-tasks' ? (
+        <TeamTaskView onRefreshDaily={() => void fetchActivities(true)} />
       ) : activeView === 'calendar' ? (
         <CalendarView
           activities={activities}

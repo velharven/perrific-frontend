@@ -5,8 +5,10 @@ export const calendarApi = {
   getStatus: () =>
     api.get<{ data: GoogleCalendarStatus }>('/calendar/google/status').then((r) => r.data.data),
 
-  connect: (accessToken: string, email?: string) =>
-    api.post<{ data: GoogleCalendarStatus }>('/calendar/google/connect', { accessToken, email }).then((r) => r.data.data),
+  connect: (payload: string | { code?: string; accessToken?: string; email?: string }, email?: string) => {
+    const data = typeof payload === 'string' ? { code: payload, email } : payload;
+    return api.post<{ data: GoogleCalendarStatus }>('/calendar/google/connect', data).then((r) => r.data.data);
+  },
 
   disconnect: () =>
     api.post<{ data: { connected: boolean } }>('/calendar/google/disconnect').then((r) => r.data.data),

@@ -28,15 +28,17 @@ export function useGoogleCalendar() {
   }, [refreshStatus]);
 
   const startLogin = useGoogleLogin({
-    flow: 'implicit',
-    scope: 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly',
-    onSuccess: async (tokenResponse) => {
+    flow: 'auth-code',
+    scope: 'https://www.googleapis.com/auth/calendar.events email profile',
+    overrideScope: true,
+    select_account: true,
+    onSuccess: async (codeResponse) => {
       try {
         setConnecting(true);
         setError(null);
-        const accessToken = (tokenResponse as { access_token?: string }).access_token;
-        if (!accessToken) throw new Error('Token Google tidak diterima.');
-        const updated = await calendarApi.connect(accessToken);
+        const code = codeResponse.code;
+        if (!code) throw new Error('Kode otorisasi Google tidak diterima.');
+        const updated = await calendarApi.connect({ code });
         setStatus(updated);
       } catch (err) {
         const msg =
@@ -79,9 +81,11 @@ export function useGoogleCalendar() {
       setError(null);
       return await calendarApi.listEvents(from, to);
     } catch (err) {
-      const msg =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
-        'Gagal memuat event dari Google Calendar.';
+      const axiosErr = err as { response?: { status?: number; data?: { message?: string } } };
+      if (axiosErr?.response?.status === 401 || axiosErr?.response?.status === 403) {
+        setStatus({ connected: false });
+      }
+      const msg = axiosErr?.response?.data?.message || 'Gagal memuat event dari Google Calendar.';
       setError(msg);
       throw err;
     }

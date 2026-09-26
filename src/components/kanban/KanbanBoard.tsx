@@ -312,6 +312,12 @@ function Column({
   );
 }
 
+function compareTasks(a: { order?: number; id: string }, b: { order?: number; id: string }): number {
+  const diff = (a.order ?? 0) - (b.order ?? 0);
+  if (diff !== 0) return diff;
+  return a.id.localeCompare(b.id);
+}
+
 export default function KanbanBoard({
   tasks,
   columns,
@@ -351,7 +357,10 @@ export default function KanbanBoard({
   }
 
   function columnIds(columnId: string): string[] {
-    return tasks.filter((t) => t.columnId === columnId).map((t) => t.id);
+    return tasks
+      .filter((t) => t.columnId === columnId)
+      .sort(compareTasks)
+      .map((t) => t.id);
   }
 
   function registerNode(id: string, el: HTMLElement | null) {
@@ -398,7 +407,10 @@ export default function KanbanBoard({
         if (e.clientX < r.left - 12 || e.clientX > r.right + 12 || e.clientY < r.top - 8 || e.clientY > r.bottom + 8) {
           continue;
         }
-        const ids = tasks.filter((t) => t.columnId === col.id).map((t) => t.id);
+        const ids = tasks
+          .filter((t) => t.columnId === col.id)
+          .sort(compareTasks)
+          .map((t) => t.id);
         let index = ids.length;
         for (let i = 0; i < ids.length; i++) {
           if (ids[i] === taskId) continue;
@@ -492,7 +504,7 @@ export default function KanbanBoard({
     >
       <div className="nice-scroll flex h-[calc(100dvh-16rem)] min-h-[300px] items-stretch gap-4 overflow-x-auto pb-2 md:h-[calc(100dvh-10.5rem)]">
         {visible.map((col) => {
-          const items = tasks.filter((t) => t.columnId === col.id);
+          const items = tasks.filter((t) => t.columnId === col.id).sort(compareTasks);
           const isCollapsed = (view.collapsed ?? []).includes(col.id);
           const activeIdStr = activeId?.replace(/^task:/, '') ?? null;
           const isOrigin = !!activeTask && activeTask.columnId === col.id;

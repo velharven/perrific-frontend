@@ -12,15 +12,17 @@ import { PROJECT_SIDEBAR_EVENT, isProjectSidebarCollapsed } from '@/components/l
 import { PROJECT_UPDATED_EVENT } from '@/pages/ProjectSettingsPage';
 import Avatar from '@/components/ui/Avatar';
 import { useAuth } from '@/store/auth';
+import { UndoStackProvider, useUndo } from '@/hooks/useUndoStack';
 import type { BoardColumn, Project, Task, Team } from '@/types';
 
 export const BOARD_VIEW_EVENT = 'boardview-changed';
 
-export default function BoardPage() {
+function BoardPageInner() {
   const { projectId } = useParams<{ projectId: string }>();
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { push } = useUndo();
   const [project, setProject] = useState<Project | null>(null);
   const [team, setTeam] = useState<Team | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -158,28 +160,72 @@ export default function BoardPage() {
     return () => window.removeEventListener(PROJECT_UPDATED_EVENT, onUpdated);
   }, []);
 
+  function compareTasks(a: { order?: number; id: string }, b: { order?: number; id: string }): number {
+    const diff = (a.order ?? 0) - (b.order ?? 0);
+    if (diff !== 0) return diff;
+    return a.id.localeCompare(b.id);
+  }
+
   function moveTask(taskId: string, columnId: string, insertAt?: number) {
+    const task = tasks.find((t) => t.id === taskId);
+    if (!task) return;
     const prev = tasks;
+    const fromColumnId = task.columnId;
+    const fromOrder = task.order ?? 0;
+
+    // Jika dipindah ke kolom yang sama tanpa reorder, abaikan
+    if (fromColumnId === columnId && insertAt === undefined) return;
+
     // Pindah antar kolom ke posisi lubang (order pecahan di antara tetangga),
     // atau ke ujung bila tanpa indeks.
-    const targetOrders = tasks
+    const targetTasks = tasks
       .filter((t) => t.columnId === columnId && t.id !== taskId)
-      .map((t) => t.order ?? 0)
-      .sort((a, b) => a - b);
+      .sort(compareTasks);
+
     let order: number;
-    if (insertAt === undefined || targetOrders.length === 0) {
-      order = targetOrders.length > 0 ? targetOrders[targetOrders.length - 1] + 1 : 0;
+    if (insertAt === undefined || targetTasks.length === 0) {
+      order = targetTasks.length > 0 ? (targetTasks[targetTasks.length - 1].order ?? 0) + 1 : 0;
     } else if (insertAt <= 0) {
-      order = targetOrders[0] - 1;
-    } else if (insertAt >= targetOrders.length) {
-      order = targetOrders[targetOrders.length - 1] + 1;
+      order = (targetTasks[0].order ?? 0) - 1;
+    } else if (insertAt >= targetTasks.length) {
+      order = (targetTasks[targetTasks.length - 1].order ?? 0) + 1;
     } else {
-      order = (targetOrders[insertAt - 1] + targetOrders[insertAt]) / 2;
+      const prevOrder = targetTasks[insertAt - 1].order ?? 0;
+      const nextOrder = targetTasks[insertAt].order ?? 0;
+      if (prevOrder >= nextOrder) {
+        order = prevOrder + 0.5;
+      } else {
+        order = (prevOrder + nextOrder) / 2;
+      }
     }
-    setTasks((tasks) => tasks.map((t) => (t.id === taskId ? { ...t, columnId, order } : t)));
+    setTasks((tasks) =>
+      tasks
+        .map((t) => (t.id === taskId ? { ...t, columnId, order } : t))
+        .sort(compareTasks),
+    );
+
+    push(`pindah "${task.title}"`, async () => {
+      setTasks((currentTasks) =>
+        currentTasks
+          .map((t) =>
+            t.id === taskId ? { ...t, columnId: fromColumnId, order: fromOrder } : t,
+          )
+          .sort(compareTasks),
+      );
+      try {
+        await taskApi.update(taskId, { columnId: fromColumnId, order: fromOrder });
+      } catch (e) {
+        showToast(apiMessage(e, 'Gagal mengembalikan task ke kolom asal.'));
+      }
+    });
+
     taskApi.update(taskId, { columnId, order }).then(
       (updated) => {
-        setTasks((tasks) => tasks.map((t) => (t.id === taskId ? updated : t)));
+        setTasks((tasks) =>
+          tasks
+            .map((t) => (t.id === taskId ? updated : t))
+            .sort(compareTasks),
+        );
       },
       (e) => {
         setTasks(prev);
@@ -190,6 +236,12 @@ export default function BoardPage() {
 
   function reorderColumn(columnId: string, orderedIds: string[]) {
     const prev = tasks;
+    const col = columns.find((c) => c.id === columnId);
+    const prevOrderedIds = tasks
+      .filter((t) => t.columnId === columnId)
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+      .map((t) => t.id);
+
     const orderOf = new Map(orderedIds.map((id, idx) => [id, idx] as const));
     setTasks((tasks) =>
       tasks
@@ -204,6 +256,28 @@ export default function BoardPage() {
         }),
     );
     if (!projectId) return;
+
+    push(`urutan "${col?.name ?? 'kolom'}"`, async () => {
+      const prevOrderMap = new Map(prevOrderedIds.map((id, idx) => [id, idx] as const));
+      setTasks((currentTasks) =>
+        currentTasks
+          .map((t) => (prevOrderMap.has(t.id) ? { ...t, order: prevOrderMap.get(t.id)! } : t))
+          .sort((a, b) => {
+            const ao = prevOrderMap.get(a.id);
+            const bo = prevOrderMap.get(b.id);
+            if (ao !== undefined && bo !== undefined) return ao - bo;
+            if (ao !== undefined) return -1;
+            if (bo !== undefined) return 1;
+            return (a.order ?? 0) - (b.order ?? 0);
+          }),
+      );
+      try {
+        await projectApi.reorderTasks(projectId, columnId, prevOrderedIds);
+      } catch {
+        showToast('Gagal mengembalikan urutan task.');
+      }
+    });
+
     projectApi.reorderTasks(projectId, columnId, orderedIds).catch(() => {
       setTasks(prev);
       showToast('Gagal menyimpan urutan. Coba lagi.');
@@ -1098,5 +1172,13 @@ export default function BoardPage() {
         </ModalShell>
       )}
     </div>
+  );
+}
+
+export default function BoardPage() {
+  return (
+    <UndoStackProvider>
+      <BoardPageInner />
+    </UndoStackProvider>
   );
 }
