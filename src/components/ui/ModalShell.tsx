@@ -14,12 +14,14 @@ export default function ModalShell({
   zClass = 'z-[60]',
   // wide: dialog 2 kolom (mis. form buat task), default sempit.
   wide = false,
+  maxWidthClass,
 }: {
   label: string;
   onClose: () => void;
   children: ReactNode;
   zClass?: string;
   wide?: boolean;
+  maxWidthClass?: string;
 }) {
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -47,8 +49,8 @@ export default function ModalShell({
       }}
     >
       <div
-        className={`nice-scroll max-h-[70vh] w-full overflow-y-auto rounded-2xl border border-gray-200 bg-white p-4 shadow-[0_16px_48px_rgba(26,26,30,0.2)] ${
-          wide ? 'max-w-2xl' : 'max-w-sm'
+        className={`nice-scroll max-h-[82vh] w-full overflow-y-auto rounded-2xl border border-gray-200 bg-white p-4 shadow-[0_16px_48px_rgba(26,26,30,0.2)] ${
+          maxWidthClass ?? (wide ? 'max-w-2xl' : 'max-w-sm')
         }`}
       >
         {children}

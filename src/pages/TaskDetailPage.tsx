@@ -21,7 +21,7 @@ export default function TaskDetailPage() {
     ? `/board/${projectId}`
     : projectId
       ? `/projects/${projectId}/kanban`
-      : '/dashboard';
+      : '/notes';
 
   useEffect(() => {
     if (!projectId) return;
@@ -43,7 +43,7 @@ export default function TaskDetailPage() {
     return (
       <div className="mx-auto max-w-4xl">
         <p className="font-givonic text-sm text-gray-500">Task tidak ditemukan.</p>
-        <Link to="/dashboard" className="mt-2 inline-block font-givonic text-xs font-semibold text-perrific-violet hover:underline">
+        <Link to="/notes" className="mt-2 inline-block font-givonic text-xs font-semibold text-perrific-violet hover:underline">
           Kembali
         </Link>
       </div>

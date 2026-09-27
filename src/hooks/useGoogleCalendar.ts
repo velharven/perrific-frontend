@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useGoogleLogin } from '@react-oauth/google';
 import { calendarApi } from '@/api/calendar';
+import { showToast } from '@/components/ui/Toast';
 import type { GoogleCalendarStatus, GoogleCalendarEvent } from '@/types';
 
 export function useGoogleCalendar() {
@@ -16,8 +17,13 @@ export function useGoogleCalendar() {
       setError(null);
       const data = await calendarApi.getStatus();
       setStatus(data);
-    } catch {
-      setStatus({ connected: false });
+    } catch (err) {
+      const axiosErr = err as { response?: { status?: number; data?: { message?: string } } };
+      if (axiosErr?.response?.status === 401 || axiosErr?.response?.status === 403) {
+        setStatus({ connected: false });
+      }
+      const msg = axiosErr?.response?.data?.message || 'Gagal memuat status Google Calendar.';
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -40,11 +46,13 @@ export function useGoogleCalendar() {
         if (!code) throw new Error('Kode otorisasi Google tidak diterima.');
         const updated = await calendarApi.connect({ code });
         setStatus(updated);
+        showToast('Google Calendar berhasil terhubung!');
       } catch (err) {
         const msg =
           (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
           'Gagal menghubungkan Google Calendar.';
         setError(msg);
+        showToast(msg);
       } finally {
         setConnecting(false);
       }
@@ -52,6 +60,7 @@ export function useGoogleCalendar() {
     onError: () => {
       setConnecting(false);
       setError('Koneksi Google Calendar dibatalkan atau gagal.');
+      showToast('Koneksi Google Calendar dibatalkan atau gagal.');
     },
   });
 

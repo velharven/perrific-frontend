@@ -20,8 +20,7 @@ export default function DailyInstancePage() {
       .then((n) => {
         if (cancelled) return;
         const kind = n.kind ?? 'NOTE';
-        if (kind === 'DASHBOARD') navigate(`/dashboard/${n.id}`, { replace: true });
-        else if (kind === 'TABLE') navigate(`/tables/${n.id}`, { replace: true });
+        if (kind === 'TABLE') navigate(`/tables/${n.id}`, { replace: true });
         else if (kind === 'NOTE') navigate(`/notes/${n.id}`, { replace: true });
         else setNote(n);
       })

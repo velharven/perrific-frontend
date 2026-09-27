@@ -39,10 +39,10 @@ export default function JoinPage() {
           Menunggu persetujuan admin untuk bergabung ke {pendingTeam}.
         </p>
         <Link
-          to="/dashboard"
+          to="/notes"
           className="rounded-full bg-perrific-graphite px-5 py-2 font-givonic text-xs font-semibold text-white transition hover:brightness-110"
         >
-          Ke dashboard
+          Ke catatan
         </Link>
       </div>
     );
@@ -61,10 +61,10 @@ export default function JoinPage() {
       <p className="font-givonic text-base font-bold text-perrific-graphite">Tidak bisa bergabung</p>
       <p className="font-givonic text-sm text-gray-500">{error}</p>
       <Link
-        to="/dashboard"
+        to="/notes"
         className="rounded-full bg-perrific-graphite px-5 py-2 font-givonic text-xs font-semibold text-white transition hover:brightness-110"
       >
-        Ke dashboard
+        Ke catatan
       </Link>
     </div>
   );

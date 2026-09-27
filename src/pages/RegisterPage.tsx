@@ -51,7 +51,7 @@ export default function RegisterPage() {
   const usernameReady =
     usernameNorm !== '' && usernameFormatOk && !usernameTaken && !usernameChecking;
 
-  if (user) return <Navigate to="/dashboard" replace />;
+  if (user) return <Navigate to="/notes" replace />;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -60,7 +60,7 @@ export default function RegisterPage() {
     setSubmitting(true);
     try {
       await register({ name: name.trim(), email: email.trim(), username: usernameNorm, password });
-      navigate('/dashboard');
+      navigate('/notes');
     } catch (err) {
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||

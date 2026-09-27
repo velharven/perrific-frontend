@@ -25,6 +25,8 @@ import { projectApi } from '@/api/projects';
 import { useAuth } from '@/store/auth';
 import { useSocket } from '@/store/socket';
 import { APP_SIDEBAR_EVENT, isAppSidebarCollapsed } from '@/components/layout/AppLayout';
+import { TEAMS_CHANGED_EVENT, useTrash } from '@/hooks/useNavLabels';
+import { PROJECT_UPDATED_EVENT } from '@/pages/ProjectSettingsPage';
 import Avatar from '@/components/ui/Avatar';
 import MenuPortal from '@/components/ui/MenuPortal';
 import ModalShell from '@/components/ui/ModalShell';
@@ -633,6 +635,13 @@ export default function TeamTaskView({ onRefreshDaily: _onRefreshDaily }: TeamTa
   const { user } = useAuth();
   const { socket } = useSocket();
   const undoStack = useUndoStack();
+  const { items: trashItems } = useTrash(user?.id);
+  const trashedTeamIds = useMemo(
+    () => new Set(trashItems.filter((t) => t.kind === 'team').map((t) => t.id)),
+    [trashItems],
+  );
+  const trashedTeamIdsRef = useRef(trashedTeamIds);
+  trashedTeamIdsRef.current = trashedTeamIds;
 
   // Data utama
   const [teams, setTeams] = useState<Team[]>([]);
@@ -648,6 +657,28 @@ export default function TeamTaskView({ onRefreshDaily: _onRefreshDaily }: TeamTa
   // Accordion states
   const [expandedTeams, setExpandedTeams] = useState<Set<string>>(new Set());
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
+
+  // Refs untuk akses sinkron pada callback real-time tanpa memicu loop re-render
+  const teamsRef = useRef(teams);
+  teamsRef.current = teams;
+  const projectsByTeamRef = useRef(projectsByTeam);
+  projectsByTeamRef.current = projectsByTeam;
+  const loadingProjectsRef = useRef(loadingProjects);
+  loadingProjectsRef.current = loadingProjects;
+  const columnsByProjectRef = useRef(columnsByProject);
+  columnsByProjectRef.current = columnsByProject;
+  const loadingColumnsRef = useRef(loadingColumns);
+  loadingColumnsRef.current = loadingColumns;
+  const expandedTeamsRef = useRef(expandedTeams);
+  expandedTeamsRef.current = expandedTeams;
+  const expandedProjectsRef = useRef(expandedProjects);
+  expandedProjectsRef.current = expandedProjects;
+
+  // Tim aktif (tidak berada di Sampah)
+  const activeTeams = useMemo(
+    () => teams.filter((t) => !trashedTeamIds.has(t.id)),
+    [teams, trashedTeamIds],
+  );
 
   // Search & Filter (Pill bar)
   const [filterSearch, setFilterSearch] = useState('');
@@ -671,87 +702,144 @@ export default function TeamTaskView({ onRefreshDaily: _onRefreshDaily }: TeamTa
     team: Team | null;
   } | null>(null);
 
-  // Muat data tim dan assigned tasks saat pertama kali dibuka
-  const fetchData = useCallback(async (silent = false) => {
+  // Muat project untuk tim tertentu saat tim dibuka (atau force reload saat update real-time)
+  const loadProjectsForTeam = useCallback(async (teamId: string, force = false) => {
+    if (!force && (projectsByTeamRef.current[teamId] || loadingProjectsRef.current[teamId])) return;
+    const isInitial = !projectsByTeamRef.current[teamId];
     try {
-      if (!silent) setLoadingInitial(true);
-      const [fetchedTeams, fetchedTasks] = await Promise.all([
-        teamApi.listMyTeams(),
-        taskApi.listMyAssigned(),
-      ]);
-      setTeams(fetchedTeams);
-      setTasks(fetchedTasks);
-
-      // Otomatis buka tim pertama jika ada
-      if (!silent && fetchedTeams.length > 0) {
-        setExpandedTeams(new Set([fetchedTeams[0].id]));
-      }
+      if (isInitial) setLoadingProjects((prev) => ({ ...prev, [teamId]: true }));
+      const projects = await teamApi.listProjects(teamId);
+      setProjectsByTeam((prev) => ({ ...prev, [teamId]: projects }));
     } catch (err) {
-      console.error('[TeamTaskView] Gagal memuat data:', err);
-      showToast('Gagal memuat daftar tim dan tugas.');
+      console.error(`[TeamTaskView] Gagal memuat project untuk tim ${teamId}:`, err);
+      if (isInitial) showToast('Gagal memuat project tim.');
     } finally {
-      if (!silent) setLoadingInitial(false);
+      if (isInitial) setLoadingProjects((prev) => ({ ...prev, [teamId]: false }));
     }
   }, []);
+
+  // Muat kolom kanban untuk project tertentu saat project dibuka (atau force reload saat update real-time)
+  const loadColumnsForProject = useCallback(async (projectId: string, force = false) => {
+    if (!force && (columnsByProjectRef.current[projectId] || loadingColumnsRef.current[projectId])) return;
+    const isInitial = !columnsByProjectRef.current[projectId];
+    try {
+      if (isInitial) setLoadingColumns((prev) => ({ ...prev, [projectId]: true }));
+      const cols = await projectApi.listColumns(projectId);
+      setColumnsByProject((prev) => ({ ...prev, [projectId]: cols }));
+    } catch (err) {
+      console.error(`[TeamTaskView] Gagal memuat kolom untuk project ${projectId}:`, err);
+      if (isInitial) showToast('Gagal memuat kolom project.');
+    } finally {
+      if (isInitial) setLoadingColumns((prev) => ({ ...prev, [projectId]: false }));
+    }
+  }, []);
+
+  // Muat data tim dan tasks (beserta refresh project & kolom terbuka saat silent refresh)
+  const fetchData = useCallback(
+    async (silent = false) => {
+      try {
+        if (!silent) setLoadingInitial(true);
+        const prevTeamIds = new Set(teamsRef.current.map((t) => t.id));
+        const [fetchedTeams, fetchedTasks] = await Promise.all([
+          teamApi.listMyTeams(),
+          taskApi.listMyAssigned(),
+        ]);
+        setTeams(fetchedTeams);
+        setTasks(fetchedTasks);
+
+        const nonTrashed = fetchedTeams.filter((t) => !trashedTeamIdsRef.current.has(t.id));
+        if (!silent && nonTrashed.length > 0) {
+          setExpandedTeams(new Set([nonTrashed[0].id]));
+        } else if (silent) {
+          // Jika ada tim baru yang dibuat secara real-time, otomatis buka & muat project-nya
+          const newTeams = nonTrashed.filter((t) => !prevTeamIds.has(t.id));
+          if (newTeams.length > 0) {
+            setExpandedTeams((prev) => {
+              const next = new Set(prev);
+              newTeams.forEach((nt) => next.add(nt.id));
+              return next;
+            });
+            newTeams.forEach((nt) => void loadProjectsForTeam(nt.id, true));
+          }
+          // Segarkan project dan kolom yang sedang terbuka
+          const validIds = new Set(nonTrashed.map((t) => t.id));
+          expandedTeamsRef.current.forEach((tid) => {
+            if (validIds.has(tid)) void loadProjectsForTeam(tid, true);
+          });
+          expandedProjectsRef.current.forEach((pid) => {
+            void loadColumnsForProject(pid, true);
+          });
+        }
+      } catch (err) {
+        console.error('[TeamTaskView] Gagal memuat data:', err);
+        if (!silent) showToast('Gagal memuat daftar tim dan tugas.');
+      } finally {
+        if (!silent) setLoadingInitial(false);
+      }
+    },
+    [loadProjectsForTeam, loadColumnsForProject],
+  );
 
   useEffect(() => {
     void fetchData(false);
   }, [fetchData]);
 
-  // Dengarkan event socket 'task:assigned' untuk update data tanpa refresh penuh
+  // Dengarkan event perubahan tim/project lokal (sidebar, modal, tab lain)
   useEffect(() => {
-    if (!socket) return;
-    const handleTaskAssigned = () => {
+    const refresh = () => {
       void fetchData(true);
     };
-    socket.on('task:assigned', handleTaskAssigned);
-    return () => {
-      socket.off('task:assigned', handleTaskAssigned);
+    const onStorage = (e: StorageEvent) => {
+      if (
+        !e.key ||
+        e.key === TEAMS_CHANGED_EVENT ||
+        e.key === PROJECT_UPDATED_EVENT ||
+        e.key.startsWith('purrific:trash:')
+      ) {
+        void fetchData(true);
+      }
     };
-  }, [socket, fetchData]);
+    window.addEventListener(TEAMS_CHANGED_EVENT, refresh);
+    window.addEventListener(PROJECT_UPDATED_EVENT, refresh);
+    window.addEventListener('storage', onStorage);
+    return () => {
+      window.removeEventListener(TEAMS_CHANGED_EVENT, refresh);
+      window.removeEventListener(PROJECT_UPDATED_EVENT, refresh);
+      window.removeEventListener('storage', onStorage);
+    };
+  }, [fetchData]);
 
-  // Muat project untuk tim tertentu saat tim dibuka
-  const loadProjectsForTeam = useCallback(
-    async (teamId: string) => {
-      if (projectsByTeam[teamId] || loadingProjects[teamId]) return;
-      try {
-        setLoadingProjects((prev) => ({ ...prev, [teamId]: true }));
-        const projects = await teamApi.listProjects(teamId);
-        setProjectsByTeam((prev) => ({ ...prev, [teamId]: projects }));
-      } catch (err) {
-        console.error(`[TeamTaskView] Gagal memuat project untuk tim ${teamId}:`, err);
-        showToast('Gagal memuat project tim.');
-      } finally {
-        setLoadingProjects((prev) => ({ ...prev, [teamId]: false }));
-      }
-    },
-    [projectsByTeam, loadingProjects],
-  );
-
-  // Muat kolom kanban untuk project tertentu saat project dibuka
-  const loadColumnsForProject = useCallback(
-    async (projectId: string) => {
-      if (columnsByProject[projectId] || loadingColumns[projectId]) return;
-      try {
-        setLoadingColumns((prev) => ({ ...prev, [projectId]: true }));
-        const cols = await projectApi.listColumns(projectId);
-        setColumnsByProject((prev) => ({ ...prev, [projectId]: cols }));
-      } catch (err) {
-        console.error(`[TeamTaskView] Gagal memuat kolom untuk project ${projectId}:`, err);
-        showToast('Gagal memuat kolom project.');
-      } finally {
-        setLoadingColumns((prev) => ({ ...prev, [projectId]: false }));
-      }
-    },
-    [columnsByProject, loadingColumns],
-  );
+  // Dengarkan event socket real-time untuk tim, project, kolom, dan task
+  useEffect(() => {
+    if (!socket) return;
+    const handleRefresh = () => {
+      void fetchData(true);
+    };
+    const handleProjectUpdated = (payload?: { teamId?: string; projectId?: string }) => {
+      void fetchData(true);
+      if (payload?.teamId) void loadProjectsForTeam(payload.teamId, true);
+      if (payload?.projectId) void loadColumnsForProject(payload.projectId, true);
+    };
+    socket.on('task:assigned', handleRefresh);
+    socket.on('task:updated', handleRefresh);
+    socket.on('team:updated', handleRefresh);
+    socket.on('project:updated', handleProjectUpdated);
+    return () => {
+      socket.off('task:assigned', handleRefresh);
+      socket.off('task:updated', handleRefresh);
+      socket.off('team:updated', handleRefresh);
+      socket.off('project:updated', handleProjectUpdated);
+    };
+  }, [socket, fetchData, loadProjectsForTeam, loadColumnsForProject]);
 
   // Otomatis muat project untuk tim yang dibuka
   useEffect(() => {
     expandedTeams.forEach((teamId) => {
-      void loadProjectsForTeam(teamId);
+      if (!trashedTeamIds.has(teamId)) {
+        void loadProjectsForTeam(teamId);
+      }
     });
-  }, [expandedTeams, loadProjectsForTeam]);
+  }, [expandedTeams, trashedTeamIds, loadProjectsForTeam]);
 
   // Otomatis muat kolom untuk project yang dibuka
   useEffect(() => {
@@ -788,22 +876,22 @@ export default function TeamTaskView({ onRefreshDaily: _onRefreshDaily }: TeamTa
 
   // Expand / Collapse All
   const allExpanded = useMemo(() => {
-    if (teams.length === 0) return false;
-    return teams.every((t) => expandedTeams.has(t.id));
-  }, [teams, expandedTeams]);
+    if (activeTeams.length === 0) return false;
+    return activeTeams.every((t) => expandedTeams.has(t.id));
+  }, [activeTeams, expandedTeams]);
 
   const toggleExpandAll = () => {
     if (allExpanded) {
       setExpandedTeams(new Set());
       setExpandedProjects(new Set());
     } else {
-      const allTeamIds = new Set(teams.map((t) => t.id));
+      const allTeamIds = new Set(activeTeams.map((t) => t.id));
       setExpandedTeams(allTeamIds);
-      teams.forEach((t) => void loadProjectsForTeam(t.id));
+      activeTeams.forEach((t) => void loadProjectsForTeam(t.id));
 
       const allProjectIds = new Set<string>();
-      Object.values(projectsByTeam).forEach((pList) => {
-        pList.forEach((p) => {
+      activeTeams.forEach((t) => {
+        (projectsByTeam[t.id] ?? []).forEach((p) => {
           allProjectIds.add(p.id);
           void loadColumnsForProject(p.id);
         });
@@ -956,10 +1044,13 @@ export default function TeamTaskView({ onRefreshDaily: _onRefreshDaily }: TeamTa
     });
   };
 
-  // Filter tasks berdasarkan query pencarian dan prioritas
+  // Filter tasks berdasarkan sampah, filter tugas saya, query pencarian, dan prioritas
   const filteredTasks = useMemo(() => {
     const q = filterSearch.trim().toLowerCase();
     return tasks.filter((t) => {
+      const teamId = t.project?.team?.id;
+      if (teamId && trashedTeamIds.has(teamId)) return false;
+      if (onlyWithTasks && (!user?.id || !t.assignees.some((a) => a.id === user.id))) return false;
       if (filterPriority && t.priority !== filterPriority) return false;
       if (q) {
         const matchesTitle = t.title.toLowerCase().includes(q);
@@ -969,7 +1060,7 @@ export default function TeamTaskView({ onRefreshDaily: _onRefreshDaily }: TeamTa
       }
       return true;
     });
-  }, [tasks, filterSearch, filterPriority]);
+  }, [tasks, trashedTeamIds, onlyWithTasks, user?.id, filterSearch, filterPriority]);
 
   // Hitung jumlah task per team dan per project
   const taskCountByTeam = useMemo(() => {
@@ -1001,11 +1092,11 @@ export default function TeamTaskView({ onRefreshDaily: _onRefreshDaily }: TeamTa
     return map;
   }, [filteredTasks]);
 
-  // Tim yang tampil (setelah filter onlyWithTasks)
+  // Tim yang tampil (setelah filter sampah & onlyWithTasks)
   const displayedTeams = useMemo(() => {
-    if (!onlyWithTasks) return teams;
-    return teams.filter((t) => (taskCountByTeam[t.id] ?? 0) > 0);
-  }, [teams, onlyWithTasks, taskCountByTeam]);
+    if (!onlyWithTasks) return activeTeams;
+    return activeTeams.filter((t) => (taskCountByTeam[t.id] ?? 0) > 0);
+  }, [activeTeams, onlyWithTasks, taskCountByTeam]);
 
   const filterOptionCount = (filterPriority ? 1 : 0) + (onlyWithTasks ? 1 : 0);
 
@@ -1090,10 +1181,18 @@ export default function TeamTaskView({ onRefreshDaily: _onRefreshDaily }: TeamTa
                       </svg>
                     </button>
 
-                    {/* Avatar Inisial Tim */}
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-violet-100 font-givonic text-xs font-bold text-violet-700">
-                      {team.name.slice(0, 2).toUpperCase()}
-                    </div>
+                    {/* Avatar / Foto Tim */}
+                    {team.avatarUrl ? (
+                      <img
+                        src={team.avatarUrl}
+                        alt=""
+                        className="h-8 w-8 shrink-0 rounded-xl object-cover shadow-sm"
+                      />
+                    ) : (
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-perrific-violet/20 bg-perrific-violet/10 font-givonic text-xs font-bold text-perrific-violet">
+                        {team.name.trim().slice(0, 2).toUpperCase()}
+                      </div>
+                    )}
 
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
@@ -1116,7 +1215,7 @@ export default function TeamTaskView({ onRefreshDaily: _onRefreshDaily }: TeamTa
                           : 'bg-gray-100 text-gray-500'
                       }`}
                     >
-                      {teamTaskCount} Tugas Anda
+                      {teamTaskCount} {onlyWithTasks ? 'Tugas Anda' : 'Tugas'}
                     </span>
                     <span className="hidden sm:inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 font-givonic text-xs text-gray-600">
                       {projects.length > 0 ? `${projects.length} Project` : 'Project'}

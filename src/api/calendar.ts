@@ -1,7 +1,24 @@
 import { api } from '@/lib/api';
 import type { GoogleCalendarStatus, GoogleCalendarEvent, DailyActivity } from '@/types';
 
+export interface CalendarLayoutPreference {
+  date: string;
+  eventKey: string;
+  position: number;
+}
+
 export const calendarApi = {
+  getLayout: (from: string, to: string) =>
+    api.get<{ data: CalendarLayoutPreference[] }>(
+      `/calendar/layout?${new URLSearchParams({ from, to }).toString()}`,
+    ).then((response) => response.data.data),
+
+  saveLayout: (date: string, columns: string[][]) =>
+    api.put<{ data: { date: string; columns: string[][] } }>(
+      `/calendar/layout/${date}`,
+      { columns },
+    ).then((response) => response.data.data),
+
   getStatus: () =>
     api.get<{ data: GoogleCalendarStatus }>('/calendar/google/status').then((r) => r.data.data),
 
@@ -63,6 +80,8 @@ export const calendarApi = {
       date?: string;
       startTime?: string | null;
       endTime?: string | null;
+      recurrence?: Record<string, unknown> | null;
+      colorId?: string | null;
     },
   ) => api.patch<{ data: { id: string } }>(`/calendar/google/events/${eventId}`, data).then((r) => r.data.data),
 

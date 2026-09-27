@@ -6,11 +6,11 @@ import { useAuth } from '@/store/auth';
 import type { NoteKind } from '@/types';
 
 const pathFor = (kind: NoteKind, id: string) =>
-  kind === 'DASHBOARD' ? `/dashboard/${id}` : kind === 'DAILY' ? `/daily/${id}` : `/notes/${id}`;
+  kind === 'DAILY' ? `/daily/${id}` : `/notes/${id}`;
 
-// Pintu depan: /dashboard dan /daily polos langsung antar ke kamar
-// berkunci pertama milik user. Backend otomatis buatkan 1 dashboard +
-// 1 daily untuk user baru, jadi daftar kosong praktis tidak terjadi.
+// Pintu depan: /notes dan /daily polos langsung antar ke kamar
+// berkunci pertama milik user. Backend otomatis buatkan 1 catatan
+// "Selamat Datang" + 1 daily untuk user baru.
 // Kamar yang masuk Sampah dilewati.
 export default function PrivatRedirect({ kind }: { kind: NoteKind }) {
   const navigate = useNavigate();
@@ -25,12 +25,21 @@ export default function PrivatRedirect({ kind }: { kind: NoteKind }) {
       .listMine()
       .then((notes) => {
         if (cancelled) return;
-        const first = notes.find((n) => (n.kind ?? 'NOTE') === kind && !trashedIds.has(n.id));
+        const candidates = notes.filter((n) => (n.kind ?? 'NOTE') === kind && !trashedIds.has(n.id));
+        const welcome =
+          kind === 'NOTE'
+            ? candidates.find((n) => n.title === 'Selamat Datang' && !n.parentId) ??
+              candidates.find((n) => !n.parentId)
+            : undefined;
+        const first = welcome ?? candidates[0];
         if (first) {
           navigate(pathFor(kind, first.id), { replace: true });
         } else {
           noteApi
-            .create({ kind })
+            .create({
+              kind,
+              ...(kind === 'NOTE' ? { title: 'Selamat Datang' } : {}),
+            })
             .then((created) => {
               if (!cancelled) navigate(pathFor(kind, created.id), { replace: true });
             })

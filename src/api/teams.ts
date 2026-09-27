@@ -3,10 +3,14 @@ import type { JoinRequest, JoinRequestStatus, PendingTask, Team, TeamMember, Pro
 
 export const teamApi = {
   listMyTeams: () => api.get<{ data: Team[] }>('/teams').then((r) => r.data.data),
-  createTeam: (body: { name: string; description?: string }) =>
-    api.post<{ data: Team }>('/teams', body).then((r) => r.data.data),
+  createTeam: (body: {
+    name: string;
+    description?: string;
+    avatarUrl?: string | null;
+    memberUserIds?: string[];
+  }) => api.post<{ data: Team }>('/teams', body).then((r) => r.data.data),
   getTeam: (teamId: string) => api.get<{ data: Team }>(`/teams/${teamId}`).then((r) => r.data.data),
-  update: (teamId: string, body: { name?: string; description?: string | null }) =>
+  update: (teamId: string, body: { name?: string; description?: string | null; avatarUrl?: string | null }) =>
     api.patch<{ data: Team }>(`/teams/${teamId}`, body).then((r) => r.data.data),
   remove: (teamId: string) =>
     api.delete<{ data: { id: string } }>(`/teams/${teamId}`).then((r) => r.data.data),

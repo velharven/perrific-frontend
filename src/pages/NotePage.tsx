@@ -60,7 +60,6 @@ export function notifyNotesChanged() {
 // Path halaman menurut jenisnya (cermin privatPathOf di sidebar).
 function notePathFor(n: Note): string {
   const kind = n.kind ?? 'NOTE';
-  if (kind === 'DASHBOARD') return `/dashboard/${n.id}`;
   if (kind === 'DAILY') return `/daily/${n.id}`;
   if (kind === 'TABLE') return `/tables/${n.id}`;
   return `/notes/${n.id}`;
@@ -428,7 +427,7 @@ function NotePageInner() {
       trash({ kind: 'note', id: noteId, title });
       notifyNotesChanged();
       notifyTeamsChanged();
-      navigate('/dashboard');
+      navigate('/notes');
       showToast(`Tab "${title}" dipindahkan ke Sampah`, {
         label: 'Urungkan',
         onAction: () => restore('note', noteId),

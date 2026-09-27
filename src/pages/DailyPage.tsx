@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import {
   DndContext,
@@ -1003,6 +1003,7 @@ function DailyPageInner() {
   const dateISO = useMemo(() => toISODate(selectedDate), [selectedDate]);
   const [activities, setActivities] = useState<DailyActivity[]>([]);
   const activitiesRequestRef = useRef(0);
+  const pendingActivityMovesRef = useRef<Map<string, { date?: string; startTime: string | null; endTime: string | null }>>(new Map());
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
@@ -1238,18 +1239,62 @@ function DailyPageInner() {
 
   const { socket } = useSocket();
 
-  const fetchActivities = async (silent = false) => {
+  const fetchActivities = useCallback(async (silent = false) => {
     const requestId = ++activitiesRequestRef.current;
     if (!silent) setLoading(true);
     try {
       const data = await activityApi.listMine({ limit: 500 });
-      if (requestId === activitiesRequestRef.current) setActivities(data);
+      if (requestId === activitiesRequestRef.current) {
+        setActivities(data.map((activity) => {
+          const pendingMove = pendingActivityMovesRef.current.get(activity.id);
+          return pendingMove ? { ...activity, ...pendingMove } : activity;
+        }));
+      }
     } catch {
       if (!silent && requestId === activitiesRequestRef.current) setActivities([]);
     } finally {
       if (!silent && requestId === activitiesRequestRef.current) setLoading(false);
     }
-  };
+  }, []);
+
+  const handleRefreshActivities = useCallback(() => {
+    void fetchActivities(true);
+  }, [fetchActivities]);
+
+  const handleMoveActivity = useCallback(async (
+    activityId: string,
+    position: { date?: string; startTime: string | null; endTime: string | null },
+  ): Promise<DailyActivity> => {
+    if (pendingActivityMovesRef.current.has(activityId)) {
+      throw new Error('Perpindahan aktivitas sebelumnya masih disimpan');
+    }
+    const original = activities.find((activity) => activity.id === activityId);
+    if (!original) throw new Error('Aktivitas tidak ditemukan');
+
+    pendingActivityMovesRef.current.set(activityId, position);
+    activitiesRequestRef.current++;
+    setActivities((previous) => previous.map((activity) =>
+      activity.id === activityId ? { ...activity, ...position } : activity,
+    ));
+
+    try {
+      const updated = await activityApi.update(activityId, position);
+      pendingActivityMovesRef.current.delete(activityId);
+      activitiesRequestRef.current++;
+      setActivities((previous) => previous.map((activity) =>
+        activity.id === activityId ? updated : activity,
+      ));
+      return updated;
+    } catch (error) {
+      pendingActivityMovesRef.current.delete(activityId);
+      activitiesRequestRef.current++;
+      setActivities((previous) => previous.map((activity) =>
+        activity.id === activityId ? original : activity,
+      ));
+      void fetchActivities(true);
+      throw error;
+    }
+  }, [activities, fetchActivities]);
 
   useEffect(() => {
     fetchActivities();
@@ -2210,7 +2255,8 @@ function DailyPageInner() {
               document.getElementById(`activity-${act.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
             });
           }}
-          onRefreshActivities={() => void fetchActivities(true)}
+          onRefreshActivities={handleRefreshActivities}
+          onMoveActivity={handleMoveActivity}
           onDeleteActivity={(activityId) => {
             // Abaikan respons fetch yang dimulai sebelum penghapusan optimistik.
             activitiesRequestRef.current++;

@@ -6,6 +6,7 @@ import CreateProjectModal from '@/components/project/CreateProjectModal';
 import Avatar from '@/components/ui/Avatar';
 import { showToast } from '@/components/ui/Toast';
 import { APP_SIDEBAR_EVENT, isAppSidebarCollapsed } from '@/components/layout/AppLayout';
+import { TEAMS_CHANGED_EVENT } from '@/hooks/useNavLabels';
 import { useAuth } from '@/store/auth';
 import type { Project, Task, Team } from '@/types';
 
@@ -148,6 +149,11 @@ export default function TeamPage() {
     if (!teamId) return;
     setLoading(true);
     refresh(teamId).finally(() => setLoading(false));
+    const onTeamsChanged = () => {
+      teamApi.getTeam(teamId).then(setTeam).catch(() => {});
+    };
+    window.addEventListener(TEAMS_CHANGED_EVENT, onTeamsChanged);
+    return () => window.removeEventListener(TEAMS_CHANGED_EVENT, onTeamsChanged);
   }, [teamId]);
 
   const allTasks: TaskWithProject[] = useMemo(() => {
@@ -199,9 +205,25 @@ export default function TeamPage() {
 
   return (
     <div className="mx-auto flex min-h-full w-full max-w-5xl flex-col space-y-5">
-      <div className="min-w-0">
-        <h1 className="truncate text-2xl font-bold text-gray-800">{team.name}</h1>
-        {team.description && <p className="mt-0.5 truncate text-sm text-gray-500">{team.description}</p>}
+      <div className="flex min-w-0 items-center gap-3">
+        {team.avatarUrl ? (
+          <img
+            src={team.avatarUrl}
+            alt=""
+            className="h-10 w-10 shrink-0 rounded-xl object-cover shadow-sm"
+          />
+        ) : (
+          <div
+            aria-hidden="true"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-perrific-violet/20 bg-perrific-violet/10 font-givonic text-sm font-bold text-perrific-violet"
+          >
+            {team.name.trim().slice(0, 2).toUpperCase()}
+          </div>
+        )}
+        <div className="min-w-0">
+          <h1 className="truncate text-2xl font-bold text-gray-800">{team.name}</h1>
+          {team.description && <p className="mt-0.5 truncate text-sm text-gray-500">{team.description}</p>}
+        </div>
       </div>
 
       <div className="flex-1">

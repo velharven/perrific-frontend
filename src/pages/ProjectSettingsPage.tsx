@@ -22,6 +22,11 @@ type Section = 'umum' | 'board' | 'undang' | 'role' | 'danger';
 export const PROJECT_UPDATED_EVENT = 'project-updated';
 
 export function dispatchProjectUpdated(project: Project) {
+  try {
+    localStorage.setItem(PROJECT_UPDATED_EVENT, String(Date.now()));
+  } catch {
+    // abaikan
+  }
   window.dispatchEvent(new CustomEvent<Project>(PROJECT_UPDATED_EVENT, { detail: project }));
 }
 

@@ -56,6 +56,11 @@ export function useNavLabels(userId?: string) {
 export const TEAMS_CHANGED_EVENT = 'purrific:teams-changed';
 
 export function notifyTeamsChanged() {
+  try {
+    localStorage.setItem(TEAMS_CHANGED_EVENT, String(Date.now()));
+  } catch {
+    // abaikan — penyimpanan lokal tidak tersedia
+  }
   window.dispatchEvent(new Event(TEAMS_CHANGED_EVENT));
 }
 

@@ -6,7 +6,7 @@ export default function NotFoundPage() {
       <h1 className="text-4xl font-bold text-gray-800">404</h1>
       <p>Halaman tidak ditemukan.</p>
       <Link to="/" className="text-primary hover:underline">
-        Kembali ke Dashboard
+        Kembali ke Beranda
       </Link>
     </div>
   );

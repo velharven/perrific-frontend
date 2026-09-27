@@ -2,6 +2,7 @@ import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from 
 import { createPortal } from 'react-dom';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/store/auth';
+import { useSocket } from '@/store/socket';
 import { teamApi } from '@/api/teams';
 import { noteApi } from '@/api/notes';
 import { NOTES_CHANGED_EVENT, notifyNotesChanged } from '@/pages/NotePage';
@@ -52,17 +53,18 @@ import { TAB_ICONS, ActivityIcon } from '@/components/icons';
 import Avatar from '@/components/ui/Avatar';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import ModalShell from '@/components/ui/ModalShell';
+import CreateTeamModal from '@/components/team/CreateTeamModal';
+import { fileToAvatarDataUrl } from '@/lib/avatar';
 import { ToastHost, showToast } from '@/components/ui/Toast';
 import type { Team, Note } from '@/types';
 
 const notePath = (id: string) => `/notes/${id}`;
-const dashboardPath = (id: string) => `/dashboard/${id}`;
 const dailyPath = (id: string) => `/daily/${id}`;
 const tablePath = (id: string) => `/tables/${id}`;
-// ID di balik path tab privat (/notes/:id, /dashboard/:id, /daily/:id).
-// Path polos (/dashboard, /daily) adalah pintu redirect, bukan tab → null.
+// ID di balik path tab privat (/notes/:id, /daily/:id, /tables/:id).
+// Path polos (/notes, /daily) adalah pintu redirect, bukan tab → null.
 function privatIdFromPath(to: string): string | null {
-  for (const prefix of ['/notes/', '/dashboard/', '/daily/', '/tables/'] as const) {
+  for (const prefix of ['/notes/', '/daily/', '/tables/'] as const) {
     if (to.startsWith(prefix)) {
       const id = to.slice(prefix.length);
       if (id && !id.includes('/')) return id;
@@ -74,17 +76,17 @@ function findNoteByPath(list: Note[], to: string): Note | undefined {
   const id = privatIdFromPath(to);
   return id ? list.find((n) => n.id === id) : undefined;
 }
-function privatKindOf(n: Note): 'dashboard' | 'daily' | 'table' | 'note' {
-  return (n.kind ?? 'NOTE') === 'DASHBOARD' ? 'dashboard' : (n.kind ?? 'NOTE') === 'DAILY' ? 'daily' : (n.kind ?? 'NOTE') === 'TABLE' ? 'table' : 'note';
+function privatKindOf(n: Note): 'daily' | 'table' | 'note' {
+  return (n.kind ?? 'NOTE') === 'DAILY' ? 'daily' : (n.kind ?? 'NOTE') === 'TABLE' ? 'table' : 'note';
 }
 function privatPathOf(n: Note): string {
   const k = privatKindOf(n);
-  return k === 'dashboard' ? dashboardPath(n.id) : k === 'daily' ? dailyPath(n.id) : k === 'table' ? tablePath(n.id) : notePath(n.id);
+  return k === 'daily' ? dailyPath(n.id) : k === 'table' ? tablePath(n.id) : notePath(n.id);
 }
 // Bersihkan sisa tampilan lokal untuk satu tab privat (berlaku untuk
-// ketiga varian path karena ID-nya sama).
+// semua varian path karena ID-nya sama).
 function privatPathsOfId(id: string): string[] {
-  return [notePath(id), dashboardPath(id), dailyPath(id), tablePath(id)];
+  return [notePath(id), dailyPath(id), tablePath(id)];
 }
 // 404 = baris sudah tidak ada di server (mis. ikut terhapus cascade saat
 // induk cabangnya di-purge duluan, atau dihapus dari device lain).
@@ -96,7 +98,7 @@ function isNotFound(err: unknown): boolean {
 
 // Pintas halaman app yang bisa dipin sebagai shortcut.
 const ROUTE_SHORTCUTS = [
-  { kind: 'route', ref: '/dashboard', label: 'Dashboard' },
+  { kind: 'route', ref: '/notes', label: 'Selamat Datang' },
   { kind: 'route', ref: '/daily', label: 'Aktivitas Harian' },
 ] as const;
 
@@ -107,15 +109,6 @@ const defaultNoteIcon = (
     <path d="M6.5 8.5h3.5M6.5 10.8h3.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
   </svg>
 );
-
-// Warna di-hash dari ID tim (stabil, tidak pernah berubah) — bukan dari nama,
-// agar rename tidak mengubah warna background.
-function teamColor(key: string): string {
-  const palette = ['bg-perrific-violet', 'bg-perrific-wood', 'bg-green-600', 'bg-sky-600', 'bg-rose-500'];
-  let hash = 0;
-  for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
-  return palette[hash % palette.length];
-}
 
 // Garis indikator oranye penanda posisi drop saat drag berlangsung.
 function DropLine() {
@@ -134,6 +127,7 @@ function SidebarContent({
   onClose?: () => void;
 }) {
   const { user, logout } = useAuth();
+  const { socket } = useSocket();
   const navigate = useNavigate();
   const location = useLocation();
   const [teams, setTeams] = useState<Team[]>([]);
@@ -141,8 +135,7 @@ function SidebarContent({
   const [trashOpen, setTrashOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
-  const [creatingTeam, setCreatingTeam] = useState(false);
-  const [teamDialog, setTeamDialog] = useState<null | 'pilih' | 'kode'>(null);
+  const [teamDialog, setTeamDialog] = useState<null | 'pilih' | 'kode' | 'buat' | 'buat-langsung'>(null);
   const [joinCode, setJoinCode] = useState('');
   const [joinError, setJoinError] = useState<string | null>(null);
   const [joining, setJoining] = useState(false);
@@ -256,13 +249,26 @@ function SidebarContent({
           if (!cancelled) setTeams([]);
         });
     };
+    const onStorage = (e: StorageEvent) => {
+      if (!e.key || e.key === TEAMS_CHANGED_EVENT) {
+        fetchTeams();
+      }
+    };
     fetchTeams();
     window.addEventListener(TEAMS_CHANGED_EVENT, fetchTeams);
+    window.addEventListener('storage', onStorage);
+    if (socket) {
+      socket.on('team:updated', fetchTeams);
+    }
     return () => {
       cancelled = true;
       window.removeEventListener(TEAMS_CHANGED_EVENT, fetchTeams);
+      window.removeEventListener('storage', onStorage);
+      if (socket) {
+        socket.off('team:updated', fetchTeams);
+      }
     };
-  }, []);
+  }, [socket]);
 
   useEffect(() => {
     let cancelled = false;
@@ -492,7 +498,7 @@ function SidebarContent({
           label: 'Urungkan',
           onAction: () => restoreTrash('team', team.id),
         });
-        if (location.pathname === `/team/${team.id}`) navigate('/dashboard');
+        if (location.pathname === `/team/${team.id}`) navigate('/notes');
       } else if (pendingDelete.kind === 'trash-note') {
         const note = pendingDelete.note;
         const branch = noteBranch(note.id);
@@ -501,7 +507,7 @@ function SidebarContent({
           label: 'Urungkan',
           onAction: () => branch.forEach((item) => restoreTrash('note', item.id)),
         });
-        if (privatIdFromPath(location.pathname) === note.id) navigate('/dashboard');
+        if (privatIdFromPath(location.pathname) === note.id) navigate('/notes');
       } else if (pendingDelete.kind === 'purge-team') {
         const team = pendingDelete.team;
         try {
@@ -512,7 +518,7 @@ function SidebarContent({
         restoreTrash('team', team.id);
         setTeams((prev) => prev.filter((t) => t.id !== team.id));
         notifyTeamsChanged();
-        if (location.pathname === `/team/${team.id}`) navigate('/dashboard');
+        if (location.pathname === `/team/${team.id}`) navigate('/notes');
       } else {
         const note = pendingDelete.note;
         try {
@@ -532,7 +538,7 @@ function SidebarContent({
           setNoteDraft('');
         }
         notifyNotesChanged();
-        if (privatIdFromPath(location.pathname) === note.id) navigate('/dashboard');
+        if (privatIdFromPath(location.pathname) === note.id) navigate('/notes');
       }
       setPendingDelete(null);
     } catch {
@@ -598,7 +604,7 @@ function SidebarContent({
   function handleArchiveTeam(team: Team) {
     hideTeam(team.id);
     setCtxMenu(null);
-    if (location.pathname === `/team/${team.id}`) navigate('/dashboard');
+    if (location.pathname === `/team/${team.id}`) navigate('/notes');
   }
 
   function handleUnarchiveTeam(team: Team) {
@@ -658,9 +664,9 @@ function SidebarContent({
     }
   }
 
-  // Kamar baru berkunci: note / dashboard / aktivitas, masing-masing
-  // dapat URL acak sendiri (/notes/:id, /dashboard/:id, /daily/:id).
-  async function handleCreateFromTemplate(kind: 'note' | 'dashboard' | 'activity') {
+  // Kamar baru berkunci: note / aktivitas, masing-masing
+  // dapat URL acak sendiri (/notes/:id, /daily/:id).
+  async function handleCreateFromTemplate(kind: 'note' | 'activity') {
     if (creating) return;
     setCreating(true);
     setCreateError(null);
@@ -671,14 +677,6 @@ function SidebarContent({
         setTemplatePickerOpen(false);
         notifyNotesChanged();
         navigate(dailyPath(created.id));
-        return;
-      }
-      if (kind === 'dashboard') {
-        const created = await noteApi.create({ title: 'Dashboard', kind: 'DASHBOARD' });
-        setNotes((prev) => [...prev, created]);
-        setTemplatePickerOpen(false);
-        notifyNotesChanged();
-        navigate(dashboardPath(created.id));
         return;
       }
       const created = await noteApi.create({ title: 'Tanpa judul', kind: 'NOTE' });
@@ -693,20 +691,9 @@ function SidebarContent({
     }
   }
 
-  async function handleQuickAddTeam() {
-    if (creatingTeam) return;
-    setCreatingTeam(true);
+  function handleQuickAddTeam() {
     setTeamError(null);
-    try {
-      const created = await teamApi.createTeam({ name: 'Tim baru' });
-      setTeams((prev) => [...prev, created]);
-      notifyTeamsChanged();
-      startTeamEdit(created);
-    } catch {
-      setTeamError('Gagal membuat tim. Coba lagi.');
-    } finally {
-      setCreatingTeam(false);
-    }
+    setTeamDialog('buat-langsung');
   }
 
   function openTeamDialog() {
@@ -717,7 +704,7 @@ function SidebarContent({
   }
 
   function closeTeamDialog() {
-    if (!joining && !creatingTeam) setTeamDialog(null);
+    if (!joining) setTeamDialog(null);
   }
 
   function openJoinForm() {
@@ -805,11 +792,94 @@ function SidebarContent({
     setTeams((prev) => prev.map((t) => (t.id === team.id ? { ...t, name: next } : t)));
     try {
       const updated = await teamApi.update(team.id, { name: next });
-      setTeams((prev) => prev.map((t) => (t.id === team.id ? updated : t)));
+      setTeams((prev) => prev.map((t) => (t.id === team.id ? { ...t, ...updated } : t)));
       notifyTeamsChanged();
     } catch {
       setTeams(snapshot);
       setTeamError('Gagal mengganti nama tim. Coba lagi.');
+    }
+  }
+
+  const teamAvatarInputRef = useRef<HTMLInputElement>(null);
+  const teamAvatarTargetRef = useRef<Team | null>(null);
+
+  async function handleChangeTeamAvatar(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    const target = teamAvatarTargetRef.current;
+    teamAvatarTargetRef.current = null;
+    if (!file || !target) return;
+    try {
+      const dataUrl = await fileToAvatarDataUrl(file);
+      const snapshot = teams;
+      setTeamIcon(target.id, null);
+      setTeams((prev) => prev.map((t) => (t.id === target.id ? { ...t, avatarUrl: dataUrl } : t)));
+      try {
+        const updated = await teamApi.update(target.id, { avatarUrl: dataUrl });
+        setTeams((prev) => prev.map((t) => (t.id === target.id ? { ...t, ...updated } : t)));
+        notifyTeamsChanged();
+        showToast('Gambar tim diperbarui.');
+      } catch {
+        setTeams(snapshot);
+        showToast('Gagal mengganti gambar tim. Coba lagi.');
+      }
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : 'Gagal memproses gambar.');
+    }
+  }
+
+  async function handleRemoveTeamAvatar(target: Team) {
+    const snapshot = teams;
+    setTeamIcon(target.id, null);
+    setTeams((prev) => prev.map((t) => (t.id === target.id ? { ...t, avatarUrl: null } : t)));
+    try {
+      const updated = await teamApi.update(target.id, { avatarUrl: null });
+      setTeams((prev) => prev.map((t) => (t.id === target.id ? { ...t, ...updated } : t)));
+      notifyTeamsChanged();
+      showToast('Gambar tim dihapus.');
+    } catch {
+      setTeams(snapshot);
+      showToast('Gagal menghapus gambar tim.');
+    }
+  }
+
+  const [editingDescTeam, setEditingDescTeam] = useState<Team | null>(null);
+  const [teamDescDraft, setTeamDescDraft] = useState('');
+  const [savingTeamDesc, setSavingTeamDesc] = useState(false);
+
+  function openEditTeamDesc(team: Team) {
+    const fresh = teams.find((t) => t.id === team.id) ?? team;
+    setEditingDescTeam(fresh);
+    setTeamDescDraft(fresh.description ?? '');
+  }
+
+  async function handleSaveTeamDesc(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingDescTeam || savingTeamDesc) return;
+    const target = editingDescTeam;
+    const nextDesc = teamDescDraft.trim() || null;
+    if ((target.description ?? null) === nextDesc) {
+      setEditingDescTeam(null);
+      return;
+    }
+    setSavingTeamDesc(true);
+    const snapshot = teams;
+    setTeams((prev) =>
+      prev.map((t) => (t.id === target.id ? { ...t, description: nextDesc } : t)),
+    );
+    try {
+      const updated = await teamApi.update(target.id, { description: nextDesc });
+      setTeams((prev) =>
+        prev.map((t) => (t.id === target.id ? { ...t, ...updated } : t)),
+      );
+      notifyTeamsChanged();
+      setEditingDescTeam(null);
+      showToast('Deskripsi tim diperbarui.');
+    } catch {
+      setTeams(snapshot);
+      showToast('Gagal menyimpan deskripsi tim. Coba lagi.');
+    } finally {
+      setSavingTeamDesc(false);
     }
   }
 
@@ -818,10 +888,10 @@ function SidebarContent({
     migrateTabOrder(user?.id, 'privat', ['privat-nav', 'privat-notes']);
   }, [user?.id]);
 
-  // PRIVAT = satu daftar gabungan kamar berkunci (dashboard, daily, note).
+  // PRIVAT = satu daftar gabungan kamar berkunci (daily, table, note).
   // Semua diperlakukan sama (drag, rename, ikon, bintang, arsip). User baru
-  // otomatis dapat 1 dashboard + 1 daily dari backend, jadi selalu tampil awal.
-  type PrivatEntry = { kind: 'dashboard' | 'daily' | 'table' | 'note'; key: string; note: Note };
+  // otomatis dapat 1 catatan "Selamat Datang" + 1 daily dari backend.
+  type PrivatEntry = { kind: 'daily' | 'table' | 'note'; key: string; note: Note };
   // Kunci tab yang ada di Sampah (path privat atau id tim): disembunyikan
   // dari semua daftar sampai dikembalikan atau dihapus permanen.
   const trashedKeys = useMemo(
@@ -883,10 +953,18 @@ function SidebarContent({
     [visibleTeams, starred],
   );
   // Arsip privat tanpa yang sudah masuk Sampah. Path polos lawas
-  // (/dashboard, /daily) bukan tab lagi jadi disembunyikan dari arsip.
+  // (/notes, /dashboard, /daily) bukan tab lagi jadi disembunyikan dari arsip.
   const archivedNav = useMemo(
-    () => hiddenNav.filter((to) => to !== '/dashboard' && to !== '/daily' && !trashedKeys.has(to)),
-    [hiddenNav, trashedKeys],
+    () =>
+      hiddenNav.filter(
+        (to) =>
+          to !== '/notes' &&
+          to !== '/dashboard' &&
+          to !== '/daily' &&
+          !trashedKeys.has(to) &&
+          findNoteByPath(notes, to) !== undefined,
+      ),
+    [hiddenNav, trashedKeys, notes],
   );
   // Label shortcut live dari target; target hilang -> "Tidak tersedia".
   const shortcutRows = useMemo(
@@ -894,24 +972,25 @@ function SidebarContent({
       shortcuts.map((s) => {
         if (s.kind === 'route') {
           // /settings tidak lagi punya route (pengaturan dibuka via modal).
-          if (s.ref !== '/dashboard' && s.ref !== '/daily') {
+          if (s.ref !== '/notes' && s.ref !== '/dashboard' && s.ref !== '/daily') {
             return { ...s, to: '', label: 'Tidak tersedia', missing: true };
           }
-          const fallback = s.ref === '/dashboard' ? 'Dashboard' : 'Aktivitas Harian';
-          return { ...s, to: s.ref, label: navLabels[s.ref] ?? fallback, missing: false };
+          const to = s.ref === '/dashboard' ? '/notes' : s.ref;
+          const fallback = to === '/notes' ? 'Selamat Datang' : 'Aktivitas Harian';
+          return { ...s, to, label: navLabels[s.ref] ?? fallback, missing: false };
         }
         if (s.kind === 'team') {
-          const t = teams.find((x) => x.id === s.ref);
+          const t = teams.find((x) => x.id === s.ref && !trashedKeys.has(x.id));
           return t
             ? { ...s, to: `/team/${t.id}`, label: t.name, missing: false }
             : { ...s, to: '', label: 'Tidak tersedia', missing: true };
         }
-        const n = notes.find((x) => x.id === s.ref);
+        const n = notes.find((x) => x.id === s.ref && !trashedKeys.has(privatPathOf(x)));
         return n
           ? { ...s, to: privatPathOf(n), label: n.title || 'Tanpa judul', missing: false }
           : { ...s, to: '', label: 'Tidak tersedia', missing: true };
       }),
-    [shortcuts, teams, notes, navLabels],
+    [shortcuts, teams, notes, navLabels, trashedKeys],
   );
   // Pin shortcut: cek, lepas, dan mulai rename dari baris mana pun.
   const isPinned = (kind: string, ref: string) =>
@@ -1310,6 +1389,38 @@ function SidebarContent({
           );
         };
 
+  const renderTeamBadge = (team: Team, draftName?: string) => {
+    if (teamIcons[team.id]) {
+      return (
+        <span
+          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-perrific-violet/20 bg-perrific-violet/10 text-perrific-violet"
+          aria-hidden="true"
+        >
+          <ActivityIcon name={teamIcons[team.id]} className="h-3.5 w-3.5" />
+        </span>
+      );
+    }
+    if (team.avatarUrl) {
+      return (
+        <img
+          src={team.avatarUrl}
+          alt=""
+          aria-hidden="true"
+          className="h-6 w-6 shrink-0 rounded-md object-cover"
+        />
+      );
+    }
+    const ch = ((draftName ?? team.name).trim().slice(0, 2) || '?').toUpperCase();
+    return (
+      <span
+        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-perrific-violet/20 bg-perrific-violet/10 font-givonic text-[10px] font-bold text-perrific-violet"
+        aria-hidden="true"
+      >
+        {ch}
+      </span>
+    );
+  };
+
   // Baris tim.
   const renderTeamRow = (team: Team) => {
     const hint = itemDropHint('teams', team.id);
@@ -1325,21 +1436,7 @@ function SidebarContent({
           {hint === 'before' && <DropLine />}
         <SortableTabRow id={team.id} as="li" disabled>
           <div className={teamRowClass(false)}>
-            {teamIcons[team.id] ? (
-              <span
-                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-white ${teamColor(team.id)}`}
-                aria-hidden="true"
-              >
-                <ActivityIcon name={teamIcons[team.id]} className="h-3.5 w-3.5" />
-              </span>
-            ) : (
-              <span
-                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[11px] font-bold text-white ${teamColor(team.id)}`}
-                aria-hidden="true"
-              >
-                {(teamDraft.trim().charAt(0) || '?').toUpperCase()}
-              </span>
-            )}
+            {renderTeamBadge(team, teamDraft)}
             <input
               autoFocus
               value={teamDraft}
@@ -1378,21 +1475,7 @@ function SidebarContent({
           onContextMenu={(e) => openCtxMenu(e, { kind: 'team', team })}
           title={collapsed ? team.name : 'Seret untuk memindahkan • Klik kanan untuk opsi'}
         >
-          {teamIcons[team.id] ? (
-            <span
-              className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-white ${teamColor(team.id)}`}
-              aria-hidden="true"
-            >
-              <ActivityIcon name={teamIcons[team.id]} className="h-3.5 w-3.5" />
-            </span>
-          ) : (
-            <span
-              className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[11px] font-bold text-white ${teamColor(team.id)}`}
-              aria-hidden="true"
-            >
-              {team.name.trim().charAt(0).toUpperCase()}
-            </span>
-          )}
+          {renderTeamBadge(team)}
           <span
             className={`min-w-0 flex-1 truncate transition-[max-width,opacity,margin] duration-200 ease-in-out ${
               collapsed ? 'ml-0 max-w-0 opacity-0' : 'ml-2.5 max-w-[220px] opacity-100'
@@ -1441,21 +1524,7 @@ function SidebarContent({
     const label = entry.kind === 'team' ? entry.team.name : entry.note.title;
     const icon =
       entry.kind === 'team' ? (
-        teamIcons[entry.team.id] ? (
-          <span
-            className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-white ${teamColor(entry.team.id)}`}
-            aria-hidden="true"
-          >
-            <ActivityIcon name={teamIcons[entry.team.id]} className="h-3.5 w-3.5" />
-          </span>
-        ) : (
-          <span
-            className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[11px] font-bold text-white ${teamColor(entry.team.id)}`}
-            aria-hidden="true"
-          >
-            {entry.team.name.trim().charAt(0).toUpperCase()}
-          </span>
-        )
+        renderTeamBadge(entry.team)
       ) : navIcons[navTo] ? (
         <ActivityIcon name={navIcons[navTo]} className="h-4 w-4 shrink-0" />
       ) : (
@@ -1810,11 +1879,10 @@ function SidebarContent({
             <button
               type="button"
               onClick={openTeamDialog}
-              disabled={creatingTeam}
               title="Tim baru"
               aria-label="Tim baru"
               aria-haspopup="dialog"
-              className="flex h-6 w-6 items-center justify-center rounded-md text-perrific-graphite/40 transition hover:bg-gray-100 hover:text-perrific-violet disabled:opacity-50"
+              className="flex h-6 w-6 items-center justify-center rounded-md text-perrific-graphite/40 transition hover:bg-gray-100 hover:text-perrific-violet"
             >
               <svg
                 width="13"
@@ -1822,13 +1890,8 @@ function SidebarContent({
                 viewBox="0 0 16 16"
                 fill="none"
                 aria-hidden="true"
-                className={creatingTeam ? 'animate-spin' : ''}
               >
-                {creatingTeam ? (
-                  <path d="M8 2a6 6 0 1 0 6 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                ) : (
-                  <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                )}
+                <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
               </svg>
             </button>
         </div>
@@ -1838,16 +1901,15 @@ function SidebarContent({
           !collapsed && (
             <div className="mt-2 rounded-lg border border-dashed border-gray-300 px-3 py-4 text-center">
               <p className="font-givonic text-xs text-perrific-graphite/50">
-                {teams.length === 0 ? 'Belum ada tim' : 'Semua tim diarsipkan'}
+                {archivedTeams.length > 0 ? 'Semua tim diarsipkan' : 'Belum ada tim'}
               </p>
-              {teams.length === 0 ? (
+              {archivedTeams.length === 0 ? (
                 <button
                   type="button"
                   onClick={handleQuickAddTeam}
-                  disabled={creatingTeam}
-                  className="mt-1 inline-flex items-center justify-center font-givonic text-xs font-semibold text-perrific-violet hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="mt-1 inline-flex items-center justify-center font-givonic text-xs font-semibold text-perrific-violet hover:underline"
                 >
-                  {creatingTeam ? 'Membuat…' : '+ Buat tim'}
+                  + Buat tim
                 </button>
               ) : (
                 <button
@@ -1885,7 +1947,25 @@ function SidebarContent({
         )}
       </SortableSection>
       )}
-      {teamDialog && (
+      {(teamDialog === 'buat' || teamDialog === 'buat-langsung') && (
+        <CreateTeamModal
+          existingTeams={teams.filter((t) => !trashedKeys.has(t.id))}
+          currentUserId={user?.id}
+          onBack={teamDialog === 'buat' ? () => setTeamDialog('pilih') : undefined}
+          onClose={closeTeamDialog}
+          onCreated={(created) => {
+            setTeams((prev) =>
+              prev.some((t) => t.id === created.id)
+                ? prev.map((t) => (t.id === created.id ? created : t))
+                : [...prev, created],
+            );
+            notifyTeamsChanged();
+            setTeamDialog(null);
+            navigate(`/team/${created.id}`);
+          }}
+        />
+      )}
+      {(teamDialog === 'pilih' || teamDialog === 'kode') && (
         <ModalShell
           label={teamDialog === 'pilih' ? 'Tim baru' : 'Masuk tim'}
           onClose={closeTeamDialog}
@@ -1909,10 +1989,7 @@ function SidebarContent({
               <div className="space-y-1">
                 <button
                   type="button"
-                  onClick={() => {
-                    setTeamDialog(null);
-                    void handleQuickAddTeam();
-                  }}
+                  onClick={() => setTeamDialog('buat')}
                   className="flex w-full items-center gap-3 rounded-xl border border-gray-200 px-3 py-2.5 text-left transition hover:border-perrific-violet hover:bg-perrific-violet/5"
                 >
                   <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-perrific-violet/10 text-perrific-violet">
@@ -1925,7 +2002,7 @@ function SidebarContent({
                       Buat tim baru
                     </span>
                     <span className="block truncate font-givonic text-xs text-perrific-graphite/50">
-                      Buat tim kosong baru
+                      Atur nama, foto, dan anggota tim
                     </span>
                   </span>
                 </button>
@@ -2567,12 +2644,7 @@ function SidebarContent({
                   return (
                     <li key={team.id}>
                       <div className={navRowClass(false)}>
-                        <span
-                          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[11px] font-bold text-white ${teamColor(team.id)}`}
-                          aria-hidden="true"
-                        >
-                          {(teamDraft.trim().charAt(0) || team.name.trim().charAt(0) || '?').toUpperCase()}
-                        </span>
+                        {renderTeamBadge(team, teamDraft)}
                         <input
                           autoFocus
                           value={teamDraft}
@@ -2602,21 +2674,7 @@ function SidebarContent({
                       onContextMenu={(e) => openCtxMenu(e, { kind: 'team', team })}
                       title="Klik kanan untuk opsi"
                     >
-                      {teamIcons[team.id] ? (
-                        <span
-                          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-white ${teamColor(team.id)}`}
-                          aria-hidden="true"
-                        >
-                          <ActivityIcon name={teamIcons[team.id]} className="h-3.5 w-3.5" />
-                        </span>
-                      ) : (
-                        <span
-                          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[11px] font-bold text-white ${teamColor(team.id)}`}
-                          aria-hidden="true"
-                        >
-                          {team.name.trim().charAt(0).toUpperCase()}
-                        </span>
-                      )}
+                      {renderTeamBadge(team)}
                       <span className="ml-2.5 min-w-0 flex-1 truncate font-givonic text-sm">
                         {team.name}
                       </span>
@@ -2701,7 +2759,7 @@ function SidebarContent({
                   {
                     id: 'privat',
                     name: 'Privat',
-                    desc: 'Tab pribadi: dashboard, harian, note',
+                    desc: 'Tab pribadi: harian, note',
                     icon: (
                       <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                         <path d="M4 2.5h5.5L12.5 5.5V13.5H4V2.5z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
@@ -2894,25 +2952,6 @@ function SidebarContent({
               <button
                 type="button"
                 disabled={creating}
-                onClick={() => handleCreateFromTemplate('dashboard')}
-                className="flex w-full items-center gap-3 rounded-xl border border-gray-200 px-3 py-2.5 text-left transition hover:border-perrific-violet hover:bg-perrific-violet/5 disabled:opacity-50"
-              >
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-perrific-violet/10 text-perrific-violet">
-                  <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                    <rect x="2.5" y="2.5" width="4.5" height="4.5" rx="1.2" stroke="currentColor" strokeWidth="1.4" />
-                    <rect x="9" y="2.5" width="4.5" height="4.5" rx="1.2" stroke="currentColor" strokeWidth="1.4" />
-                    <rect x="2.5" y="9" width="4.5" height="4.5" rx="1.2" stroke="currentColor" strokeWidth="1.4" />
-                    <rect x="9" y="9" width="4.5" height="4.5" rx="1.2" stroke="currentColor" strokeWidth="1.4" />
-                  </svg>
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block font-givonic text-sm font-semibold text-perrific-graphite">Dashboard</span>
-                  <span className="block truncate font-givonic text-xs text-perrific-graphite/50">Catatan ber-isi awal fokus + tim + harian</span>
-                </span>
-              </button>
-              <button
-                type="button"
-                disabled={creating}
                 onClick={() => handleCreateFromTemplate('activity')}
                 className="flex w-full items-center gap-3 rounded-xl border border-gray-200 px-3 py-2.5 text-left transition hover:border-perrific-violet hover:bg-perrific-violet/5 disabled:opacity-50"
               >
@@ -3093,7 +3132,7 @@ function SidebarContent({
               </button>
                 );
               })()}
-              {ctxMenu.kind !== 'shortcut' && (
+              {ctxMenu.kind === 'nav' && (
               <button
                 type="button"
                 role="menuitem"
@@ -3106,6 +3145,59 @@ function SidebarContent({
                 </svg>
                 Ganti ikon
               </button>
+              )}
+              {ctxMenu.kind === 'team' && (
+                <>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      const target = ctxMenu.team;
+                      setCtxMenu(null);
+                      openEditTeamDesc(target);
+                    }}
+                    className="flex w-full items-center gap-2.5 px-3 py-2.5 font-givonic text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                      <path d="M2.5 4h11M2.5 8h11M2.5 12h7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                    </svg>
+                    Edit deskripsi
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      teamAvatarTargetRef.current = ctxMenu.team;
+                      setCtxMenu(null);
+                      teamAvatarInputRef.current?.click();
+                    }}
+                    className="flex w-full items-center gap-2.5 px-3 py-2.5 font-givonic text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                      <rect x="2" y="2.5" width="12" height="11" rx="2" stroke="currentColor" strokeWidth="1.4" />
+                      <circle cx="5.5" cy="6" r="1.3" stroke="currentColor" strokeWidth="1.3" />
+                      <path d="M2.5 11.5l3.2-3.2a1 1 0 0 1 1.4 0L10 11l1.5-1.5a1 1 0 0 1 1.4 0l1.1 1.1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                    Ganti gambar
+                  </button>
+                  {(ctxMenu.team.avatarUrl || teamIcons[ctxMenu.team.id]) && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        const target = ctxMenu.team;
+                        setCtxMenu(null);
+                        void handleRemoveTeamAvatar(target);
+                      }}
+                      className="flex w-full items-center gap-2.5 px-3 py-2.5 font-givonic text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                        <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                      </svg>
+                      Hapus gambar
+                    </button>
+                  )}
+                </>
               )}
               <button
                 type="button"
@@ -3171,14 +3263,14 @@ function SidebarContent({
                       role="menuitem"
                       onClick={() => {
                         // Arsipkan seisi cabang agar anak tak jadi yatim tak terlihat.
-                        // Sedang melihat salah satunya → pindah ke dashboard.
+                        // Sedang melihat salah satunya → pindah ke notes.
                         const target = findNoteByPath(notes, ctxMenu.to);
                         if (target) {
                           const branch = noteBranch(target.id);
                           for (const item of branch) hideNav(privatPathOf(item));
                           const viewing = privatIdFromPath(location.pathname);
                           if (viewing && branch.some((item) => item.id === viewing)) {
-                            navigate('/dashboard');
+                            navigate('/notes');
                           }
                         } else {
                           hideNav(ctxMenu.to);
@@ -3494,6 +3586,80 @@ function SidebarContent({
         }}
         onConfirm={purgeEmptyTrash}
       />
+      <input
+        ref={teamAvatarInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleChangeTeamAvatar}
+        className="hidden"
+      />
+      {editingDescTeam && (
+        <ModalShell
+          label="Edit deskripsi tim"
+          onClose={() => !savingTeamDesc && setEditingDescTeam(null)}
+        >
+          <div className="mb-1 flex items-center justify-between px-1">
+            <div className="min-w-0">
+              <p className="font-givonic text-sm font-bold text-perrific-graphite">
+                Edit deskripsi tim
+              </p>
+              <p className="truncate font-givonic text-xs text-perrific-graphite/50">
+                {editingDescTeam.name}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => !savingTeamDesc && setEditingDescTeam(null)}
+              aria-label="Tutup"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-perrific-graphite"
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+              </svg>
+            </button>
+          </div>
+          <form onSubmit={handleSaveTeamDesc} className="mt-3 space-y-3">
+            <div>
+              <textarea
+                autoFocus
+                rows={3}
+                value={teamDescDraft}
+                onChange={(e) => setTeamDescDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    void handleSaveTeamDesc(e);
+                  }
+                }}
+                placeholder="Tulis deskripsi singkat tim (kosongkan untuk menghapus)…"
+                maxLength={500}
+                aria-label="Deskripsi tim"
+                className="w-full resize-none rounded-xl border border-gray-200 bg-white px-3 py-2.5 font-givonic text-sm text-perrific-graphite placeholder:text-gray-400 focus:border-perrific-violet focus:outline-none focus:ring-2 focus:ring-perrific-violet/20"
+              />
+              <p className="mt-1 text-right font-mono text-[11px] text-gray-400">
+                {teamDescDraft.length}/500
+              </p>
+            </div>
+            <div className="flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => !savingTeamDesc && setEditingDescTeam(null)}
+                disabled={savingTeamDesc}
+                className="rounded-full px-4 py-2 font-givonic text-xs font-semibold text-gray-600 transition hover:bg-gray-100 disabled:opacity-50"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                disabled={savingTeamDesc}
+                className="rounded-full bg-perrific-violet px-4 py-2 font-givonic text-xs font-semibold text-white transition hover:brightness-110 disabled:opacity-50"
+              >
+                {savingTeamDesc ? 'Menyimpan…' : 'Simpan'}
+              </button>
+            </div>
+          </form>
+        </ModalShell>
+      )}
     </div>
   );
 }
@@ -3591,7 +3757,7 @@ export default function AppLayout() {
               <path d="M2 4.5h12M2 8h12M2 11.5h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
             </svg>
           </button>
-          <Link to="/dashboard" className="flex items-center gap-2">
+          <Link to="/notes" className="flex items-center gap-2">
             <img src="/Purrific.svg" alt="Purrific" width="24" height="24" className="h-6 w-6" />
             <span className="font-gendy text-[16px] font-extrabold tracking-[-0.02em] text-perrific-graphite">
               Purrific

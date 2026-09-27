@@ -27,7 +27,7 @@ function TablePageInner() {
     : false;
 
   useEffect(() => {
-    if (!t.loading && t.loadError) navigate('/dashboard', { replace: true });
+    if (!t.loading && t.loadError) navigate('/notes', { replace: true });
   }, [t.loading, t.loadError, navigate]);
 
   useEffect(() => {
@@ -93,7 +93,7 @@ function TablePageInner() {
         label: 'Urungkan',
         onAction: () => undoEntry(entryId),
       });
-      navigate('/dashboard');
+      navigate('/notes');
     } catch {
       showToast('Gagal menghapus tabel. Coba lagi.');
       setDeleting(false);
@@ -134,7 +134,7 @@ function TablePageInner() {
           </button>
           <button
             type="button"
-            onClick={() => navigate('/dashboard')}
+            onClick={() => navigate('/notes')}
             className="rounded-full px-4 py-2 font-givonic text-xs font-semibold text-gray-600 transition hover:bg-gray-100"
           >
             Kembali

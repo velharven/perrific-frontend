@@ -8,7 +8,7 @@ export interface User {
   createdAt?: string;
 }
 
-export type NoteKind = 'NOTE' | 'DASHBOARD' | 'DAILY' | 'TABLE';
+export type NoteKind = 'NOTE' | 'DAILY' | 'TABLE';
 
 export interface Note {
   id: string;
@@ -48,6 +48,7 @@ export interface Team {
   id: string;
   name: string;
   description?: string | null;
+  avatarUrl?: string | null;
   inviteCode?: string | null;
   inviteExpiresAt?: string | null;
   canManageInvite?: boolean;
@@ -187,6 +188,23 @@ export interface ChecklistItem {
   createdAt: string;
 }
 
+export type RecurrenceFrequency = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY';
+export type RecurrenceEndType = 'NEVER' | 'ON_DATE' | 'AFTER';
+
+export interface RecurrenceConfig {
+  freq: RecurrenceFrequency;
+  interval: number;
+  byDays?: number[]; // 0=Minggu .. 6=Sabtu
+  byMonthDay?: number; // 1..31
+  byWeekOfMonth?: {
+    week: number; // 1..4 atau -1 (terakhir)
+    dayOfWeek: number; // 0..6
+  };
+  endType: RecurrenceEndType;
+  untilDate?: string | null; // YYYY-MM-DD
+  count?: number | null;
+}
+
 export interface DailyActivity {
   id: string;
   userId: string;
@@ -203,7 +221,9 @@ export interface DailyActivity {
   checklistItems: ChecklistItem[];
   task?: Pick<Task, 'id' | 'title' | 'priority'> | null;
   customValues?: Record<string, string | number | boolean> | null;
+  recurrence?: RecurrenceConfig | null;
   googleEventId?: string | null;
+  color?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -225,6 +245,8 @@ export interface GoogleCalendarEvent {
   start?: string;
   end?: string;
   allDay?: boolean;
+  colorId?: string | null;
+  recurringEventId?: string | null;
 }
 
 export type DailyColumnType =

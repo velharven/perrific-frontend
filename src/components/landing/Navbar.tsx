@@ -28,10 +28,10 @@ export default function Navbar() {
         <div className="flex items-center gap-2">
           {user ? (
             <Link
-              to="/dashboard"
+              to="/notes"
               className="inline-flex items-center gap-2 rounded-full bg-perrific-graphite px-5 py-2.5 font-givonic text-sm font-semibold text-white shadow-[0_2px_10px_rgba(26,26,30,0.18)] hover:bg-black transition-colors"
             >
-              Buka Dashboard
+              Buka Ruang Kerja
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="opacity-80">
                 <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
               </svg>

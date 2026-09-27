@@ -277,9 +277,12 @@ function BlockRow({
                   h.onInsertAfter(block.id, 'text');
                 }
               }}
-              className="flex min-w-0 flex-1 cursor-default items-center rounded-md px-1 py-2.5 focus:bg-gray-50 focus:outline-none"
+              className="flex min-w-0 flex-1 cursor-default items-center rounded-md px-1 py-2.5 focus:bg-gray-100 focus:outline-none"
             >
-              <span aria-hidden="true" className="h-px w-full bg-gray-200" />
+              <span
+                aria-hidden="true"
+                className="h-px w-full bg-perrific-graphite/25 transition-colors group-hover:bg-perrific-graphite/40"
+              />
             </div>
             <button
               type="button"

@@ -23,7 +23,6 @@ import TeamProjectsPage from '@/pages/TeamProjectsPage';
 import TeamSettingsPage from '@/pages/TeamSettingsPage';
 import NotFoundPage from '@/pages/NotFoundPage';
 import PrivatRedirect from '@/pages/PrivatRedirect';
-import DashboardInstancePage from '@/pages/DashboardInstancePage';
 import DailyInstancePage from '@/pages/DailyInstancePage';
 import TablePage from '@/pages/TablePage';
 
@@ -42,10 +41,11 @@ export default function App() {
             <Route element={<ProtectedRoute />}>
               <Route path="/join/:code" element={<JoinPage />} />
               <Route element={<AppLayout />}>
-                {/* /dashboard dan /daily polos = pintu depan, langsung antar
-                    ke kamar berkunci pertama milik user */}
-                <Route path="/dashboard" element={<PrivatRedirect kind="DASHBOARD" />} />
-                <Route path="/dashboard/:dashboardId" element={<DashboardInstancePage />} />
+                {/* /notes dan /daily polos = pintu depan, langsung antar
+                    ke catatan "Selamat Datang" atau harian pertama milik user */}
+                <Route path="/notes" element={<PrivatRedirect kind="NOTE" />} />
+                <Route path="/dashboard" element={<PrivatRedirect kind="NOTE" />} />
+                <Route path="/dashboard/:dashboardId" element={<PrivatRedirect kind="NOTE" />} />
                 <Route path="/board/:projectId" element={<BoardPage />} />
                 <Route path="/board/:projectId/task/:taskId" element={<TaskDetailPage />} />
                 <Route path="/daily" element={<PrivatRedirect kind="DAILY" />} />
