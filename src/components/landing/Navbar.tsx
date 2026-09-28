@@ -17,6 +17,9 @@ export default function Navbar() {
           <a href="#fitur" className="rounded-full px-3 py-1.5 hover:bg-perrific-graphite hover:text-white transition-colors">
             Fitur
           </a>
+          <a href="#perbandingan" className="rounded-full px-3 py-1.5 hover:bg-perrific-graphite hover:text-white transition-colors">
+            Perbandingan
+          </a>
           <a href="#cara-kerja" className="rounded-full px-3 py-1.5 hover:bg-perrific-graphite hover:text-white transition-colors">
             Cara kerja
           </a>

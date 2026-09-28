@@ -2,6 +2,7 @@ import Navbar from '@/components/landing/Navbar';
 import Hero from '@/components/landing/Hero';
 import ProblemSection from '@/components/landing/ProblemSection';
 import SolutionSection from '@/components/landing/SolutionSection';
+import ComparisonSection from '@/components/landing/ComparisonSection';
 import HowItWorks from '@/components/landing/HowItWorks';
 import PersonaSection from '@/components/landing/PersonaSection';
 import CTASection from '@/components/landing/CTASection';
@@ -15,6 +16,7 @@ export default function LandingPage() {
         <Hero />
         <ProblemSection />
         <SolutionSection />
+        <ComparisonSection />
         <HowItWorks />
         <PersonaSection />
         <CTASection />

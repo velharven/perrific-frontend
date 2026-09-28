@@ -42,6 +42,11 @@ export default function Footer() {
                 </a>
               </li>
               <li>
+                <a href="#perbandingan" className="text-perrific-graphite/70 hover:text-perrific-violet transition">
+                  Perbandingan
+                </a>
+              </li>
+              <li>
                 <a href="#cara-kerja" className="text-perrific-graphite/70 hover:text-perrific-violet transition">
                   Cara kerja
                 </a>
