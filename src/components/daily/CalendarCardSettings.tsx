@@ -4,15 +4,18 @@ import type {
   DailyActivity,
   GoogleCalendarEvent,
   RecurrenceConfig,
+  RecurrenceEditScope,
   RecurrenceEndType,
   RecurrenceFrequency,
 } from '@/types';
+import RecurrenceScopeModal from './RecurrenceScopeModal';
 import { activityApi } from '@/api/activities';
 import { calendarApi } from '@/api/calendar';
 import {
   DAY_NAMES_ID,
   DAY_PILLS_ID,
   formatRecurrenceLabel,
+  getDayBefore,
   getNthWeekdayInfo,
   getRecurrencePresets,
   isSameRecurrence,
@@ -26,12 +29,107 @@ export type CombinedItem =
   | { type: 'activity'; id: string; act: DailyActivity; time?: string | null }
   | { type: 'google'; id: string; gEv: GoogleCalendarEvent; time?: string };
 
+export type CalendarUndoAction =
+  | {
+      id: number;
+      type: 'delete';
+      item: CombinedItem;
+      title: string;
+      pendingDelete: Promise<void>;
+    }
+  | {
+      id: number;
+      type: 'drag-from-sidebar-item';
+      activityId: string;
+      title: string;
+      prevDate: string | null;
+      prevStartTime: string | null;
+      prevEndTime: string | null;
+      googleEventId?: string | null;
+    }
+  | {
+      id: number;
+      type: 'drag-from-sidebar-team-task' | 'drag-from-sidebar-personal-task';
+      createdActivityId: string;
+      title: string;
+      googleEventId?: string | null;
+    }
+  | {
+      id: number;
+      type: 'move-calendar-card';
+      itemType: 'activity' | 'google';
+      rawId: string;
+      title: string;
+      prevDate: string | null;
+      prevStartTime: string | null;
+      prevEndTime: string | null;
+      prevAllDay?: boolean;
+      prevRecurrence?: RecurrenceConfig | null;
+    }
+  | {
+      id: number;
+      type: 'recurring-move-this-event' | 'recurring-edit-this-event';
+      createdActivityId: string;
+      masterActivityId: string;
+      prevExcludeDates: string[];
+      instanceDateStr: string;
+      title: string;
+    }
+  | {
+      id: number;
+      type: 'recurring-move-following' | 'recurring-edit-following';
+      createdActivityId: string;
+      masterActivityId: string;
+      prevRecurrence: RecurrenceConfig | null;
+      title: string;
+    }
+  | {
+      id: number;
+      type: 'recurring-delete-this-event';
+      masterActivityId: string;
+      prevExcludeDates: string[];
+      instanceDateStr: string;
+      title: string;
+    }
+  | {
+      id: number;
+      type: 'recurring-delete-following';
+      masterActivityId: string;
+      prevRecurrence: RecurrenceConfig | null;
+      title: string;
+    }
+  | {
+      id: number;
+      type: 'card-settings-update';
+      activityId: string;
+      title: string;
+      prevSnapshot: {
+        title: string;
+        startTime: string | null;
+        endTime: string | null;
+        date: string | null;
+        color: string | null;
+        allDay?: boolean;
+        recurrence?: RecurrenceConfig | null;
+      };
+    }
+  | {
+      id: number;
+      type: 'reorder-calendar-columns';
+      date: string;
+      columns: string[][];
+      title: string;
+    };
+
 interface CalendarCardSettingsProps {
   selectedItem: CombinedItem;
   onClose: () => void;
   onRefresh?: () => void;
   onOpenActivity?: (activity: DailyActivity) => void;
   onDelete?: (item: CombinedItem) => Promise<void>;
+  onRecordUndo?: (action: CalendarUndoAction) => void;
+  onUndo?: (actionId?: number) => void;
+  getNextUndoId?: () => number;
 }
 
 function toDateInputValue(d: Date | string | null | undefined): string {
@@ -109,6 +207,9 @@ export default function CalendarCardSettings({
   onRefresh,
   onOpenActivity,
   onDelete,
+  onRecordUndo,
+  onUndo,
+  getNextUndoId,
 }: CalendarCardSettingsProps) {
   const isAct = selectedItem.type === 'activity';
   const act = isAct ? selectedItem.act : null;
@@ -135,7 +236,7 @@ export default function CalendarCardSettings({
     left: -9999,
   });
 
-  // State menu Warna & modal konfirmasi cakupan warna kegiatan berulang
+  // State menu Warna & modal konfirmasi cakupan kegiatan berulang
   const [color, setColor] = useState<string | null>(null);
   const [colorMenuOpen, setColorMenuOpen] = useState(false);
   const colorButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -144,9 +245,23 @@ export default function CalendarCardSettings({
     top: -9999,
     left: -9999,
   });
-  const [scopeModalOpen, setScopeModalOpen] = useState(false);
-  const [pendingColor, setPendingColor] = useState<string | null>(null);
-  const [selectedScope, setSelectedScope] = useState<'THIS_EVENT' | 'ALL_EVENTS'>('THIS_EVENT');
+
+  interface ScopeModalState {
+    isOpen: boolean;
+    actionType: 'move' | 'time' | 'rename' | 'color' | 'delete';
+    pendingOverride?: {
+      nextTitle?: string;
+      nextStartTimeStr?: string;
+      nextEndTimeStr?: string;
+      nextDateStr?: string;
+      nextColor?: string | null;
+    };
+  }
+
+  const [scopeModal, setScopeModal] = useState<ScopeModalState>({
+    isOpen: false,
+    actionType: 'rename',
+  });
 
   // State form Custom Repeat Modal
   const [customInterval, setCustomInterval] = useState<number>(1);
@@ -164,10 +279,11 @@ export default function CalendarCardSettings({
     setRepeatMenuOpen(false);
     setCustomModalOpen(false);
     setColorMenuOpen(false);
-    setScopeModalOpen(false);
+    setScopeModal({ isOpen: false, actionType: 'rename' });
     if (isAct && act) {
       setTitle(act.title || '');
-      setDateStr(toDateInputValue(act.date));
+      const instanceDate = toDateInputValue(selectedItem.time || act.date);
+      setDateStr(instanceDate);
       const hasTime = Boolean(act.startTime);
       setIsAllDay(!hasTime);
       setStartTimeStr(toTimeInputValue(act.startTime));
@@ -183,7 +299,8 @@ export default function CalendarCardSettings({
       setColor(act.color ?? null);
     } else if (gEv) {
       setTitle(gEv.title || 'Event Google');
-      setDateStr(toDateInputValue(gEv.start));
+      const instanceDate = toDateInputValue(selectedItem.time || gEv.start);
+      setDateStr(instanceDate);
       const hasTime = Boolean(gEv.start?.includes('T'));
       setIsAllDay(!hasTime);
       setStartTimeStr(toTimeInputValue(gEv.start));
@@ -347,16 +464,26 @@ export default function CalendarCardSettings({
     [recurrence, dateStr],
   );
 
+  const isRepeating = Boolean(
+    (isAct && act?.recurrence) ||
+    (!isAct && (gEv?.recurringEventId || gEv?.id?.includes('_'))),
+  );
+
   // Simpan perubahan ke backend
-  const handleSave = (override?: {
-    allDay?: boolean;
-    nextDateStr?: string;
-    nextRecurrence?: RecurrenceConfig | null;
-    nextColor?: string | null;
-    nextStartTimeStr?: string;
-    nextEndTimeStr?: string;
-  }): Promise<void> => {
+  const handleSave = (
+    override?: {
+      nextTitle?: string;
+      allDay?: boolean;
+      nextDateStr?: string;
+      nextRecurrence?: RecurrenceConfig | null;
+      nextColor?: string | null;
+      nextStartTimeStr?: string;
+      nextEndTimeStr?: string;
+    },
+    skipUndo = false,
+  ): Promise<void> => {
     if (deletingRef.current) return Promise.resolve();
+    const effectiveTitle = override?.nextTitle !== undefined ? override.nextTitle : title;
     const effectiveAllDay = override?.allDay !== undefined ? override.allDay : isAllDay;
     const effectiveDateStr = override?.nextDateStr !== undefined ? override.nextDateStr : dateStr;
     const effectiveRecurrence =
@@ -366,6 +493,19 @@ export default function CalendarCardSettings({
     const effectiveStartTimeStr = override?.nextStartTimeStr ?? startTimeStr;
     const effectiveEndTimeStr = override?.nextEndTimeStr ?? endTimeStr;
     const previousSave = savingPromiseRef.current;
+
+    const previousSnapshot =
+      !skipUndo && !isRepeating && isAct && act && onRecordUndo && getNextUndoId
+        ? {
+            title: act.title || 'Tanpa judul',
+            startTime: act.startTime || null,
+            endTime: act.endTime || null,
+            date: act.date ? new Date(act.date).toISOString() : null,
+            color: act.color || null,
+            allDay: act.allDay,
+            recurrence: null,
+          }
+        : null;
 
     const save = (async () => {
       if (previousSave) await previousSave;
@@ -380,7 +520,7 @@ export default function CalendarCardSettings({
 
         if (isAct && act) {
           await activityApi.update(act.id, {
-            title: title.trim() || 'Tanpa judul',
+            title: effectiveTitle.trim() || 'Tanpa judul',
             date: `${effectiveDateStr}T00:00:00.000Z`,
             startTime: startIso,
             endTime: endIso,
@@ -388,9 +528,24 @@ export default function CalendarCardSettings({
             recurrence: effectiveRecurrence,
             color: effectiveColor,
           });
+
+          if (previousSnapshot && onRecordUndo && getNextUndoId) {
+            const actionId = getNextUndoId();
+            onRecordUndo({
+              id: actionId,
+              type: 'card-settings-update',
+              activityId: act.id,
+              title: effectiveTitle.trim() || 'Tanpa judul',
+              prevSnapshot: previousSnapshot,
+            });
+            showToast(`Pengaturan kegiatan "${effectiveTitle.trim() || 'Tanpa judul'}" disimpan`, {
+              label: 'Urungkan (Ctrl+Z)',
+              onAction: () => onUndo?.(actionId),
+            });
+          }
         } else if (gEv) {
           await calendarApi.updateEvent(gEv.id, {
-            title: title.trim() || 'Tanpa judul',
+            title: effectiveTitle.trim() || 'Tanpa judul',
             date: `${effectiveDateStr}T00:00:00.000Z`,
             startTime: startIso,
             endTime: endIso,
@@ -414,60 +569,280 @@ export default function CalendarCardSettings({
 
   // Tangani pemilihan warna dari palet
   const handleSelectColor = (chosenColorId: string | null) => {
-    const isRepeating = Boolean(
-      (isAct && act?.recurrence) ||
-      (!isAct && (gEv?.recurringEventId || gEv?.id?.includes('_'))),
-    );
-
+    setColorMenuOpen(false);
     if (!isRepeating) {
       setColor(chosenColorId);
-      setColorMenuOpen(false);
       void handleSave({ nextColor: chosenColorId });
     } else {
-      setColorMenuOpen(false);
-      setPendingColor(chosenColorId);
-      setSelectedScope('THIS_EVENT');
-      setScopeModalOpen(true);
+      setScopeModal({
+        isOpen: true,
+        actionType: 'color',
+        pendingOverride: { nextColor: chosenColorId },
+      });
     }
   };
 
-  // Konfirmasi perubahan warna pada kegiatan berulang
-  const handleConfirmScopeSave = async () => {
-    const chosenColor = pendingColor;
-    const scope = selectedScope;
-    setScopeModalOpen(false);
-    setPendingColor(null);
+  // Konfirmasi perubahan cakupan (move, time, rename, color, delete)
+  const handleConfirmScope = async (scope: RecurrenceEditScope) => {
+    const { actionType, pendingOverride } = scopeModal;
+    setScopeModal((prev) => ({ ...prev, isOpen: false }));
+
+    const effectiveDateStr = pendingOverride?.nextDateStr !== undefined ? pendingOverride.nextDateStr : dateStr;
+    const effectiveStartTimeStr = pendingOverride?.nextStartTimeStr ?? startTimeStr;
+    const effectiveEndTimeStr = pendingOverride?.nextEndTimeStr ?? endTimeStr;
+    const effectiveTitle = (pendingOverride?.nextTitle !== undefined ? pendingOverride.nextTitle : title).trim() || 'Tanpa judul';
+    const effectiveColor = pendingOverride?.nextColor !== undefined ? pendingOverride.nextColor : color;
+
+    const instanceDate = toDateInputValue(selectedItem.time || (isAct ? act?.date : gEv?.start));
+
+    if (actionType === 'delete') {
+      if (scope === 'ALL_EVENTS') {
+        await handleDelete();
+      } else if (scope === 'THIS_EVENT') {
+        if (isAct && act) {
+          const prevExcludeDates = [...(act.recurrence?.excludeDates || [])];
+          const updatedExclude = [...prevExcludeDates, instanceDate];
+          await activityApi.update(act.id, {
+            recurrence: {
+              ...act.recurrence,
+              excludeDates: updatedExclude,
+            },
+          });
+          if (onRecordUndo && getNextUndoId) {
+            const actionId = getNextUndoId();
+            onRecordUndo({
+              id: actionId,
+              type: 'recurring-delete-this-event',
+              masterActivityId: act.id,
+              prevExcludeDates,
+              instanceDateStr: instanceDate,
+              title: act.title || 'Tanpa judul',
+            });
+            showToast(`Kegiatan "${act.title || 'Tanpa judul'}" pada ${instanceDate} dihapus`, {
+              label: 'Urungkan (Ctrl+Z)',
+              onAction: () => onUndo?.(actionId),
+            });
+          }
+        } else if (gEv) {
+          await calendarApi.deleteEvent(gEv.id);
+        }
+        onClose();
+        onRefresh?.();
+      } else if (scope === 'THIS_AND_FOLLOWING') {
+        if (isAct && act) {
+          const prevRecurrence = act.recurrence ? { ...act.recurrence } : null;
+          const dayBefore = getDayBefore(instanceDate);
+          await activityApi.update(act.id, {
+            recurrence: {
+              ...act.recurrence,
+              endType: 'ON_DATE',
+              untilDate: dayBefore,
+            },
+          });
+          if (onRecordUndo && getNextUndoId) {
+            const actionId = getNextUndoId();
+            onRecordUndo({
+              id: actionId,
+              type: 'recurring-delete-following',
+              masterActivityId: act.id,
+              prevRecurrence,
+              title: act.title || 'Tanpa judul',
+            });
+            showToast(`Kegiatan "${act.title || 'Tanpa judul'}" dan seterusnya dihapus`, {
+              label: 'Urungkan (Ctrl+Z)',
+              onAction: () => onUndo?.(actionId),
+            });
+          }
+        }
+        onClose();
+        onRefresh?.();
+      }
+      return;
+    }
 
     if (scope === 'ALL_EVENTS') {
-      setColor(chosenColor);
-      await handleSave({ nextColor: chosenColor });
-    } else {
-      // Hanya Event Ini (THIS_EVENT): simpan perubahan warna hanya untuk tanggal terpilih
-      if (isAct && act) {
+      const prevSnapshot =
+        isAct && act
+          ? {
+              title: act.title || 'Tanpa judul',
+              startTime: act.startTime || null,
+              endTime: act.endTime || null,
+              date: act.date ? new Date(act.date).toISOString() : null,
+              color: act.color || null,
+              allDay: act.allDay,
+              recurrence: act.recurrence ? { ...act.recurrence } : null,
+            }
+          : null;
+
+      if (pendingOverride?.nextColor !== undefined) setColor(effectiveColor);
+      if (pendingOverride?.nextTitle !== undefined) setTitle(effectiveTitle);
+      if (pendingOverride?.nextDateStr !== undefined) setDateStr(effectiveDateStr);
+      if (pendingOverride?.nextStartTimeStr !== undefined) setStartTimeStr(effectiveStartTimeStr);
+      if (pendingOverride?.nextEndTimeStr !== undefined) setEndTimeStr(effectiveEndTimeStr);
+      await handleSave(pendingOverride, true);
+
+      if (isAct && act && prevSnapshot && onRecordUndo && getNextUndoId) {
+        const actionId = getNextUndoId();
+        onRecordUndo({
+          id: actionId,
+          type: 'card-settings-update',
+          activityId: act.id,
+          title: effectiveTitle,
+          prevSnapshot,
+        });
+        showToast(`Perubahan kegiatan "${effectiveTitle}" disimpan`, {
+          label: 'Urungkan (Ctrl+Z)',
+          onAction: () => onUndo?.(actionId),
+        });
+      }
+      return;
+    }
+
+    if (scope === 'THIS_EVENT') {
+      if (isAct && act && act.recurrence) {
+        // 1. Tambahkan tanggal instance ke excludeDates pada master
+        const prevExcludeDates = [...(act.recurrence.excludeDates || [])];
+        const updatedExclude = [...prevExcludeDates, instanceDate];
+        await activityApi.update(act.id, {
+          recurrence: {
+            ...act.recurrence,
+            excludeDates: updatedExclude,
+          },
+        });
+
+        // 2. Buat kegiatan baru mandiri (non-repeating)
         let startIso: string | null = null;
         let endIso: string | null = null;
         if (!isAllDay) {
-          startIso = new Date(`${dateStr}T${startTimeStr}:00`).toISOString();
-          endIso = new Date(`${dateStr}T${endTimeStr}:00`).toISOString();
+          startIso = new Date(`${effectiveDateStr}T${effectiveStartTimeStr}:00`).toISOString();
+          endIso = new Date(`${effectiveDateStr}T${effectiveEndTimeStr}:00`).toISOString();
         }
-        await activityApi.create({
-          title: title.trim() || act.title || 'Tanpa judul',
+        const created = await activityApi.create({
+          title: effectiveTitle,
           description: act.description,
-          date: new Date(`${dateStr}T00:00:00`).toISOString(),
+          date: new Date(`${effectiveDateStr}T00:00:00`).toISOString(),
           startTime: startIso,
           endTime: endIso,
+          allDay: isAllDay,
           type: act.type || 'CUSTOM',
           status: act.status || 'PENDING',
           icon: act.icon,
-          color: chosenColor,
+          color: effectiveColor,
           recurrence: null,
         });
+
+        if (onRecordUndo && getNextUndoId) {
+          const actionId = getNextUndoId();
+          onRecordUndo({
+            id: actionId,
+            type: 'recurring-edit-this-event',
+            createdActivityId: created.id,
+            masterActivityId: act.id,
+            prevExcludeDates,
+            instanceDateStr: instanceDate,
+            title: effectiveTitle,
+          });
+          showToast(`Perubahan kegiatan "${effectiveTitle}" disimpan`, {
+            label: 'Urungkan (Ctrl+Z)',
+            onAction: () => onUndo?.(actionId),
+          });
+        }
       } else if (gEv) {
         await calendarApi.updateEvent(gEv.id, {
-          colorId: chosenColor,
+          title: effectiveTitle,
+          colorId: effectiveColor,
         });
       }
+      onClose();
       onRefresh?.();
+      return;
+    }
+
+    if (scope === 'THIS_AND_FOLLOWING') {
+      if (isAct && act && act.recurrence) {
+        const prevRecurrence = { ...act.recurrence };
+        // 1. Potong master lama hingga hari sebelum instance ini
+        const dayBefore = getDayBefore(instanceDate);
+        await activityApi.update(act.id, {
+          recurrence: {
+            ...act.recurrence,
+            endType: 'ON_DATE',
+            untilDate: dayBefore,
+          },
+        });
+
+        // 2. Buat kegiatan baru berulang mulai dari effectiveDateStr
+        let startIso: string | null = null;
+        let endIso: string | null = null;
+        if (!isAllDay) {
+          startIso = new Date(`${effectiveDateStr}T${effectiveStartTimeStr}:00`).toISOString();
+          endIso = new Date(`${effectiveDateStr}T${effectiveEndTimeStr}:00`).toISOString();
+        }
+
+        let nextRecurrence: RecurrenceConfig = { ...act.recurrence };
+        if (nextRecurrence.freq === 'WEEKLY' && effectiveDateStr !== instanceDate) {
+          const oldDay = toLocalMidnight(instanceDate).getDay();
+          const newDay = toLocalMidnight(effectiveDateStr).getDay();
+          if (oldDay !== newDay) {
+            const currentDays =
+              nextRecurrence.byDays && nextRecurrence.byDays.length > 0
+                ? nextRecurrence.byDays
+                : [oldDay];
+            const updatedDays = currentDays.includes(oldDay)
+              ? currentDays.map((d) => (d === oldDay ? newDay : d))
+              : [...currentDays, newDay];
+            nextRecurrence.byDays = [...new Set(updatedDays)].sort((a, b) => a - b);
+          }
+        }
+
+        const created = await activityApi.create({
+          title: effectiveTitle,
+          description: act.description,
+          date: new Date(`${effectiveDateStr}T00:00:00`).toISOString(),
+          startTime: startIso,
+          endTime: endIso,
+          allDay: isAllDay,
+          type: act.type || 'CUSTOM',
+          status: act.status || 'PENDING',
+          icon: act.icon,
+          color: effectiveColor,
+          recurrence: nextRecurrence,
+        });
+
+        if (onRecordUndo && getNextUndoId) {
+          const actionId = getNextUndoId();
+          onRecordUndo({
+            id: actionId,
+            type: 'recurring-edit-following',
+            createdActivityId: created.id,
+            masterActivityId: act.id,
+            prevRecurrence,
+            title: effectiveTitle,
+          });
+          showToast(`Perubahan kegiatan "${effectiveTitle}" dan seterusnya disimpan`, {
+            label: 'Urungkan (Ctrl+Z)',
+            onAction: () => onUndo?.(actionId),
+          });
+        }
+      }
+      onClose();
+      onRefresh?.();
+      return;
+    }
+  };
+
+  const handleCloseScopeModal = () => {
+    const { actionType } = scopeModal;
+    setScopeModal({ isOpen: false, actionType: 'rename' });
+    if (isAct && act) {
+      if (actionType === 'rename') setTitle(act.title || '');
+      if (actionType === 'time') {
+        setStartTimeStr(toTimeInputValue(act.startTime));
+        setEndTimeStr(toTimeInputValue(act.endTime));
+      }
+      if (actionType === 'move') {
+        setDateStr(toDateInputValue(selectedItem.time || act.date));
+      }
     }
   };
 
@@ -572,6 +947,32 @@ export default function CalendarCardSettings({
   const anchorDateObj = useMemo(() => toLocalMidnight(dateStr || new Date()), [dateStr]);
   const anchorNthInfo = useMemo(() => getNthWeekdayInfo(anchorDateObj), [anchorDateObj]);
 
+  const handleTitleBlur = () => {
+    const trimmed = title.trim();
+    const originalTitle = (isAct ? act?.title : gEv?.title) || '';
+    if (trimmed === originalTitle) return;
+    if (isRepeating) {
+      setScopeModal({
+        isOpen: true,
+        actionType: 'rename',
+        pendingOverride: { nextTitle: trimmed },
+      });
+    } else {
+      void handleSave({ nextTitle: trimmed });
+    }
+  };
+
+  const handleDeleteClick = () => {
+    if (isRepeating) {
+      setScopeModal({
+        isOpen: true,
+        actionType: 'delete',
+      });
+    } else {
+      void handleDelete();
+    }
+  };
+
   return (
     <div className="w-full shrink-0 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm animate-in fade-in zoom-in-95 duration-150 flex flex-col gap-3 font-givonic">
       {/* Header bar: Label & Close Button */}
@@ -616,7 +1017,12 @@ export default function CalendarCardSettings({
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          onBlur={() => void handleSave()}
+          onBlur={handleTitleBlur}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.currentTarget.blur();
+            }
+          }}
           placeholder="Nama kegiatan…"
           className="w-full rounded-lg border border-transparent px-2 py-1.5 text-sm font-semibold text-gray-900 placeholder:text-gray-400 hover:border-gray-200 focus:border-blue-500 focus:bg-white focus:outline-none transition"
         />
@@ -649,7 +1055,15 @@ export default function CalendarCardSettings({
                     nextEndTimeStr = `${newEndH}:${newEndMin}`;
                     setEndTimeStr(nextEndTimeStr);
                   }
-                  void handleSave({ nextStartTimeStr: val, nextEndTimeStr });
+                  if (isRepeating) {
+                    setScopeModal({
+                      isOpen: true,
+                      actionType: 'time',
+                      pendingOverride: { nextStartTimeStr: val, nextEndTimeStr },
+                    });
+                  } else {
+                    void handleSave({ nextStartTimeStr: val, nextEndTimeStr });
+                  }
                 }}
                 placeholder="Mulai"
                 className="w-[78px]"
@@ -661,7 +1075,15 @@ export default function CalendarCardSettings({
                 value={endTimeStr}
                 onChange={(val) => {
                   setEndTimeStr(val);
-                  void handleSave({ nextEndTimeStr: val });
+                  if (isRepeating) {
+                    setScopeModal({
+                      isOpen: true,
+                      actionType: 'time',
+                      pendingOverride: { nextEndTimeStr: val },
+                    });
+                  } else {
+                    void handleSave({ nextEndTimeStr: val });
+                  }
                 }}
                 referenceStartTime={startTimeStr}
                 placeholder="Selesai"
@@ -700,7 +1122,15 @@ export default function CalendarCardSettings({
                 if (!next) return;
                 setDateStr(next);
                 setShowDatePicker(false);
-                void handleSave({ nextDateStr: next });
+                if (isRepeating) {
+                  setScopeModal({
+                    isOpen: true,
+                    actionType: 'move',
+                    pendingOverride: { nextDateStr: next },
+                  });
+                } else {
+                  void handleSave({ nextDateStr: next });
+                }
               }}
               onBlur={() => {
                 setTimeout(() => setShowDatePicker(false), 150);
@@ -904,7 +1334,7 @@ export default function CalendarCardSettings({
             // Cegah event blur pada input judul menyimpan ulang sebelum delete
             e.preventDefault();
           }}
-          onClick={() => void handleDelete()}
+          onClick={handleDeleteClick}
           disabled={deleting}
           className="rounded-lg p-1 text-gray-400 hover:bg-red-50 hover:text-red-600 transition cursor-pointer disabled:opacity-50"
           title="Hapus kegiatan ini"
@@ -1281,112 +1711,16 @@ export default function CalendarCardSettings({
           document.body,
         )}
 
-      {/* Popup Modal Konfirmasi Cakupan Warna Kegiatan Berulang */}
-      {scopeModalOpen &&
-        createPortal(
-          <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/40 p-4 backdrop-blur-[1px] animate-in fade-in duration-150 font-givonic">
-            <div className="w-full max-w-sm rounded-2xl border border-gray-100 bg-white p-5 shadow-2xl animate-in zoom-in-95 duration-150">
-              {/* Header */}
-              <div className="flex items-center gap-3 border-b border-gray-100 pb-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600 shrink-0">
-                  <svg
-                    width="18"
-                    height="18"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <circle cx="12" cy="12" r="10" />
-                    <line x1="12" y1="16" x2="12" y2="12" />
-                    <line x1="12" y1="8" x2="12.01" y2="8" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-gray-900 leading-snug">
-                    Ubah Warna Kegiatan Berulang
-                  </h3>
-                  <p className="text-[11px] text-gray-500 leading-tight">
-                    Pilih cakupan kegiatan yang ingin diubah warnanya
-                  </p>
-                </div>
-              </div>
-
-              {/* Radio Options */}
-              <div className="my-4 space-y-2.5">
-                <label
-                  className={`flex items-start gap-3 rounded-xl border p-3 cursor-pointer transition select-none ${
-                    selectedScope === 'THIS_EVENT'
-                      ? 'border-blue-500 bg-blue-50/50 text-blue-950'
-                      : 'border-gray-200 bg-white hover:bg-gray-50 text-gray-800'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="recurrence-scope"
-                    value="THIS_EVENT"
-                    checked={selectedScope === 'THIS_EVENT'}
-                    onChange={() => setSelectedScope('THIS_EVENT')}
-                    className="mt-0.5 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                  />
-                  <div className="text-xs">
-                    <div className="font-semibold text-gray-900">Hanya Event Ini</div>
-                    <div className="text-[11px] text-gray-500 mt-0.5">
-                      Hanya mengubah warna kegiatan pada tanggal {formatHumanDate(dateStr)}.
-                    </div>
-                  </div>
-                </label>
-
-                <label
-                  className={`flex items-start gap-3 rounded-xl border p-3 cursor-pointer transition select-none ${
-                    selectedScope === 'ALL_EVENTS'
-                      ? 'border-blue-500 bg-blue-50/50 text-blue-950'
-                      : 'border-gray-200 bg-white hover:bg-gray-50 text-gray-800'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="recurrence-scope"
-                    value="ALL_EVENTS"
-                    checked={selectedScope === 'ALL_EVENTS'}
-                    onChange={() => setSelectedScope('ALL_EVENTS')}
-                    className="mt-0.5 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                  />
-                  <div className="text-xs">
-                    <div className="font-semibold text-gray-900">Semua Event Ini</div>
-                    <div className="text-[11px] text-gray-500 mt-0.5">
-                      Mengubah warna seluruh kegiatan dalam rangkaian berulang ini.
-                    </div>
-                  </div>
-                </label>
-              </div>
-
-              {/* Footer Buttons */}
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setScopeModalOpen(false);
-                    setPendingColor(null);
-                  }}
-                  className="rounded-xl px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-100 transition cursor-pointer"
-                >
-                  Batalkan Perubahan
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void handleConfirmScopeSave()}
-                  className="rounded-xl bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition cursor-pointer"
-                >
-                  Simpan Perubahan
-                </button>
-              </div>
-            </div>
-          </div>,
-          document.body,
-        )}
+      {/* Popup Modal Konfirmasi Cakupan Perubahan Kegiatan Berulang */}
+      <RecurrenceScopeModal
+        isOpen={scopeModal.isOpen}
+        actionType={scopeModal.actionType}
+        targetDate={toDateInputValue(selectedItem.time || (isAct ? act?.date : gEv?.start) || dateStr)}
+        recurrence={isAct ? act?.recurrence : null}
+        activityTitle={title}
+        onSelect={(scope) => void handleConfirmScope(scope)}
+        onClose={handleCloseScopeModal}
+      />
     </div>
   );
 }

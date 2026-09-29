@@ -41,10 +41,11 @@ import PersonCell from '@/components/table/PersonCell';
 import CalendarView from '@/components/daily/CalendarView';
 import TeamTaskView from '@/components/daily/TeamTaskView';
 import PersonalProjectKanbanView from '@/components/daily/PersonalProjectKanbanView';
+import RecurrenceScopeModal from '@/components/daily/RecurrenceScopeModal';
 import { UndoStackProvider, useUndo } from '@/hooks/useUndoStack';
 import { useCalendarSync } from '@/store/calendarSync';
-import { doesActivityOccurOnDate, projectActivityOntoDate } from '@/lib/recurrence';
-import type { DailyActivity, DailyColumn, DailyColumnType, RecurrenceConfig } from '@/types';
+import { doesActivityOccurOnDate, getDayBefore, projectActivityOntoDate } from '@/lib/recurrence';
+import type { DailyActivity, DailyColumn, DailyColumnType, RecurrenceConfig, RecurrenceEditScope } from '@/types';
 
 // Helpers
 function toISODate(d: Date): string {
@@ -1009,6 +1010,12 @@ function DailyPageInner() {
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
+  const [recurrenceRenamePrompt, setRecurrenceRenamePrompt] = useState<{
+    isOpen: boolean;
+    activity: DailyActivity;
+    newTitle: string;
+    instanceDate: Date;
+  } | null>(null);
   const [editingTime, setEditingTime] = useState<{ id: string; field: 'start' | 'end' } | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -1255,14 +1262,18 @@ function DailyPageInner() {
     } catch {
       if (!silent && requestId === activitiesRequestRef.current) setActivities([]);
     } finally {
-      if (!silent && requestId === activitiesRequestRef.current) setLoading(false);
+      if (requestId === activitiesRequestRef.current) setLoading(false);
     }
   }, []);
 
+  const isInitialCalendarSyncRef = useRef(true);
   useEffect(() => {
+    if (isInitialCalendarSyncRef.current) {
+      isInitialCalendarSyncRef.current = false;
+      return;
+    }
     activitiesRequestRef.current++;
     pendingActivityMovesRef.current.clear();
-    setActivities([]); setSelectedIds(new Set());
     void fetchActivities(true);
   }, [calendarStatus.connectionId, calendarStatus.connected, fetchActivities]);
   useEffect(() => {
@@ -1775,14 +1786,152 @@ function DailyPageInner() {
     }
   }
 
+  const handleConfirmRecurrenceRename = async (scope: RecurrenceEditScope) => {
+    if (!recurrenceRenamePrompt) return;
+    const { activity, newTitle, instanceDate } = recurrenceRenamePrompt;
+    setRecurrenceRenamePrompt(null);
+    const instanceDateStr = toISODate(instanceDate);
+
+    if (scope === 'ALL_EVENTS') {
+      const prevTitle = activity.title || 'Tanpa judul';
+      const updated = await activityApi.update(activity.id, { title: newTitle });
+      setActivities((prev) => prev.map((a) => (a.id === activity.id ? updated : a)));
+      const undo = () => {
+        void activityApi.update(activity.id, { title: prevTitle }).then((res) => {
+          setActivities((prev) => prev.map((a) => (a.id === activity.id ? res : a)));
+          showToast(`Penggantian nama "${newTitle}" diurungkan`);
+        });
+      };
+      const entryId = push(`ganti nama "${newTitle}"`, undo);
+      showToast('Nama seluruh kegiatan diperbarui', {
+        label: 'Urungkan (Ctrl+Z)',
+        onAction: () => undoEntry(entryId),
+      });
+      return;
+    }
+
+    if (scope === 'THIS_EVENT') {
+      const prevExcludeDates = [...(activity.recurrence?.excludeDates || [])];
+      const updatedExclude = [...prevExcludeDates, instanceDateStr];
+      await activityApi.update(activity.id, {
+        recurrence: {
+          ...activity.recurrence,
+          excludeDates: updatedExclude,
+        },
+      });
+
+      const created = await activityApi.create({
+        title: newTitle,
+        description: activity.description,
+        date: new Date(`${instanceDateStr}T00:00:00`).toISOString(),
+        startTime: activity.startTime,
+        endTime: activity.endTime,
+        allDay: activity.allDay,
+        type: activity.type || 'CUSTOM',
+        status: activity.status || 'PENDING',
+        icon: activity.icon,
+        color: activity.color,
+        recurrence: null,
+      });
+
+      void fetchActivities(true);
+      const undo = () => {
+        void (async () => {
+          await activityApi.remove(created.id);
+          await activityApi.update(activity.id, {
+            recurrence: {
+              ...activity.recurrence,
+              excludeDates: prevExcludeDates,
+            },
+          });
+          void fetchActivities(true);
+          showToast(`Penggantian nama kegiatan pada ${instanceDateStr} diurungkan`);
+        })();
+      };
+      const entryId = push(`ganti nama "${newTitle}"`, undo);
+      showToast(`Nama kegiatan pada ${instanceDateStr} diperbarui`, {
+        label: 'Urungkan (Ctrl+Z)',
+        onAction: () => undoEntry(entryId),
+      });
+      return;
+    }
+
+    if (scope === 'THIS_AND_FOLLOWING') {
+      const prevRecurrence = activity.recurrence ? { ...activity.recurrence } : null;
+      const dayBefore = getDayBefore(instanceDateStr);
+      await activityApi.update(activity.id, {
+        recurrence: {
+          ...activity.recurrence,
+          endType: 'ON_DATE',
+          untilDate: dayBefore,
+        },
+      });
+
+      const created = await activityApi.create({
+        title: newTitle,
+        description: activity.description,
+        date: new Date(`${instanceDateStr}T00:00:00`).toISOString(),
+        startTime: activity.startTime,
+        endTime: activity.endTime,
+        allDay: activity.allDay,
+        type: activity.type || 'CUSTOM',
+        status: activity.status || 'PENDING',
+        icon: activity.icon,
+        color: activity.color,
+        recurrence: activity.recurrence,
+      });
+
+      void fetchActivities(true);
+      const undo = () => {
+        void (async () => {
+          await activityApi.remove(created.id);
+          await activityApi.update(activity.id, {
+            recurrence: prevRecurrence,
+          });
+          void fetchActivities(true);
+          showToast('Penggantian nama kegiatan dan seterusnya diurungkan');
+        })();
+      };
+      const entryId = push(`ganti nama "${newTitle}"`, undo);
+      showToast('Nama kegiatan dan seterusnya diperbarui', {
+        label: 'Urungkan (Ctrl+Z)',
+        onAction: () => undoEntry(entryId),
+      });
+      return;
+    }
+  };
+
   async function handleUpdateTitle(activity: DailyActivity) {
-    if (!editingTitle.trim() || editingTitle === activity.title) {
+    const trimmed = editingTitle.trim();
+    if (!trimmed || trimmed === activity.title) {
       setEditingId(null);
       return;
     }
-    const updated = await activityApi.update(activity.id, { title: editingTitle.trim() });
+    if (activity.recurrence) {
+      setRecurrenceRenamePrompt({
+        isOpen: true,
+        activity,
+        newTitle: trimmed,
+        instanceDate: selectedDate,
+      });
+      setEditingId(null);
+      return;
+    }
+    const prevTitle = activity.title || 'Tanpa judul';
+    const updated = await activityApi.update(activity.id, { title: trimmed });
     setActivities((prev) => prev.map((a) => (a.id === activity.id ? updated : a)));
     setEditingId(null);
+    const undo = () => {
+      void activityApi.update(activity.id, { title: prevTitle }).then((res) => {
+        setActivities((prev) => prev.map((a) => (a.id === activity.id ? res : a)));
+        showToast(`Penggantian nama "${trimmed}" diurungkan`);
+      });
+    };
+    const entryId = push(`ganti nama "${trimmed}"`, undo);
+    showToast('Nama kegiatan diperbarui', {
+      label: 'Urungkan (Ctrl+Z)',
+      onAction: () => undoEntry(entryId),
+    });
   }
 
   // Klik sintetis tepat setelah drop diabaikan agar menu kolom tak terbuka sendiri.
@@ -2471,6 +2620,18 @@ function DailyPageInner() {
         </div>
       )}
 
+      {/* Modal Konfirmasi Cakupan Penggantian Nama Kegiatan Berulang */}
+      {recurrenceRenamePrompt && (
+        <RecurrenceScopeModal
+          isOpen={recurrenceRenamePrompt.isOpen}
+          actionType="rename"
+          targetDate={recurrenceRenamePrompt.instanceDate}
+          recurrence={recurrenceRenamePrompt.activity.recurrence}
+          activityTitle={recurrenceRenamePrompt.activity.title}
+          onSelect={(scope) => void handleConfirmRecurrenceRename(scope)}
+          onClose={() => setRecurrenceRenamePrompt(null)}
+        />
+      )}
     </div>
   );
 }

@@ -204,7 +204,10 @@ export interface RecurrenceConfig {
   endType: RecurrenceEndType;
   untilDate?: string | null; // YYYY-MM-DD
   count?: number | null;
+  excludeDates?: string[]; // YYYY-MM-DD daftar tanggal kejadian yang dikecualikan
 }
+
+export type RecurrenceEditScope = 'THIS_EVENT' | 'THIS_AND_FOLLOWING' | 'ALL_EVENTS';
 
 export interface DailyActivity {
   id: string;

@@ -331,6 +331,11 @@ export function doesActivityOccurOnDate(
 
   if (diffDays < 0) return false;
   if (!recurrence) return diffDays === 0;
+  if (recurrence.excludeDates && recurrence.excludeDates.length > 0) {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const targetStr = `${target.getFullYear()}-${pad(target.getMonth() + 1)}-${pad(target.getDate())}`;
+    if (recurrence.excludeDates.includes(targetStr)) return false;
+  }
 
   if (recurrence.endType === 'ON_DATE' && recurrence.untilDate) {
     const until = toLocalMidnight(recurrence.untilDate);
@@ -413,3 +418,34 @@ export function projectActivityOntoDate(
     endTime: projectedEndTime,
   };
 }
+
+export function formatFollowingScopeLabel(
+  targetDateInput: Date | string,
+  recurrence?: RecurrenceConfig | null,
+): string {
+  const d = toLocalMidnight(targetDateInput);
+  const dayName = DAY_NAMES_ID[d.getDay()]; // 'Senin', 'Selasa', dst.
+  if (!recurrence || recurrence.freq === 'DAILY') {
+    return 'Event ini dan hari seterusnya';
+  }
+  if (recurrence.freq === 'WEEKLY') {
+    return `Event ini dan hari ${dayName} seterusnya`;
+  }
+  if (recurrence.freq === 'MONTHLY') {
+    return `Event ini dan tanggal ${d.getDate()} seterusnya`;
+  }
+  if (recurrence.freq === 'YEARLY') {
+    return 'Event ini dan tahun seterusnya';
+  }
+  return 'Event ini dan hari seterusnya';
+}
+
+export function getDayBefore(dateInput: Date | string): string {
+  const d = toLocalMidnight(dateInput);
+  d.setDate(d.getDate() - 1);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+

@@ -20,6 +20,16 @@ const mocks = vi.hoisted(() => ({
   disconnecting: false,
   disconnect: vi.fn(),
   autoSync: vi.fn(),
+  updateActivity: vi.fn().mockResolvedValue({}),
+  createActivity: vi.fn().mockResolvedValue({ id: "created-act-1" }),
+  removeActivity: vi.fn().mockResolvedValue({}),
+}));
+vi.mock("@/api/activities", () => ({
+  activityApi: {
+    update: (...args: unknown[]) => mocks.updateActivity(...args),
+    create: (...args: unknown[]) => mocks.createActivity(...args),
+    remove: (...args: unknown[]) => mocks.removeActivity(...args),
+  },
 }));
 vi.mock("@/hooks/useGoogleCalendar", () => ({
   useGoogleCalendar: () => ({
@@ -100,6 +110,9 @@ beforeEach(() => {
   mocks.syncing = false;
   mocks.disconnecting = false;
   mocks.disconnect.mockReset();
+  mocks.updateActivity.mockReset().mockResolvedValue({});
+  mocks.createActivity.mockReset().mockResolvedValue({ id: "created-act-1" });
+  mocks.removeActivity.mockReset().mockResolvedValue({});
 });
 afterEach(() => {
   cleanup();
@@ -295,6 +308,7 @@ describe("recurring event movement", () => {
       recurrence: {
         freq: "DAILY",
         interval: 1,
+        endType: "NEVER",
       },
     });
 
@@ -322,6 +336,14 @@ describe("recurring event movement", () => {
       await Promise.resolve();
     });
 
+    // Recurrence Scope Modal muncul meminta pilihan cakupan
+    expect(screen.getByText("Pindahkan Kegiatan Berulang")).toBeTruthy();
+    fireEvent.click(screen.getByText("Semua event"));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Terapkan" }));
+      await Promise.resolve();
+    });
+
     expect(props.onMoveActivity).toHaveBeenCalledTimes(1);
     const [movedId, updateData] = props.onMoveActivity.mock.calls[0];
     expect(movedId).toBe("daily-standup");
@@ -331,6 +353,7 @@ describe("recurring event movement", () => {
     expect(updateData.recurrence).toEqual({
       freq: "DAILY",
       interval: 1,
+      endType: "NEVER",
     });
   });
 
@@ -345,6 +368,7 @@ describe("recurring event movement", () => {
         freq: "WEEKLY",
         interval: 1,
         byDays: [1], // Monday
+        endType: "NEVER",
       },
     });
 
@@ -366,6 +390,14 @@ describe("recurring event movement", () => {
     Object.defineProperty(drop, "clientY", { value: 660 });
     await act(async () => {
       fireEvent(targetColumn, drop);
+      await Promise.resolve();
+    });
+
+    // Recurrence Scope Modal muncul meminta pilihan cakupan
+    expect(screen.getByText("Pindahkan Kegiatan Berulang")).toBeTruthy();
+    fireEvent.click(screen.getByText("Semua event"));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Terapkan" }));
       await Promise.resolve();
     });
 
@@ -453,5 +485,343 @@ describe("Notion-style lifecycle sync", () => {
       window.dispatchEvent(new Event("focus"));
     });
     expect(onRefresh).toHaveBeenCalledTimes(1);
+  });
+
+  describe("Undo capability for recurring cards and calendar operations", () => {
+    it("can undo ALL_EVENTS recurring move restoring previous date, time, and recurrence", async () => {
+      const recurringAct = fixture({
+        id: "standup-1",
+        title: "Daily Standup",
+        date: "2026-09-28T00:00:00Z",
+        startTime: "2026-09-28T09:00:00+07:00",
+        endTime: "2026-09-28T10:00:00+07:00",
+        recurrence: {
+          freq: "DAILY",
+          interval: 1,
+          endType: "NEVER",
+        },
+      });
+
+      render(
+        <CalendarView
+          {...props}
+          selectedDate={new Date("2026-09-29T00:00:00+07:00")}
+          activities={[recurringAct]}
+        />,
+      );
+
+      const cards = screen.getAllByTitle("Daily Standup");
+      const card = cards[0];
+      const dataTransfer = transfer();
+      dragStart(card, dataTransfer);
+
+      const targetColumn = card.parentElement!;
+      const drop = createEvent.drop(targetColumn, { dataTransfer });
+      Object.defineProperty(drop, "clientY", { value: 960 }); // 16:00
+      await act(async () => {
+        fireEvent(targetColumn, drop);
+        await Promise.resolve();
+      });
+
+      // Pilih Semua Event
+      fireEvent.click(screen.getByText("Semua event"));
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Terapkan" }));
+        await Promise.resolve();
+      });
+
+      expect(props.onMoveActivity).toHaveBeenCalledTimes(1);
+
+      // Sekarang tekan Ctrl+Z untuk membatalkan
+      await act(async () => {
+        fireEvent.keyDown(window, { key: "z", ctrlKey: true });
+        await Promise.resolve();
+      });
+
+      expect(props.onMoveActivity).toHaveBeenCalledTimes(2);
+      const [undoneId, restoredData] = props.onMoveActivity.mock.calls[1];
+      expect(undoneId).toBe("standup-1");
+      expect(restoredData.startTime).toBe("2026-09-28T09:00:00+07:00");
+      expect(restoredData.endTime).toBe("2026-09-28T10:00:00+07:00");
+      expect(restoredData.recurrence).toEqual({
+        freq: "DAILY",
+        interval: 1,
+        endType: "NEVER",
+      });
+    });
+
+    it("can undo THIS_EVENT recurring move by removing created single instance and restoring master excludeDates", async () => {
+      const recurringAct = fixture({
+        id: "standup-2",
+        title: "Daily Standup 2",
+        date: "2026-09-28T00:00:00Z",
+        startTime: "2026-09-28T09:00:00+07:00",
+        endTime: "2026-09-28T10:00:00+07:00",
+        recurrence: {
+          freq: "DAILY",
+          interval: 1,
+          excludeDates: [],
+          endType: "NEVER",
+        },
+      });
+
+      mocks.createActivity.mockResolvedValueOnce({ id: "detached-new-1" });
+
+      render(
+        <CalendarView
+          {...props}
+          selectedDate={new Date("2026-09-29T00:00:00+07:00")}
+          activities={[recurringAct]}
+        />,
+      );
+
+      const cards = screen.getAllByTitle("Daily Standup 2");
+      const card = cards[0];
+      const dataTransfer = transfer();
+      dragStart(card, dataTransfer);
+
+      const targetColumn = card.parentElement!;
+      const drop = createEvent.drop(targetColumn, { dataTransfer });
+      Object.defineProperty(drop, "clientY", { value: 960 });
+      await act(async () => {
+        fireEvent(targetColumn, drop);
+        await Promise.resolve();
+      });
+
+      // Pilih Event Ini
+      fireEvent.click(screen.getByText("Event ini"));
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Terapkan" }));
+        await Promise.resolve();
+      });
+
+      // Master di-exclude
+      expect(mocks.updateActivity).toHaveBeenCalledWith("standup-2", {
+        recurrence: {
+          freq: "DAILY",
+          interval: 1,
+          excludeDates: ["2026-09-28"],
+          endType: "NEVER",
+        },
+      });
+      // Activity mandiri dibuat
+      expect(mocks.createActivity).toHaveBeenCalledTimes(1);
+
+      // Sekarang tekan Ctrl+Z
+      await act(async () => {
+        fireEvent.keyDown(window, { key: "z", ctrlKey: true });
+        await Promise.resolve();
+      });
+
+      // Menghapus instance baru dan mengembalikan excludeDates pada master
+      expect(mocks.removeActivity).toHaveBeenCalledWith("detached-new-1");
+      expect(mocks.updateActivity).toHaveBeenLastCalledWith("standup-2", {
+        recurrence: {
+          freq: "DAILY",
+          interval: 1,
+          excludeDates: [],
+          endType: "NEVER",
+        },
+      });
+    });
+
+    it("can undo THIS_AND_FOLLOWING recurring move by removing created series and restoring master recurrence", async () => {
+      const recurringAct = fixture({
+        id: "standup-3",
+        title: "Daily Standup 3",
+        date: "2026-09-28T00:00:00Z",
+        startTime: "2026-09-28T09:00:00+07:00",
+        endTime: "2026-09-28T10:00:00+07:00",
+        recurrence: {
+          freq: "DAILY",
+          interval: 1,
+          endType: "NEVER",
+        },
+      });
+
+      mocks.createActivity.mockResolvedValueOnce({ id: "series-new-1" });
+
+      render(
+        <CalendarView
+          {...props}
+          selectedDate={new Date("2026-09-29T00:00:00+07:00")}
+          activities={[recurringAct]}
+        />,
+      );
+
+      const cards = screen.getAllByTitle("Daily Standup 3");
+      const card = cards[0];
+      const dataTransfer = transfer();
+      dragStart(card, dataTransfer);
+
+      const targetColumn = card.parentElement!;
+      const drop = createEvent.drop(targetColumn, { dataTransfer });
+      Object.defineProperty(drop, "clientY", { value: 960 });
+      await act(async () => {
+        fireEvent(targetColumn, drop);
+        await Promise.resolve();
+      });
+
+      // Pilih Event Ini dan Seterusnya
+      fireEvent.click(screen.getByText(/Event ini dan/));
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Terapkan" }));
+        await Promise.resolve();
+      });
+
+      // Master dipotong ke H-1 (2026-09-27)
+      expect(mocks.updateActivity).toHaveBeenCalledWith("standup-3", {
+        recurrence: {
+          freq: "DAILY",
+          interval: 1,
+          endType: "ON_DATE",
+          untilDate: "2026-09-27",
+        },
+      });
+
+      // Sekarang tekan Ctrl+Z
+      await act(async () => {
+        fireEvent.keyDown(window, { key: "z", ctrlKey: true });
+        await Promise.resolve();
+      });
+
+      // Menghapus series baru dan mengembalikan recurrence asli master
+      expect(mocks.removeActivity).toHaveBeenCalledWith("series-new-1");
+      expect(mocks.updateActivity).toHaveBeenLastCalledWith("standup-3", {
+        recurrence: {
+          freq: "DAILY",
+          interval: 1,
+          endType: "NEVER",
+        },
+      });
+    });
+
+    it("can undo THIS_EVENT recurring delete by restoring excludeDates", async () => {
+      const recurringAct = fixture({
+        id: "standup-4",
+        title: "Daily Standup 4",
+        date: "2026-09-28T00:00:00Z",
+        startTime: "2026-09-28T09:00:00+07:00",
+        endTime: "2026-09-28T10:00:00+07:00",
+        recurrence: {
+          freq: "DAILY",
+          interval: 1,
+          excludeDates: [],
+          endType: "NEVER",
+        },
+      });
+
+      render(
+        <CalendarView
+          {...props}
+          selectedDate={new Date("2026-09-29T00:00:00+07:00")}
+          activities={[recurringAct]}
+        />,
+      );
+
+      const card = screen.getAllByTitle("Daily Standup 4")[0];
+      fireEvent.click(card);
+
+      // Hapus via tombol Delete
+      await act(async () => {
+        fireEvent.keyDown(window, { key: "Delete" });
+        await Promise.resolve();
+      });
+
+      // Modal konfirmasi hapus muncul
+      expect(screen.getByText("Hapus Kegiatan Berulang")).toBeTruthy();
+      fireEvent.click(screen.getByText("Event ini"));
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Hapus" }));
+        await Promise.resolve();
+      });
+
+      expect(mocks.updateActivity).toHaveBeenCalledWith("standup-4", {
+        recurrence: {
+          freq: "DAILY",
+          interval: 1,
+          excludeDates: ["2026-09-28"],
+          endType: "NEVER",
+        },
+      });
+
+      // Sekarang tekan Ctrl+Z
+      await act(async () => {
+        fireEvent.keyDown(window, { key: "z", ctrlKey: true });
+        await Promise.resolve();
+      });
+
+      expect(mocks.updateActivity).toHaveBeenLastCalledWith("standup-4", {
+        recurrence: {
+          freq: "DAILY",
+          interval: 1,
+          excludeDates: [],
+          endType: "NEVER",
+        },
+      });
+    });
+
+    it("can undo THIS_AND_FOLLOWING recurring delete by restoring master recurrence", async () => {
+      const recurringAct = fixture({
+        id: "standup-5",
+        title: "Daily Standup 5",
+        date: "2026-09-28T00:00:00Z",
+        startTime: "2026-09-28T09:00:00+07:00",
+        endTime: "2026-09-28T10:00:00+07:00",
+        recurrence: {
+          freq: "DAILY",
+          interval: 1,
+          endType: "NEVER",
+        },
+      });
+
+      render(
+        <CalendarView
+          {...props}
+          selectedDate={new Date("2026-09-29T00:00:00+07:00")}
+          activities={[recurringAct]}
+        />,
+      );
+
+      const card = screen.getAllByTitle("Daily Standup 5")[0];
+      fireEvent.click(card);
+
+      // Hapus via tombol Delete
+      await act(async () => {
+        fireEvent.keyDown(window, { key: "Delete" });
+        await Promise.resolve();
+      });
+
+      // Modal konfirmasi hapus muncul
+      expect(screen.getByText("Hapus Kegiatan Berulang")).toBeTruthy();
+      fireEvent.click(screen.getByText(/Event ini dan/));
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Hapus" }));
+        await Promise.resolve();
+      });
+
+      expect(mocks.updateActivity).toHaveBeenCalledWith("standup-5", {
+        recurrence: {
+          freq: "DAILY",
+          interval: 1,
+          endType: "ON_DATE",
+          untilDate: "2026-09-27",
+        },
+      });
+
+      // Sekarang tekan Ctrl+Z
+      await act(async () => {
+        fireEvent.keyDown(window, { key: "z", ctrlKey: true });
+        await Promise.resolve();
+      });
+
+      expect(mocks.updateActivity).toHaveBeenLastCalledWith("standup-5", {
+        recurrence: {
+          freq: "DAILY",
+          interval: 1,
+          endType: "NEVER",
+        },
+      });
+    });
   });
 });

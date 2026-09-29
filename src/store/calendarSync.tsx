@@ -198,11 +198,14 @@ export function CalendarSyncProvider({ children }: { children: ReactNode }) {
     statusRequest.current++;
     inFlight.current = null;
     queued.current = false;
-    if (!user?.id) rangeRef.current = defaultRange();
-    setStatus({ connected: false });
-    setSyncing(false);
-    setError(null);
-    if (user?.id) void refreshStatus();
+    if (!user?.id) {
+      rangeRef.current = defaultRange();
+      setStatus({ connected: false });
+    } else {
+      setSyncing(false);
+      setError(null);
+      void refreshStatus();
+    }
     return () => {
       generation.current++;
       setCalendarConnection(undefined);
