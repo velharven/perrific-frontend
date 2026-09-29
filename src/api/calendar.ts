@@ -7,6 +7,18 @@ export interface CalendarLayoutPreference {
   position: number;
 }
 
+export interface CalendarSyncResult {
+  syncRunId?: string;
+  connectionId?: string;
+  baselinePending?: boolean;
+  pushedCount: number;
+  importedCount: number;
+  updatedCount: number;
+  deletedCount: number;
+  pendingCount: number;
+  syncedAt: string | null;
+}
+
 export const calendarApi = {
   getLayout: (from: string, to: string) =>
     api.get<{ data: CalendarLayoutPreference[] }>(
@@ -58,7 +70,7 @@ export const calendarApi = {
 
   autoSync: (startDate?: string, endDate?: string) =>
     api
-      .post<{ data: { pushedCount: number; importedCount: number } }>('/calendar/google/auto-sync', {
+      .post<{ data: CalendarSyncResult }>('/calendar/google/auto-sync', {
         startDate,
         endDate,
       })

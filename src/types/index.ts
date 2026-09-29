@@ -87,7 +87,7 @@ export type AssignedTeamTask = Task & {
     name: string;
     team?: { id: string; name: string };
   };
-  dailyActivities?: { id: string; date: string; startTime?: string | null; endTime?: string | null }[];
+  dailyActivities?: { id: string; date: string; startTime?: string | null; endTime?: string | null; allDay?: boolean; calendarConnectionId?: string | null; googleEventId?: string | null }[];
 };
 
 export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
@@ -163,6 +163,7 @@ export interface Task {
   createdBy?: Pick<User, 'id' | 'name' | 'avatarUrl'> | null;
   comments?: Comment[];
   attachments?: Attachment[];
+  dailyActivities?: { id: string; date: string; startTime?: string | null; endTime?: string | null; allDay?: boolean; calendarConnectionId?: string | null; googleEventId?: string | null }[];
   createdAt: string;
   updatedAt: string;
 }
@@ -214,6 +215,7 @@ export interface DailyActivity {
   date: string;
   startTime?: string | null;
   endTime?: string | null;
+  allDay?: boolean;
   type: ActivityType;
   status: ActivityStatus;
   icon?: string | null;
@@ -223,12 +225,14 @@ export interface DailyActivity {
   customValues?: Record<string, string | number | boolean> | null;
   recurrence?: RecurrenceConfig | null;
   googleEventId?: string | null;
+  calendarConnectionId?: string | null;
   color?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }
 
 export interface GoogleCalendarStatus {
+  connectionId?: string | null;
   connected: boolean;
   email?: string | null;
   name?: string | null;

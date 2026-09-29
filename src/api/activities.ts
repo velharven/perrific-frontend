@@ -2,6 +2,7 @@ import { api } from '@/lib/api';
 import type { DailyActivity, DailyColumn, ChecklistItem } from '@/types';
 
 export interface ActivityQuery {
+  calendarScope?: 'active';
   date?: string; // YYYY-MM-DD
   from?: string;
   to?: string;
@@ -14,6 +15,7 @@ export interface ActivityQuery {
 function toQueryString(q?: ActivityQuery): string {
   if (!q) return '';
   const params = new URLSearchParams();
+  if (q.calendarScope) params.set('calendarScope', q.calendarScope);
   if (q.date) params.set('date', q.date);
   if (q.from) params.set('from', q.from);
   if (q.to) params.set('to', q.to);

@@ -2,6 +2,8 @@ import { api } from '@/lib/api';
 import type { Attachment, BoardColumn, Comment, Project, ProjectMember, ProjectRole, Task, TaskActivity } from '@/types';
 
 export const projectApi = {
+  getMyPersonalProject: () =>
+    api.get<{ data: Project & { columns: BoardColumn[] } }>('/projects/personal/me').then((r) => r.data.data),
   getProject: (projectId: string) =>
     api.get<{ data: Project }>(`/projects/${projectId}`).then((r) => r.data.data),
   listTasks: (projectId: string) =>

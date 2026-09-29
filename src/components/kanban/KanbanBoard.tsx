@@ -55,14 +55,20 @@ function CardView({
   className,
   bare,
   onOpenTitle,
+  showScheduleWarning = false,
 }: {
   task: Task;
   overlay?: boolean;
   className?: string;
   bare?: boolean;
   onOpenTitle?: () => void;
+  showScheduleWarning?: boolean;
 }) {
   const approved = (task.approval ?? 'APPROVED') === 'APPROVED';
+  const isScheduled = Boolean(
+    task.dailyActivities && task.dailyActivities.some((da) => da.startTime || da.endTime)
+  );
+
   return (
     <div
       className={`rounded-lg border bg-white p-3 ${overlay ? 'border-perrific-violet/50 shadow-xl' : bare ? 'border-transparent' : 'border-gray-200'} ${className ?? ''}`}
@@ -96,6 +102,18 @@ function CardView({
             </span>
             <p className="min-w-0 flex-1 truncate text-sm font-medium text-gray-800">{task.title}</p>
           </>
+        )}
+
+        {showScheduleWarning && !isScheduled && (
+          <span
+            title="Belum diatur di kalender"
+            aria-label="Belum diatur di kalender"
+            className="inline-flex shrink-0 items-center justify-center text-amber-500 hover:text-amber-600 transition"
+          >
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M7.938 2.016a.13.13 0 0 1 .125 0l6.857 11.856c.026.045.026.1 0 .145a.14.14 0 0 1-.125.073H1.205a.14.14 0 0 1-.125-.073.17.17 0 0 1 0-.145L7.938 2.016zm.854 4.484a.5.5 0 0 0-.992 0l-.3 3.5a.5.5 0 0 0 .992.08l.3-3.58zm-.496 5.5a.65.65 0 1 0 0 1.3.65.65 0 0 0 0-1.3z" />
+            </svg>
+          </span>
         )}
       </div>
       {!approved && (
@@ -163,12 +181,14 @@ function Card({
   dragActive,
   registerNode,
   gone,
+  showScheduleWarning,
 }: {
   task: Task;
   onOpen?: (task: Task) => void;
   dragActive?: boolean;
   registerNode?: (id: string, el: HTMLElement | null) => void;
   gone?: boolean;
+  showScheduleWarning?: boolean;
 }) {
   const approved = (task.approval ?? 'APPROVED') === 'APPROVED';
   const { attributes, listeners, setNodeRef, isDragging } = useSortable({
@@ -198,6 +218,7 @@ function Card({
         task={task}
         bare={dragActive && !isDragging}
         onOpenTitle={onOpen && !isDragging ? () => onOpen(task) : undefined}
+        showScheduleWarning={showScheduleWarning}
       />
     </div>
   );
@@ -328,6 +349,7 @@ export default function KanbanBoard({
   onAdd,
   canAdd = false,
   view = DEFAULT_BOARD_VIEW,
+  showScheduleWarning = false,
 }: {
   tasks: Task[];
   columns: BoardColumn[];
@@ -338,6 +360,7 @@ export default function KanbanBoard({
   onAdd?: (columnId: string) => void;
   canAdd?: boolean;
   view?: BoardView;
+  showScheduleWarning?: boolean;
 }) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -529,7 +552,7 @@ export default function KanbanBoard({
             if (showPh && hv.index === i && activeTask) {
               nodes.push(
                 <div key={`ph-${i}`} aria-hidden="true" className="opacity-40">
-                  <CardView task={activeTask} />
+                  <CardView task={activeTask} showScheduleWarning={showScheduleWarning} />
                 </div>,
               );
             }
@@ -541,13 +564,14 @@ export default function KanbanBoard({
                 dragActive={dragging}
                 registerNode={registerNode}
                 gone={hideOrigin && task.id === activeIdStr}
+                showScheduleWarning={showScheduleWarning}
               />,
             );
           });
           if (showPh && activeTask && hv.index >= ordered.length) {
             nodes.push(
               <div key="ph-end" aria-hidden="true" className="opacity-40">
-                <CardView task={activeTask} />
+                <CardView task={activeTask} showScheduleWarning={showScheduleWarning} />
               </div>,
             );
           }
@@ -574,7 +598,7 @@ export default function KanbanBoard({
       <DragOverlay dropAnimation={null}>
         {activeTask ? (
           <div className="w-[85vw] sm:w-80">
-            <CardView task={activeTask} overlay />
+            <CardView task={activeTask} overlay showScheduleWarning={showScheduleWarning} />
           </div>
         ) : null}
       </DragOverlay>

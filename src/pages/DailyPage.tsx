@@ -40,9 +40,11 @@ import { showToast } from '@/components/ui/Toast';
 import PersonCell from '@/components/table/PersonCell';
 import CalendarView from '@/components/daily/CalendarView';
 import TeamTaskView from '@/components/daily/TeamTaskView';
+import PersonalProjectKanbanView from '@/components/daily/PersonalProjectKanbanView';
 import { UndoStackProvider, useUndo } from '@/hooks/useUndoStack';
-import { useSocket } from '@/store/socket';
-import type { DailyActivity, DailyColumn, DailyColumnType } from '@/types';
+import { useCalendarSync } from '@/store/calendarSync';
+import { doesActivityOccurOnDate, projectActivityOntoDate } from '@/lib/recurrence';
+import type { DailyActivity, DailyColumn, DailyColumnType, RecurrenceConfig } from '@/types';
 
 // Helpers
 function toISODate(d: Date): string {
@@ -998,12 +1000,12 @@ function ColumnMenu({
 }
 
 function DailyPageInner() {
-  const [activeView, setActiveView] = useState<'table' | 'calendar' | 'team-tasks'>('table');
+  const [activeView, setActiveView] = useState<'table' | 'calendar' | 'team-tasks' | 'personal-projects'>('table');
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
   const dateISO = useMemo(() => toISODate(selectedDate), [selectedDate]);
   const [activities, setActivities] = useState<DailyActivity[]>([]);
   const activitiesRequestRef = useRef(0);
-  const pendingActivityMovesRef = useRef<Map<string, { date?: string; startTime: string | null; endTime: string | null }>>(new Map());
+  const pendingActivityMovesRef = useRef<Map<string, { date?: string; startTime: string | null; endTime: string | null; allDay?: boolean }>>(new Map());
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
@@ -1237,13 +1239,13 @@ function DailyPageInner() {
     };
   }, [displayOrder, columns, fixedMeta]);
 
-  const { socket } = useSocket();
+  const { revision: calendarRevision, status: calendarStatus, change: calendarChange } = useCalendarSync();
 
   const fetchActivities = useCallback(async (silent = false) => {
     const requestId = ++activitiesRequestRef.current;
     if (!silent) setLoading(true);
     try {
-      const data = await activityApi.listMine({ limit: 500 });
+      const data = await activityApi.listMine({ limit: 500, calendarScope: 'active' });
       if (requestId === activitiesRequestRef.current) {
         setActivities(data.map((activity) => {
           const pendingMove = pendingActivityMovesRef.current.get(activity.id);
@@ -1257,13 +1259,41 @@ function DailyPageInner() {
     }
   }, []);
 
+  useEffect(() => {
+    activitiesRequestRef.current++;
+    pendingActivityMovesRef.current.clear();
+    setActivities([]); setSelectedIds(new Set());
+    void fetchActivities(true);
+  }, [calendarStatus.connectionId, calendarStatus.connected, fetchActivities]);
+  useEffect(() => {
+    if (!calendarChange) return;
+    ++activitiesRequestRef.current;
+    if (calendarChange.activity) {
+      const activity = calendarChange.activity;
+      setActivities(previous => {
+        const existing = previous.find(a => a.id === activity.id);
+        const pending = pendingActivityMovesRef.current.get(activity.id);
+        const next = pending ? { ...activity, ...pending } : activity;
+        return existing ? previous.map(a => a.id === activity.id ? next : a) : [...previous, next];
+      });
+    } else if (calendarChange.action === 'delete') {
+      setActivities(previous => previous.filter(a => a.id !== calendarChange.activityId));
+    }
+  }, [calendarChange]);
+
   const handleRefreshActivities = useCallback(() => {
     void fetchActivities(true);
   }, [fetchActivities]);
 
   const handleMoveActivity = useCallback(async (
     activityId: string,
-    position: { date?: string; startTime: string | null; endTime: string | null },
+    position: {
+      date?: string;
+      startTime: string | null;
+      endTime: string | null;
+      allDay?: boolean;
+      recurrence?: RecurrenceConfig | null;
+    },
   ): Promise<DailyActivity> => {
     if (pendingActivityMovesRef.current.has(activityId)) {
       throw new Error('Perpindahan aktivitas sebelumnya masih disimpan');
@@ -1278,7 +1308,7 @@ function DailyPageInner() {
     ));
 
     try {
-      const updated = await activityApi.update(activityId, position);
+      const updated = await activityApi.update(activityId, position as Record<string, unknown>);
       pendingActivityMovesRef.current.delete(activityId);
       activitiesRequestRef.current++;
       setActivities((previous) => previous.map((activity) =>
@@ -1301,30 +1331,44 @@ function DailyPageInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Seluruh kegiatan yang secara presisi berada pada 1 hari yang dipilih
+  // Seluruh kegiatan yang secara presisi berada pada 1 hari yang dipilih (termasuk proyeksi kegiatan berulang)
   const tableActivities = useMemo(() => {
-    return activities.filter((act) => {
-      if (!act.date) return false;
-      const d = new Date(act.date);
-      return (
-        d.getFullYear() === selectedDate.getFullYear() &&
-        d.getMonth() === selectedDate.getMonth() &&
-        d.getDate() === selectedDate.getDate()
-      );
-    });
+    return activities
+      .filter((act) => {
+        if (!act.date && !act.startTime) return false;
+        if (act.recurrence) {
+          return doesActivityOccurOnDate(act.date || act.startTime!, act.recurrence, selectedDate);
+        }
+        const d = new Date(act.date || act.startTime!);
+        return (
+          d.getFullYear() === selectedDate.getFullYear() &&
+          d.getMonth() === selectedDate.getMonth() &&
+          d.getDate() === selectedDate.getDate()
+        );
+      })
+      .map((act) => (act.recurrence ? projectActivityOntoDate(act, selectedDate) : act));
   }, [activities, selectedDate]);
 
-  // Pembaruan real-time via WebSocket saat terjadi sinkronisasi atau perubahan aktivitas
+  // Sinkronisasi otomatis ala Notion saat pengguna kembali ke jendela/tab aplikasi atau online
   useEffect(() => {
-    if (!socket) return;
-    const handleSync = () => {
-      void fetchActivities(true);
+    const resume = () => {
+      if (document.visibilityState === 'visible') {
+        void fetchActivities(true);
+      }
     };
-    socket.on('calendar:synced', handleSync);
+    window.addEventListener('focus', resume);
+    document.addEventListener('visibilitychange', resume);
+    window.addEventListener('online', resume);
     return () => {
-      socket.off('calendar:synced', handleSync);
+      window.removeEventListener('focus', resume);
+      document.removeEventListener('visibilitychange', resume);
+      window.removeEventListener('online', resume);
     };
-  }, [socket]);
+  }, [fetchActivities]);
+
+  useEffect(() => {
+    if (calendarRevision > 0) void fetchActivities(true);
+  }, [calendarRevision, fetchActivities]);
 
   // Properti kustom milik user (lintas tanggal, seperti kolom Notion).
   const fetchColumns = async () => {
@@ -2181,8 +2225,25 @@ function DailyPageInner() {
             </svg>
             Task Team
           </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeView === 'personal-projects'}
+            onClick={() => setActiveView('personal-projects')}
+            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition ${
+              activeView === 'personal-projects'
+                ? 'bg-gray-900 text-white'
+                : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+            }`}
+          >
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.4" />
+              <path d="M5 6h6M5 9h4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+            </svg>
+            Project Pribadi
+          </button>
         </div>
-        {activeView !== 'team-tasks' && (
+        {activeView !== 'team-tasks' && activeView !== 'personal-projects' && (
         <span className="ml-auto flex items-center gap-0.5">
           <button
             type="button"
@@ -2228,9 +2289,11 @@ function DailyPageInner() {
         )}
       </div>
 
-      {/* Database tabel, Kalender, atau Task Team */}
+      {/* Database tabel, Kalender, Task Team, atau Project Pribadi */}
       {loading ? (
         <p className="py-8 text-center text-sm text-gray-500">Memuat…</p>
+      ) : activeView === 'personal-projects' ? (
+        <PersonalProjectKanbanView />
       ) : activeView === 'team-tasks' ? (
         <TeamTaskView onRefreshDaily={() => void fetchActivities(true)} />
       ) : activeView === 'calendar' ? (

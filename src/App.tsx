@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider } from '@/store/auth';
 import { SocketProvider } from '@/store/socket';
+import { CalendarSyncProvider } from '@/store/calendarSync';
 import { getGoogleClientId } from '@/lib/google';
 import ProtectedRoute from '@/components/layout/ProtectedRoute';
 import AppLayout from '@/components/layout/AppLayout';
@@ -32,42 +33,44 @@ export default function App() {
     <AuthProvider>
       <SocketProvider>
         <BrowserRouter>
-          <Routes>
-            {/* Public */}
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
+          <CalendarSyncProvider>
+            <Routes>
+              {/* Public */}
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
 
-            <Route element={<ProtectedRoute />}>
-              <Route path="/join/:code" element={<JoinPage />} />
-              <Route element={<AppLayout />}>
-                {/* /notes dan /daily polos = pintu depan, langsung antar
-                    ke catatan "Selamat Datang" atau harian pertama milik user */}
-                <Route path="/notes" element={<PrivatRedirect kind="NOTE" />} />
-                <Route path="/dashboard" element={<PrivatRedirect kind="NOTE" />} />
-                <Route path="/dashboard/:dashboardId" element={<PrivatRedirect kind="NOTE" />} />
-                <Route path="/board/:projectId" element={<BoardPage />} />
-                <Route path="/board/:projectId/task/:taskId" element={<TaskDetailPage />} />
-                <Route path="/daily" element={<PrivatRedirect kind="DAILY" />} />
-                <Route path="/daily/:dailyId" element={<DailyInstancePage />} />
-                <Route path="/notes/:noteId" element={<NotePage />} />
-                <Route path="/tables/:tableId" element={<TablePage />} />
-                <Route path="/team/:teamId/projects" element={<TeamProjectsPage />} />
-                <Route path="/team/:teamId/settings" element={<TeamSettingsPage />} />
-                <Route path="/team/:teamId" element={<TeamPage />} />
-                <Route path="/settings" element={<SettingsPage />} />
+              <Route element={<ProtectedRoute />}>
+                <Route path="/join/:code" element={<JoinPage />} />
+                <Route element={<AppLayout />}>
+                  {/* /notes dan /daily polos = pintu depan, langsung antar
+                      ke catatan "Selamat Datang" atau harian pertama milik user */}
+                  <Route path="/notes" element={<PrivatRedirect kind="NOTE" />} />
+                  <Route path="/dashboard" element={<PrivatRedirect kind="NOTE" />} />
+                  <Route path="/dashboard/:dashboardId" element={<PrivatRedirect kind="NOTE" />} />
+                  <Route path="/board/:projectId" element={<BoardPage />} />
+                  <Route path="/board/:projectId/task/:taskId" element={<TaskDetailPage />} />
+                  <Route path="/daily" element={<PrivatRedirect kind="DAILY" />} />
+                  <Route path="/daily/:dailyId" element={<DailyInstancePage />} />
+                  <Route path="/notes/:noteId" element={<NotePage />} />
+                  <Route path="/tables/:tableId" element={<TablePage />} />
+                  <Route path="/team/:teamId/projects" element={<TeamProjectsPage />} />
+                  <Route path="/team/:teamId/settings" element={<TeamSettingsPage />} />
+                  <Route path="/team/:teamId" element={<TeamPage />} />
+                  <Route path="/settings" element={<SettingsPage />} />
+                </Route>
+                <Route path="/projects/:projectId" element={<ProjectLayout />}>
+                  <Route index element={<ProjectPage />} />
+                  <Route path="kanban" element={<BoardPage />} />
+                  <Route path="kanban/:taskId" element={<TaskDetailPage />} />
+                  <Route path="persetujuan" element={<ProjectApprovalPage />} />
+                  <Route path="settings" element={<ProjectSettingsPage />} />
+                </Route>
               </Route>
-              <Route path="/projects/:projectId" element={<ProjectLayout />}>
-                <Route index element={<ProjectPage />} />
-                <Route path="kanban" element={<BoardPage />} />
-                <Route path="kanban/:taskId" element={<TaskDetailPage />} />
-                <Route path="persetujuan" element={<ProjectApprovalPage />} />
-                <Route path="settings" element={<ProjectSettingsPage />} />
-              </Route>
-            </Route>
 
-            <Route path="*" element={<NotFoundPage />} />
-          </Routes>
+              <Route path="*" element={<NotFoundPage />} />
+            </Routes>
+          </CalendarSyncProvider>
         </BrowserRouter>
       </SocketProvider>
     </AuthProvider>

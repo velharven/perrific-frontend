@@ -384,6 +384,7 @@ export default function CalendarCardSettings({
             date: `${effectiveDateStr}T00:00:00.000Z`,
             startTime: startIso,
             endTime: endIso,
+            allDay: effectiveAllDay,
             recurrence: effectiveRecurrence,
             color: effectiveColor,
           });
@@ -853,6 +854,22 @@ export default function CalendarCardSettings({
         </span>
         <span className="font-medium text-[11px] text-gray-600">GMT+7 Jakarta (WIB)</span>
       </div>
+
+      {/* Integrasi Google Calendar */}
+      {isAct && act && (
+        <div className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg bg-gray-50 border border-gray-100 text-xs">
+          <div className="flex items-center gap-2 min-w-0">
+            <svg className="w-4 h-4 shrink-0 text-blue-500" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z" />
+            </svg>
+            <span className="truncate text-[11px] font-medium text-gray-700">
+              {act.googleEventId ? 'Tersinkron ke Google Calendar' : 'Belum di Google Calendar'}
+            </span>
+          </div>
+
+
+        </div>
+      )}
 
       {/* Aksi Tambahan: Buka Detail / Hapus */}
       <div className="border-t border-gray-100 pt-2 flex items-center justify-between gap-2">

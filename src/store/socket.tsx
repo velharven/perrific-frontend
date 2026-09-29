@@ -1,15 +1,20 @@
-import { createContext, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import type { Socket } from 'socket.io-client';
 import { connectSocket, disconnectSocket, getSocket } from '@/lib/socket';
 import { getToken } from '@/lib/api';
+import { useAuth } from './auth';
 
-const SocketContext = createContext<null>(null);
+const SocketContext = createContext<Socket | null>(null);
 
 export function SocketProvider({ children }: { children: ReactNode }) {
-  const token = getToken();
+  const { user } = useAuth();
+  const token = user ? getToken() : null;
+  const [activeSocket, setActiveSocket] = useState<Socket | null>(null);
 
   useEffect(() => {
     if (!token) return;
-    connectSocket();
+    const connected = connectSocket();
+    setActiveSocket(connected);
     const socket = getSocket();
 
     socket?.on('notification', (payload: unknown) => {
@@ -26,12 +31,13 @@ export function SocketProvider({ children }: { children: ReactNode }) {
 
     return () => {
       disconnectSocket();
+      setActiveSocket(null);
     };
   }, [token]);
 
-  return <SocketContext.Provider value={null}>{children}</SocketContext.Provider>;
+  return <SocketContext.Provider value={activeSocket}>{children}</SocketContext.Provider>;
 }
 
 export function useSocket() {
-  return { socket: getSocket() };
+  return { socket: useContext(SocketContext) };
 }
