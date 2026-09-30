@@ -87,7 +87,7 @@ export default function HowItWorks() {
         {/* Mockup Window Container with Soft Pastel Atmospheric Aura Glow */}
         <div className="relative text-left">
           {/* Dreamy Pastel Mesh Aura Glow Behind Window */}
-          <div className="pointer-events-none absolute -inset-4 sm:-inset-8 rounded-[40px] bg-gradient-to-tr from-amber-200/30 via-rose-100/25 to-violet-200/30 blur-3xl opacity-80 -z-10" />
+          <div className="pointer-events-none absolute -inset-4 sm:-inset-8 rounded-[40px] bg-gradient-to-tr from-amber-200/30 via-rose-100/25 to-orange-200/30 blur-3xl opacity-80 -z-10" />
 
           {/* Main App Window Container */}
           <div className="relative mx-auto max-w-[1040px] rounded-2xl border border-gray-200/90 bg-white shadow-[0_24px_60px_rgba(26,26,30,0.08),0_1px_3px_rgba(26,26,30,0.04)] overflow-hidden">

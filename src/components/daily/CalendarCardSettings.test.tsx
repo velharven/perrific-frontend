@@ -148,7 +148,10 @@ describe('CalendarCardSettings (Notion-style recurring options)', () => {
     expect(mocks.createActivity).toHaveBeenCalledWith(
       expect.objectContaining({
         title: 'Special Sync',
-        recurrence: null,
+        recurrence: expect.objectContaining({
+          isException: true,
+          masterActivityId: 'master-weekly',
+        }),
       }),
     );
   });

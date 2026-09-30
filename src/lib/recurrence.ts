@@ -173,6 +173,7 @@ export function isSameRecurrence(
   if (!a && !b) return true;
   if (!a || !b) return false;
 
+  if (Boolean(a.isException) !== Boolean(b.isException)) return false;
   if (a.freq !== b.freq) return false;
   if ((a.interval || 1) !== (b.interval || 1)) return false;
   if ((a.endType || 'NEVER') !== (b.endType || 'NEVER')) return false;
@@ -209,6 +210,7 @@ export function formatRecurrenceLabel(
   anchorDateInput: Date | string,
 ): string {
   if (!config) return 'Tidak berulang';
+  if (config.isException) return 'Kegiatan berulang (jadwal khusus)';
 
   const presets = getRecurrencePresets(anchorDateInput);
   const matchedPreset = presets.find((p) => p.config && isSameRecurrence(p.config, config));
@@ -337,7 +339,7 @@ export function doesActivityOccurOnDate(
   const diffDays = Math.round((target.getTime() - startDate.getTime()) / 86400000);
 
   if (diffDays < 0) return false;
-  if (!recurrence) return diffDays === 0;
+  if (!recurrence || recurrence.isException) return diffDays === 0;
   if (recurrence.excludeDates && recurrence.excludeDates.length > 0) {
     const pad = (n: number) => String(n).padStart(2, '0');
     const targetStr = `${target.getFullYear()}-${pad(target.getMonth() + 1)}-${pad(target.getDate())}`;

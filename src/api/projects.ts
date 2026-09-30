@@ -4,6 +4,10 @@ import type { Attachment, BoardColumn, Comment, Project, ProjectMember, ProjectR
 export const projectApi = {
   getMyPersonalProject: () =>
     api.get<{ data: Project & { columns: BoardColumn[] } }>('/projects/personal/me').then((r) => r.data.data),
+  setActivePersonalProject: (projectId: string) =>
+    api
+      .patch<{ data: { projectId: string } }>('/projects/personal/active', { projectId })
+      .then((r) => r.data.data),
   getProject: (projectId: string) =>
     api.get<{ data: Project }>(`/projects/${projectId}`).then((r) => r.data.data),
   listTasks: (projectId: string) =>

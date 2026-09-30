@@ -60,7 +60,7 @@ export default function Hero() {
         {/* Interactive UI Mockup Window with Pastel Atmospheric Aura Glow */}
         <div className="relative mt-12 text-left">
           {/* Dreamy Pastel Mesh Aura Glow Behind Window (Valley Style) */}
-          <div className="pointer-events-none absolute -inset-4 sm:-inset-8 rounded-[40px] bg-gradient-to-tr from-amber-200/35 via-rose-100/30 to-violet-200/35 blur-3xl opacity-80 -z-10" />
+          <div className="pointer-events-none absolute -inset-4 sm:-inset-8 rounded-[40px] bg-gradient-to-tr from-amber-200/35 via-rose-100/30 to-orange-200/35 blur-3xl opacity-80 -z-10" />
 
           {/* Main App Window Container */}
           <div className="relative mx-auto max-w-[1060px] rounded-2xl border border-gray-200/90 bg-white shadow-[0_24px_60px_rgba(26,26,30,0.08),0_1px_3px_rgba(26,26,30,0.04)] overflow-hidden">

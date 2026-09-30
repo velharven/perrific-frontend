@@ -570,7 +570,7 @@ export default function TaskDetailView({
                   }}
                   className={`mt-1 block cursor-pointer rounded-lg border border-dashed px-3 py-4 text-center font-givonic text-xs transition ${
                     dragActive
-                      ? 'border-perrific-violet bg-violet-50 text-perrific-violet'
+                      ? 'border-perrific-violet bg-orange-50 text-perrific-violet'
                       : 'border-gray-300 text-gray-400 hover:border-perrific-violet hover:text-perrific-violet'
                   }`}
                 >
@@ -588,7 +588,7 @@ export default function TaskDetailView({
                     setDragActive(false);
                     readFiles(e.dataTransfer.files);
                   }}
-                  className={`mt-1 rounded-lg border ${dragActive ? 'border-perrific-violet bg-violet-50/50' : 'border-gray-200'}`}
+                  className={`mt-1 rounded-lg border ${dragActive ? 'border-perrific-violet bg-orange-50/50' : 'border-gray-200'}`}
                 >
                   {dragActive && (
                     <p className="px-3 py-2 text-center font-givonic text-xs font-semibold text-perrific-violet">
@@ -651,7 +651,7 @@ export default function TaskDetailView({
                               }}
                               title="Tambah deskripsi"
                               aria-label={`Tambah deskripsi untuk ${a.filename}`}
-                              className="rounded-md p-1 text-gray-400 hover:bg-violet-100 hover:text-perrific-violet"
+                              className="rounded-md p-1 text-gray-400 hover:bg-orange-100 hover:text-perrific-violet"
                             >
                               <PencilIcon className="h-3.5 w-3.5" />
                             </button>
@@ -831,7 +831,7 @@ export default function TaskDetailView({
                                       }}
                                       title="Edit komentar"
                                       aria-label="Edit komentar"
-                                      className="rounded-md p-1 text-gray-400 hover:bg-violet-100 hover:text-perrific-violet"
+                                      className="rounded-md p-1 text-gray-400 hover:bg-orange-100 hover:text-perrific-violet"
                                     >
                                       <PencilIcon className="h-3.5 w-3.5" />
                                     </button>
@@ -1214,7 +1214,7 @@ export default function TaskDetailView({
                 onClick={() => setEditingTitle(true)}
                 title="Ubah judul"
                 aria-label="Ubah judul"
-                className="flex h-8 w-8 items-center justify-center rounded-md bg-violet-50 text-perrific-violet hover:bg-violet-100"
+                className="flex h-8 w-8 items-center justify-center rounded-md bg-orange-50 text-perrific-violet hover:bg-orange-100"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 20h9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
               </button>

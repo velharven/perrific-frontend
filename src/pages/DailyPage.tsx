@@ -73,10 +73,29 @@ function toHHMM(iso: string | null | undefined): string {
   if (isNaN(d.getTime())) return '';
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
+function dedupeActivitiesById(list: DailyActivity[]): DailyActivity[] {
+  const map = new Map<string, DailyActivity>();
+  for (const item of list) {
+    map.set(item.id, item);
+  }
+  return Array.from(map.values());
+}
+function upsertActivity(
+  list: DailyActivity[],
+  item: DailyActivity,
+  sortByOrder = false,
+): DailyActivity[] {
+  const exists = list.some((a) => a.id === item.id);
+  const next = exists
+    ? list.map((a) => (a.id === item.id ? item : a))
+    : [...list, item];
+  const deduped = dedupeActivitiesById(next);
+  return sortByOrder ? deduped.sort((a, b) => a.order - b.order) : deduped;
+}
 
 // Pill properti gaya Notion
 const TYPE_META: Record<DailyActivity['type'], { label: string; className: string }> = {
-  TASK: { label: 'Task tim', className: 'bg-violet-100 text-violet-700' },
+  TASK: { label: 'Task tim', className: 'bg-orange-100 text-orange-700' },
   BREAKDOWN: { label: 'Breakdown', className: 'bg-blue-100 text-blue-700' },
   CUSTOM: { label: 'Pribadi', className: 'bg-gray-100 text-gray-500' },
 };
@@ -141,7 +160,7 @@ function SortableRow({
             onClick={onAddBelow}
             title="Tambah baris di bawah"
             aria-label="Tambah baris di bawah"
-            className="absolute left-[-38px] top-1/2 -translate-y-1/2 shrink-0 px-0.5 text-base leading-none text-gray-300 opacity-0 transition hover:text-violet-600 focus:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100 max-sm:opacity-100"
+            className="absolute left-[-38px] top-1/2 -translate-y-1/2 shrink-0 px-0.5 text-base leading-none text-gray-300 opacity-0 transition hover:text-orange-600 focus:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100 max-sm:opacity-100"
           >
             +
           </button>
@@ -169,7 +188,7 @@ function SortableRow({
             checked={checked}
             onChange={onToggleCheck}
             aria-label={checkLabel}
-            className={`h-3.5 w-3.5 shrink-0 rounded border-gray-300 text-violet-600 transition ${checked ? 'opacity-100' : 'opacity-0 focus:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100 max-sm:opacity-100'}`}
+            className={`h-3.5 w-3.5 shrink-0 rounded border-gray-300 text-orange-600 transition ${checked ? 'opacity-100' : 'opacity-0 focus:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100 max-sm:opacity-100'}`}
           />
         </span>
       </td>
@@ -333,7 +352,7 @@ function PhoneCell({
             onClick={(e) => e.stopPropagation()}
             aria-label={ariaLabel}
             placeholder="Nomor telepon..."
-            className="w-full min-w-0 rounded border border-violet-300 bg-white px-1.5 py-0.5 text-xs text-gray-800 focus:outline-none"
+            className="w-full min-w-0 rounded border border-orange-300 bg-white px-1.5 py-0.5 text-xs text-gray-800 focus:outline-none"
           />
         ) : (
           <button
@@ -390,7 +409,7 @@ function CustomCell({
         checked={raw === true}
         onChange={(e) => onCommit(activity, column, e.target.checked)}
         aria-label={`${column.name} ${activity.title}`}
-        className="h-3.5 w-3.5 rounded border-gray-300 text-violet-600"
+        className="h-3.5 w-3.5 rounded border-gray-300 text-orange-600"
       />
     );
   }
@@ -479,7 +498,7 @@ function CustomCell({
             if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
           }}
           aria-label={`${column.name} ${activity.title}`}
-          className="rounded border border-transparent bg-transparent px-1 py-0.5 text-xs text-gray-700 hover:border-gray-200 focus:border-violet-300 focus:bg-white focus:outline-none"
+          className="rounded border border-transparent bg-transparent px-1 py-0.5 text-xs text-gray-700 hover:border-gray-200 focus:border-orange-300 focus:bg-white focus:outline-none"
         />
       </div>
     );
@@ -1010,6 +1029,7 @@ function DailyPageInner() {
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
+  const skipTitleCommitRef = useRef(false);
   const [recurrenceRenamePrompt, setRecurrenceRenamePrompt] = useState<{
     isOpen: boolean;
     activity: DailyActivity;
@@ -1254,10 +1274,14 @@ function DailyPageInner() {
     try {
       const data = await activityApi.listMine({ limit: 500, calendarScope: 'active' });
       if (requestId === activitiesRequestRef.current) {
-        setActivities(data.map((activity) => {
-          const pendingMove = pendingActivityMovesRef.current.get(activity.id);
-          return pendingMove ? { ...activity, ...pendingMove } : activity;
-        }));
+        setActivities(
+          dedupeActivitiesById(
+            data.map((activity) => {
+              const pendingMove = pendingActivityMovesRef.current.get(activity.id);
+              return pendingMove ? { ...activity, ...pendingMove } : activity;
+            }),
+          ),
+        );
       }
     } catch {
       if (!silent && requestId === activitiesRequestRef.current) setActivities([]);
@@ -1281,14 +1305,13 @@ function DailyPageInner() {
     ++activitiesRequestRef.current;
     if (calendarChange.activity) {
       const activity = calendarChange.activity;
-      setActivities(previous => {
-        const existing = previous.find(a => a.id === activity.id);
+      setActivities((previous) => {
         const pending = pendingActivityMovesRef.current.get(activity.id);
         const next = pending ? { ...activity, ...pending } : activity;
-        return existing ? previous.map(a => a.id === activity.id ? next : a) : [...previous, next];
+        return upsertActivity(previous, next);
       });
     } else if (calendarChange.action === 'delete') {
-      setActivities(previous => previous.filter(a => a.id !== calendarChange.activityId));
+      setActivities((previous) => previous.filter((a) => a.id !== calendarChange.activityId));
     }
   }, [calendarChange]);
 
@@ -1435,7 +1458,8 @@ function DailyPageInner() {
       endTime: time?.endTime,
       icon: 'note',
     });
-    setActivities((prev) => [...prev, created].sort((a, b) => a.order - b.order));
+    setActivities((prev) => upsertActivity(prev, created, true));
+    skipTitleCommitRef.current = false;
     setEditingId(created.id);
     setEditingTitle(created.title);
     requestAnimationFrame(() => {
@@ -1452,7 +1476,8 @@ function DailyPageInner() {
       icon: 'note',
       order: after.order + 0.5,
     });
-    setActivities((prev) => [...prev, created].sort((a, b) => a.order - b.order));
+    setActivities((prev) => upsertActivity(prev, created, true));
+    skipTitleCommitRef.current = false;
     setEditingId(created.id);
     setEditingTitle(created.title);
     requestAnimationFrame(() => {
@@ -1736,7 +1761,11 @@ function DailyPageInner() {
               customValues: activity.customValues ?? undefined,
             })
             .then((created) => {
-              setActivities((prev) => prev.map((a) => (a.id === activity.id ? created : a)));
+              setActivities((prev) =>
+                dedupeActivitiesById(
+                  prev.map((a) => (a.id === activity.id ? created : a)),
+                ),
+              );
             })
             .catch(() => undefined),
         ),
@@ -1831,7 +1860,12 @@ function DailyPageInner() {
         status: activity.status || 'PENDING',
         icon: activity.icon,
         color: activity.color,
-        recurrence: null,
+        recurrence: activity.recurrence
+          ? {
+              isException: true,
+              masterActivityId: activity.id,
+            }
+          : null,
       });
 
       void fetchActivities(true);
@@ -1902,12 +1936,17 @@ function DailyPageInner() {
   };
 
   async function handleUpdateTitle(activity: DailyActivity) {
+    if (skipTitleCommitRef.current) {
+      skipTitleCommitRef.current = false;
+      setEditingId(null);
+      return;
+    }
     const trimmed = editingTitle.trim();
     if (!trimmed || trimmed === activity.title) {
       setEditingId(null);
       return;
     }
-    if (activity.recurrence) {
+    if (activity.recurrence && !activity.recurrence.isException) {
       setRecurrenceRenamePrompt({
         isOpen: true,
         activity,
@@ -2026,7 +2065,7 @@ function DailyPageInner() {
           }}
           onClick={(e) => e.stopPropagation()}
           aria-label={field === 'start' ? 'Waktu mulai' : 'Waktu selesai'}
-          className="rounded border border-violet-300 bg-white px-1 py-0.5 text-xs"
+          className="rounded border border-orange-300 bg-white px-1 py-0.5 text-xs"
         />
       );
     }
@@ -2057,7 +2096,7 @@ function DailyPageInner() {
         // Capture: harus memutus gestur sebelum listener drag-reorder dnd-kit di `th`
         // (bubble) sempat bangun — kalau tidak, "melebarkan" berubah jadi geser kolom.
         onPointerDownCapture={(e) => beginColumnResize(e, entry)}
-        className="absolute -right-2.5 top-1/2 z-10 h-6 w-2 -translate-y-1/2 cursor-col-resize touch-none rounded opacity-0 transition hover:bg-violet-300 group-hover:opacity-100"
+        className="absolute -right-2.5 top-1/2 z-10 h-6 w-2 -translate-y-1/2 cursor-col-resize touch-none rounded opacity-0 transition hover:bg-orange-300 group-hover:opacity-100"
       />
     );
 
@@ -2137,16 +2176,28 @@ function DailyPageInner() {
               <input
                 autoFocus
                 value={editingTitle}
+                onFocus={(e) => e.currentTarget.select()}
                 onChange={(e) => setEditingTitle(e.target.value)}
-                onBlur={() => handleUpdateTitle(a)}
-                onKeyDown={(e) => e.key === 'Enter' && handleUpdateTitle(a)}
+                onBlur={() => void handleUpdateTitle(a)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    e.currentTarget.blur();
+                  } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    skipTitleCommitRef.current = true;
+                    setEditingTitle(a.title);
+                    setEditingId(null);
+                  }
+                }}
                 onClick={(e) => e.stopPropagation()}
-                className="w-full min-w-0 rounded border border-violet-300 bg-white px-1.5 py-0.5 text-sm"
+                className="w-full min-w-0 rounded border border-orange-300 bg-white px-1.5 py-0.5 text-sm"
               />
             ) : (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
+                  skipTitleCommitRef.current = false;
                   setEditingId(a.id);
                   setEditingTitle(a.title);
                 }}
@@ -2176,7 +2227,7 @@ function DailyPageInner() {
             }}
             onClick={(e) => e.stopPropagation()}
             title="Klik untuk ubah tanggal"
-            className="cursor-pointer rounded border border-transparent bg-transparent px-1 py-0.5 text-xs text-gray-700 hover:border-gray-300 hover:bg-white focus:border-violet-400 focus:bg-white focus:outline-none"
+            className="cursor-pointer rounded border border-transparent bg-transparent px-1 py-0.5 text-xs text-gray-700 hover:border-gray-300 hover:bg-white focus:border-orange-400 focus:bg-white focus:outline-none"
           />
         </td>
       );
@@ -2527,7 +2578,7 @@ function DailyPageInner() {
                         : 'Pilih semua aktivitas'
                     }
                     aria-label="Pilih semua aktivitas"
-                    className={`h-3.5 w-3.5 rounded border-gray-300 text-violet-600 transition ${selectedIds.size > 0 ? 'opacity-100' : 'opacity-0 focus:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100 max-sm:opacity-100'}`}
+                    className={`h-3.5 w-3.5 rounded border-gray-300 text-orange-600 transition ${selectedIds.size > 0 ? 'opacity-100' : 'opacity-0 focus:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100 max-sm:opacity-100'}`}
                   />
                 </th>
                 <SortableContext items={displayOrder.map((id) => `${COL_PREFIX}${id}`)} strategy={horizontalListSortingStrategy}>
@@ -2539,7 +2590,7 @@ function DailyPageInner() {
                     onClick={() => void handleAddColumn()}
                     title="Tambah properti"
                     aria-label="Tambah properti"
-                    className="px-1 text-lg leading-none text-gray-400 transition hover:text-violet-600"
+                    className="px-1 text-lg leading-none text-gray-400 transition hover:text-orange-600"
                   >
                     +
                   </button>

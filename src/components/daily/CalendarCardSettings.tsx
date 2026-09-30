@@ -112,13 +112,6 @@ export type CalendarUndoAction =
         allDay?: boolean;
         recurrence?: RecurrenceConfig | null;
       };
-    }
-  | {
-      id: number;
-      type: 'reorder-calendar-columns';
-      date: string;
-      columns: string[][];
-      title: string;
     };
 
 interface CalendarCardSettingsProps {
@@ -467,7 +460,7 @@ export default function CalendarCardSettings({
 
   const recurrenceSummaryLabel = formatRecurrenceLabel(recurrence, dateStr || new Date());
 
-  const isRepeating = Boolean(isAct && act?.recurrence);
+  const isRepeating = Boolean(isAct && act?.recurrence && !act.recurrence.isException);
 
   // Simpan perubahan ke backend
   const handleSave = (
@@ -796,7 +789,12 @@ export default function CalendarCardSettings({
           status: act.status || 'PENDING',
           icon: act.icon,
           color: effectiveColor,
-          recurrence: null,
+          recurrence: act.recurrence
+            ? {
+                isException: true,
+                masterActivityId: act.id,
+              }
+            : null,
         });
 
         if (onRecordUndo && getNextUndoId) {
@@ -927,7 +925,7 @@ export default function CalendarCardSettings({
 
     if (recurrence) {
       setCustomInterval(Math.max(1, recurrence.interval || 1));
-      setCustomFreq(recurrence.freq);
+      setCustomFreq(recurrence.freq || 'DAILY');
       setCustomByDays(
         recurrence.byDays && recurrence.byDays.length > 0
           ? [...recurrence.byDays]

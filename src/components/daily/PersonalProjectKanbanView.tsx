@@ -1,6 +1,7 @@
 import { useSocket } from '@/store/socket';
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { projectApi } from '@/api/projects';
+import { teamApi } from '@/api/teams';
 import { taskApi } from '@/api/tasks';
 import { showToast } from '@/components/ui/Toast';
 import ModalShell from '@/components/ui/ModalShell';
@@ -31,10 +32,20 @@ export default function PersonalProjectKanbanView() {
   const { user } = useAuth();
   const { push } = useUndo();
   const [project, setProject] = useState<Project | null>(null);
+  const [personalProjects, setPersonalProjects] = useState<Project[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [columns, setColumns] = useState<BoardColumn[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<BoardView>(DEFAULT_BOARD_VIEW);
+
+  // Project Switcher Dropup & Create Project Modal
+  const [projectMenuOpen, setProjectMenuOpen] = useState(false);
+  const [projectSearch, setProjectSearch] = useState('');
+  const projectBtnRef = useRef<HTMLButtonElement>(null);
+  const [createProjectOpen, setCreateProjectOpen] = useState(false);
+  const [newProjectName, setNewProjectName] = useState('');
+  const [newProjectDesc, setNewProjectDesc] = useState('');
+  const [creatingProject, setCreatingProject] = useState(false);
 
   // Modal Create Task
   const [createOpen, setCreateOpen] = useState(false);
@@ -95,21 +106,33 @@ export default function PersonalProjectKanbanView() {
     };
   }, []);
 
+  const activeStorageKey = `purrific:active-personal-project:${user?.id ?? 'anon'}`;
+
   // Muat project pribadi dan task-tasknya dari PostgreSQL
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const proj = await projectApi.getMyPersonalProject();
-      setProject(proj);
-      setColumns(proj.columns ?? []);
-      setSettingsName(proj.name);
-      setSettingsDesc(proj.description ?? '');
+      const defaultProj = await projectApi.getMyPersonalProject();
+      const allProjects = defaultProj.teamId
+        ? await teamApi.listProjects(defaultProj.teamId).catch(() => [defaultProj])
+        : [defaultProj];
+      const list = allProjects.length > 0 ? allProjects : [defaultProj];
+      setPersonalProjects(list);
 
-      if (proj.id) {
-        setView(loadBoardView(proj.id));
+      const savedId = localStorage.getItem(activeStorageKey);
+      const activeProj: Project & { columns?: BoardColumn[] } =
+        list.find((p) => p.id === savedId) ?? defaultProj;
+
+      setProject(activeProj);
+      setColumns(activeProj.columns ?? []);
+      setSettingsName(activeProj.name);
+      setSettingsDesc(activeProj.description ?? '');
+
+      if (activeProj.id) {
+        setView(loadBoardView(activeProj.id));
         const [taskList, colList] = await Promise.all([
-          projectApi.listTasks(proj.id),
-          projectApi.listColumns(proj.id),
+          projectApi.listTasks(activeProj.id),
+          projectApi.listColumns(activeProj.id),
         ]);
         setTasks(taskList);
         setColumns(colList);
@@ -121,32 +144,175 @@ export default function PersonalProjectKanbanView() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [activeStorageKey]);
+
+  const handleSelectProject = useCallback(
+    async (target: Project & { columns?: BoardColumn[] }, syncServer = true) => {
+      setProjectMenuOpen(false);
+      setProjectSearch('');
+      if (target.id === project?.id) return;
+      localStorage.setItem(activeStorageKey, target.id);
+      if (syncServer) {
+        projectApi.setActivePersonalProject(target.id).catch(() => {});
+      }
+      setProject(target);
+      setSettingsName(target.name);
+      setSettingsDesc(target.description ?? '');
+      setView(loadBoardView(target.id));
+      setTasks([]);
+      if (target.columns && target.columns.length > 0) {
+        setColumns(target.columns);
+        setStatus(target.columns[0]?.id ?? '');
+      }
+      try {
+        const [taskList, colList] = await Promise.all([
+          projectApi.listTasks(target.id),
+          projectApi.listColumns(target.id),
+        ]);
+        setTasks(taskList);
+        setColumns(colList);
+        setStatus(colList[0]?.id ?? '');
+      } catch {
+        showToast('Gagal memuat project yang dipilih.');
+      }
+    },
+    [project?.id, activeStorageKey],
+  );
+
+  const handleCreateProject = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!project?.teamId || !newProjectName.trim()) return;
+    setCreatingProject(true);
+    try {
+      const created = await teamApi.createProject(project.teamId, {
+        name: newProjectName.trim(),
+        description: newProjectDesc.trim() || undefined,
+      });
+      setPersonalProjects((prev) =>
+        prev.some((p) => p.id === created.id) ? prev : [...prev, created],
+      );
+      setNewProjectName('');
+      setNewProjectDesc('');
+      setCreateProjectOpen(false);
+      showToast('Project pribadi baru berhasil dibuat.');
+      await handleSelectProject(created);
+    } catch {
+      showToast('Gagal membuat project baru.');
+    } finally {
+      setCreatingProject(false);
+    }
+  };
 
   useEffect(() => {
     void loadData();
   }, [loadData]);
 
   const { socket } = useSocket();
+
+  // Sinkronisasi otomatis saat pengguna membuka kembali tab / menyalakan layar HP (focus / visibilitychange / online / reconnect)
+  useEffect(() => {
+    const resume = () => {
+      if (document.visibilityState !== 'visible') return;
+      void loadData();
+    };
+    window.addEventListener('focus', resume);
+    document.addEventListener('visibilitychange', resume);
+    window.addEventListener('online', resume);
+    socket?.on('connect', resume);
+    return () => {
+      window.removeEventListener('focus', resume);
+      document.removeEventListener('visibilitychange', resume);
+      window.removeEventListener('online', resume);
+      socket?.off('connect', resume);
+    };
+  }, [socket, loadData]);
+
   useEffect(() => {
     if (!socket || !project?.id) return;
-    let request = 0;
-    const refresh = async (payload?: { projectId?: string }) => {
+    let taskReq = 0;
+    let projReq = 0;
+
+    const refreshTasks = async (payload?: { projectId?: string }) => {
       if (payload?.projectId && payload.projectId !== project.id) return;
-      const current = ++request;
+      const current = ++taskReq;
       try {
         const items = await projectApi.listTasks(project.id);
-        if (current === request) setTasks(items);
-      } catch { /* keep the current board during a network failure */ }
+        if (current === taskReq) setTasks(items);
+      } catch {
+        /* keep the current board during a network failure */
+      }
     };
-    socket.on('task:updated', refresh);
-    socket.on('calendar:synced', refresh);
+
+    const handleProjectSwitched = (payload?: { projectId?: string }) => {
+      if (!payload?.projectId || payload.projectId === project.id) return;
+      setPersonalProjects((prevList) => {
+        const found = prevList.find((p) => p.id === payload.projectId);
+        if (found) {
+          void handleSelectProject(found, false);
+        } else {
+          void loadData();
+        }
+        return prevList;
+      });
+    };
+
+    const refreshProjectAndBoard = async (payload?: {
+      teamId?: string;
+      projectId?: string;
+      action?: string;
+    }) => {
+      if (payload?.teamId && project.teamId && payload.teamId !== project.teamId) return;
+      const current = ++projReq;
+      try {
+        if (project.teamId) {
+          const allProjects = await teamApi.listProjects(project.teamId);
+          if (current === projReq && allProjects.length > 0) {
+            setPersonalProjects(allProjects);
+            const updatedCurrent = allProjects.find((p) => p.id === project.id);
+            if (updatedCurrent) {
+              setProject((prev) => (prev ? { ...prev, ...updatedCurrent } : prev));
+              setSettingsName(updatedCurrent.name);
+              setSettingsDesc(updatedCurrent.description ?? '');
+            } else {
+              // Project saat ini telah dihapus di perangkat lain! Fallback ke project pertama
+              const fallback = allProjects[0];
+              showToast('Project saat ini telah dihapus di perangkat lain, dialihkan ke project utama.');
+              void handleSelectProject(fallback, false);
+              return;
+            }
+          }
+        }
+        if (!payload?.projectId || payload.projectId === project.id) {
+          const [colList, taskList] = await Promise.all([
+            projectApi.listColumns(project.id),
+            projectApi.listTasks(project.id),
+          ]);
+          if (current === projReq) {
+            setColumns(colList);
+            setTasks(taskList);
+            setStatus((prev) =>
+              prev && colList.some((c) => c.id === prev) ? prev : (colList[0]?.id ?? ''),
+            );
+          }
+        }
+      } catch {
+        /* keep the current board during a network failure */
+      }
+    };
+
+    socket.on('task:updated', refreshTasks);
+    socket.on('calendar:synced', refreshTasks);
+    socket.on('project:updated', refreshProjectAndBoard);
+    socket.on('personal-project:switched', handleProjectSwitched);
     return () => {
-      request++;
-      socket.off('task:updated', refresh);
-      socket.off('calendar:synced', refresh);
+      taskReq++;
+      projReq++;
+      socket.off('task:updated', refreshTasks);
+      socket.off('calendar:synced', refreshTasks);
+      socket.off('project:updated', refreshProjectAndBoard);
+      socket.off('personal-project:switched', handleProjectSwitched);
     };
-  }, [socket, project?.id]);
+  }, [socket, project?.id, project?.teamId, handleSelectProject, loadData]);
 
   // Pindah task antar kolom / reorder dengan optimistik update dan undo
   const moveTask = (taskId: string, columnId: string, insertAt?: number) => {
@@ -344,6 +510,9 @@ export default function PersonalProjectKanbanView() {
         description: settingsDesc.trim() || undefined,
       });
       setProject((prev) => (prev ? { ...prev, ...updated } : prev));
+      setPersonalProjects((prev) =>
+        prev.map((p) => (p.id === project.id ? { ...p, ...updated } : p)),
+      );
       showToast('Pengaturan project berhasil disimpan.');
       setSettingsOpen(false);
     } catch {
@@ -352,6 +521,27 @@ export default function PersonalProjectKanbanView() {
       setSavingSettings(false);
     }
   };
+
+  const handleColumnsChange = useCallback((nextCols: BoardColumn[]) => {
+    setColumns(nextCols);
+    setStatus((prev) =>
+      prev && nextCols.some((c) => c.id === prev) ? prev : (nextCols[0]?.id ?? ''),
+    );
+  }, []);
+
+  const handleTasksMoved = useCallback(() => {
+    if (!project?.id) return;
+    void projectApi
+      .listTasks(project.id)
+      .then(setTasks)
+      .catch(() => {});
+  }, [project?.id]);
+
+  const filteredPersonalProjects = useMemo(() => {
+    const q = projectSearch.trim().toLowerCase();
+    if (!q) return personalProjects;
+    return personalProjects.filter((p) => p.name.toLowerCase().includes(q));
+  }, [personalProjects, projectSearch]);
 
   // Filter tasks
   const visibleTasks = useMemo(() => {
@@ -378,7 +568,7 @@ export default function PersonalProjectKanbanView() {
   if (loading) {
     return (
       <div className="py-20 text-center">
-        <div className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-violet-600 border-t-transparent" />
+        <div className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-orange-500 border-t-transparent" />
         <p className="mt-3 font-givonic text-sm text-gray-500">Memuat project pribadi Anda…</p>
       </div>
     );
@@ -390,7 +580,7 @@ export default function PersonalProjectKanbanView() {
       <div className="flex items-center justify-between gap-3 border-b border-gray-100 pb-3 pt-1">
         {/* Sisi Kiri: Info Project Pribadi */}
         <div className="flex min-w-0 items-center gap-2.5">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-700 shadow-2xs">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-orange-100 text-orange-700 shadow-2xs">
             <svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true">
               <rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.5" />
               <path d="M5 6h6M5 9h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
@@ -423,18 +613,57 @@ export default function PersonalProjectKanbanView() {
 
       <div aria-hidden="true" className="h-16" />
 
-      {/* Floating Cell Pill Search Bar (Identik dengan BoardPage.tsx) */}
+      {/* Floating Cell Pill Search Bar (Identik dengan BoardPage.tsx + Dropup Project Switcher) */}
       <div
         className={`pointer-events-none fixed inset-x-0 bottom-4 z-30 flex justify-center transition-[left] duration-200 ${
           sbCollapsed ? 'md:left-[68px]' : 'md:left-64'
         }`}
       >
         <div className="pointer-events-auto flex max-w-full items-center gap-2 rounded-full border border-gray-300 bg-white/95 p-2 shadow-[0_8px_24px_rgba(26,26,30,0.14)] backdrop-blur">
+          {/* Dropup Project Switcher */}
+          <button
+            ref={projectBtnRef}
+            type="button"
+            onClick={() => {
+              setProjectMenuOpen((v) => !v);
+              setFilterMenuOpen(false);
+              cancelFlyoutClose();
+              setFilterFlyout(null);
+            }}
+            aria-haspopup="menu"
+            aria-expanded={projectMenuOpen}
+            aria-label="Pilih project pribadi"
+            className={`flex max-w-[180px] shrink-0 items-center gap-2 rounded-full px-4 py-2.5 font-givonic text-sm font-semibold transition focus:outline-none ${
+              projectMenuOpen
+                ? 'bg-orange-600 text-white'
+                : 'bg-orange-50 text-orange-700 hover:bg-orange-100'
+            }`}
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true" className="shrink-0">
+              <rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.5" />
+              <path d="M5 6h6M5 9h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+            <span className="truncate">{project?.name ?? 'Project Pribadi'}</span>
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 16 16"
+              fill="none"
+              aria-hidden="true"
+              className={`shrink-0 transition-transform duration-150 ${projectMenuOpen ? 'rotate-180' : ''}`}
+            >
+              <path d="M4 10l4-4 4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+
+          <div aria-hidden="true" className="h-5 w-px shrink-0 bg-gray-400" />
+
           <button
             ref={filterBtnRef}
             type="button"
             onClick={() => {
               setFilterMenuOpen((v) => !v);
+              setProjectMenuOpen(false);
               cancelFlyoutClose();
               setFilterFlyout(null);
             }}
@@ -497,6 +726,97 @@ export default function PersonalProjectKanbanView() {
           </button>
         </div>
       </div>
+
+      {/* Dropup Menu Project Pribadi */}
+      {projectMenuOpen && (
+        <MenuPortal
+          anchorRef={projectBtnRef}
+          label="Daftar project pribadi"
+          width={260}
+          placement="above"
+          onClose={() => {
+            setProjectMenuOpen(false);
+            setProjectSearch('');
+          }}
+        >
+          <div className="px-2 pb-1.5 pt-1">
+            {/* Button Tambah Project Baru */}
+            <button
+              type="button"
+              onClick={() => {
+                setProjectMenuOpen(false);
+                setProjectSearch('');
+                setCreateProjectOpen(true);
+              }}
+              className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-orange-600 px-3 py-2 font-givonic text-xs font-semibold text-white transition hover:bg-orange-700"
+            >
+              <span aria-hidden="true" className="text-sm leading-none">+</span>
+              <span>Tambah Project Baru</span>
+            </button>
+
+            {/* Searchbar Project */}
+            <div className="relative mt-2">
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 16 16"
+                fill="none"
+                aria-hidden="true"
+                className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400"
+              >
+                <circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.5" />
+                <path d="M10.5 10.5L14 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+              <input
+                value={projectSearch}
+                onChange={(e) => setProjectSearch(e.target.value)}
+                placeholder="Cari project…"
+                aria-label="Cari project"
+                className="w-full rounded-lg border border-gray-200 bg-gray-50 py-1.5 pl-8 pr-2.5 font-givonic text-xs text-gray-800 placeholder:text-gray-400 focus:border-orange-400 focus:bg-white focus:outline-none"
+              />
+            </div>
+          </div>
+
+          <div className="border-t border-gray-100 pt-1">
+            {/* Maksimal 3 nama project terlihat sekaligus (3 x 36px = 108px -> max-h-[112px]) dengan scrollbar jika lebih */}
+            <div
+              data-testid="personal-project-list"
+              className="nice-scroll max-h-[112px] overflow-y-auto px-1"
+            >
+              {filteredPersonalProjects.length === 0 ? (
+                <p className="py-3 text-center font-givonic text-xs text-gray-400">
+                  Project tidak ditemukan
+                </p>
+              ) : (
+                filteredPersonalProjects.map((p) => {
+                  const isActive = p.id === project?.id;
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      role="menuitemradio"
+                      aria-checked={isActive}
+                      onClick={() => void handleSelectProject(p)}
+                      className={`flex h-9 w-full items-center justify-between gap-2 rounded-lg px-2.5 text-left font-givonic text-xs font-semibold transition ${
+                        isActive
+                          ? 'bg-orange-50 text-orange-700'
+                          : 'text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      <span className="truncate">{p.name}</span>
+                      {isActive && (
+                        <span aria-hidden="true" className="shrink-0 text-orange-600">
+                          ✓
+                        </span>
+                      )}
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </MenuPortal>
+      )}
 
       {/* Flyout Filter Menu */}
       {filterMenuOpen && (
@@ -821,9 +1141,78 @@ export default function PersonalProjectKanbanView() {
               <h3 className="mb-3 font-givonic text-xs font-bold uppercase tracking-wider text-gray-500">
                 Kolom Kanban Board
               </h3>
-              <BoardColumnEditor projectId={project.id} />
+              <BoardColumnEditor
+                projectId={project.id}
+                onColumnsChange={handleColumnsChange}
+                onTasksMoved={handleTasksMoved}
+              />
             </div>
           </div>
+        </ModalShell>
+      )}
+
+      {/* Modal Tambah Project Pribadi Baru */}
+      {createProjectOpen && (
+        <ModalShell label="Tambah Project Pribadi Baru" onClose={() => setCreateProjectOpen(false)}>
+          <div className="relative mb-4">
+            <h2 className="font-givonic text-lg font-bold text-gray-800">Tambah Project Baru</h2>
+            <button
+              type="button"
+              onClick={() => setCreateProjectOpen(false)}
+              aria-label="Tutup"
+              className="absolute right-0 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-800"
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+              </svg>
+            </button>
+          </div>
+
+          <form onSubmit={handleCreateProject} className="space-y-3">
+            <div>
+              <label htmlFor="new-project-name" className="mb-1 block font-givonic text-xs font-medium text-gray-700">
+                Nama Project
+              </label>
+              <input
+                id="new-project-name"
+                autoFocus
+                value={newProjectName}
+                onChange={(e) => setNewProjectName(e.target.value)}
+                placeholder="Mis. Belajar React, Side Project..."
+                maxLength={100}
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-givonic text-sm focus:border-orange-500 focus:outline-none"
+              />
+            </div>
+            <div>
+              <label htmlFor="new-project-desc" className="mb-1 block font-givonic text-xs font-medium text-gray-700">
+                Deskripsi (Opsional)
+              </label>
+              <textarea
+                id="new-project-desc"
+                value={newProjectDesc}
+                onChange={(e) => setNewProjectDesc(e.target.value)}
+                placeholder="Deskripsi singkat project ini..."
+                rows={3}
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-givonic text-sm focus:border-orange-500 focus:outline-none"
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setCreateProjectOpen(false)}
+                className="rounded-lg border border-gray-200 px-4 py-2 font-givonic text-xs font-semibold text-gray-600 transition hover:bg-gray-50"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                disabled={creatingProject || !newProjectName.trim()}
+                className="rounded-lg bg-orange-600 px-4 py-2 font-givonic text-xs font-semibold text-white transition hover:bg-orange-700 disabled:opacity-50"
+              >
+                {creatingProject ? 'Membuat…' : 'Buat Project'}
+              </button>
+            </div>
+          </form>
         </ModalShell>
       )}
     </div>

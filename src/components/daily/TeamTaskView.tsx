@@ -1105,12 +1105,12 @@ export default function TeamTaskView({ onRefreshDaily: _onRefreshDaily }: TeamTa
       {/* Konten Utama: Daftar Hierarki Tim -> Project -> Kanban */}
       {loadingInitial ? (
         <div className="py-20 text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-violet-600 border-t-transparent" />
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-orange-500 border-t-transparent" />
           <p className="mt-3 font-givonic text-sm text-gray-500">Memuat task dan tim Anda...</p>
         </div>
       ) : displayedTeams.length === 0 ? (
         <div className="rounded-2xl border border-gray-200 bg-white py-16 text-center shadow-xs">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-50 text-violet-600">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-50 text-orange-600">
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
               <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
             </svg>
@@ -1211,7 +1211,7 @@ export default function TeamTaskView({ onRefreshDaily: _onRefreshDaily }: TeamTa
                     <span
                       className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-givonic text-xs font-semibold ${
                         teamTaskCount > 0
-                          ? 'bg-violet-100 text-violet-700'
+                          ? 'bg-orange-100 text-orange-700'
                           : 'bg-gray-100 text-gray-500'
                       }`}
                     >
@@ -1228,7 +1228,7 @@ export default function TeamTaskView({ onRefreshDaily: _onRefreshDaily }: TeamTa
                   <div className="border-t border-gray-100 p-4">
                     {isLoadingProj ? (
                       <div className="py-6 text-center text-xs text-gray-400">
-                        <div className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-violet-600 border-t-transparent" />
+                        <div className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-orange-500 border-t-transparent" />
                         <span className="ml-2">Memuat daftar project...</span>
                       </div>
                     ) : projects.length === 0 ? (
@@ -1236,7 +1236,7 @@ export default function TeamTaskView({ onRefreshDaily: _onRefreshDaily }: TeamTa
                         Belum ada project di tim ini.
                       </div>
                     ) : (
-                      <div className="ml-2 sm:ml-4 space-y-3 border-l-2 border-violet-100 pl-3 sm:pl-4">
+                      <div className="ml-2 sm:ml-4 space-y-3 border-l-2 border-orange-200 pl-3 sm:pl-4">
                         {projects.map((project) => {
                           const isProjOpen = expandedProjects.has(project.id);
                           const projTaskCount = taskCountByProject[project.id] ?? 0;
@@ -1307,7 +1307,7 @@ export default function TeamTaskView({ onRefreshDaily: _onRefreshDaily }: TeamTa
                                     to={`/projects/${project.id}/kanban`}
                                     onClick={(e) => e.stopPropagation()}
                                     title="Buka board tim penuh"
-                                    className="hidden sm:flex items-center gap-1 rounded-md px-2 py-1 font-givonic text-[11px] font-medium text-gray-500 hover:bg-white hover:text-violet-700 hover:shadow-2xs transition"
+                                    className="hidden sm:flex items-center gap-1 rounded-md px-2 py-1 font-givonic text-[11px] font-medium text-gray-500 hover:bg-white hover:text-orange-700 hover:shadow-2xs transition"
                                   >
                                     <span>Board Tim</span>
                                     <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 11L11 5M11 5H6M11 5V10" /></svg>
@@ -1320,7 +1320,7 @@ export default function TeamTaskView({ onRefreshDaily: _onRefreshDaily }: TeamTa
                                 <div className="border-t border-gray-200/70 bg-white p-3">
                                   {isLoadingCols ? (
                                     <div className="py-8 text-center text-xs text-gray-400">
-                                      <div className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-violet-600 border-t-transparent" />
+                                      <div className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-orange-500 border-t-transparent" />
                                       <span className="ml-2">Memuat board kanban...</span>
                                     </div>
                                   ) : (
@@ -1458,7 +1458,7 @@ export default function TeamTaskView({ onRefreshDaily: _onRefreshDaily }: TeamTa
                   setFilterPriority(opt.v as TaskPriority | null);
                 }}
                 className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 font-givonic text-xs font-semibold transition hover:bg-gray-100 cursor-pointer ${
-                  filterPriority === opt.v ? 'text-violet-700 bg-violet-50/60' : 'text-gray-700'
+                  filterPriority === opt.v ? 'text-orange-700 bg-orange-50/60' : 'text-gray-700'
                 }`}
               >
                 <span>{opt.label}</span>
@@ -1475,7 +1475,7 @@ export default function TeamTaskView({ onRefreshDaily: _onRefreshDaily }: TeamTa
               type="button"
               onClick={() => setOnlyWithTasks((prev) => !prev)}
               className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 font-givonic text-xs font-semibold transition hover:bg-gray-100 cursor-pointer ${
-                onlyWithTasks ? 'text-violet-700 bg-violet-50/60' : 'text-gray-700'
+                onlyWithTasks ? 'text-orange-700 bg-orange-50/60' : 'text-gray-700'
               }`}
             >
               <span>Hanya yang ada tugas saya</span>

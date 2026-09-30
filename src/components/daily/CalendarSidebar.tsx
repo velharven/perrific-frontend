@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import type { DailyActivity, AssignedTeamTask, Task } from '@/types';
 import { taskApi } from '@/api/tasks';
 import { projectApi } from '@/api/projects';
+import { teamApi } from '@/api/teams';
 import { ActivityIcon } from '@/components/icons';
 import { useSocket } from '@/store/socket';
 import { useCalendarSync } from '@/store/calendarSync';
@@ -12,7 +13,7 @@ interface CalendarSidebarProps {
 }
 
 const TYPE_META: Record<DailyActivity['type'], { label: string; className: string }> = {
-  TASK: { label: 'Task tim', className: 'bg-violet-100 text-violet-700' },
+  TASK: { label: 'Task tim', className: 'bg-orange-100 text-orange-700' },
   BREAKDOWN: { label: 'Breakdown', className: 'bg-blue-100 text-blue-700' },
   CUSTOM: { label: 'Pribadi', className: 'bg-gray-100 text-gray-600' },
 };
@@ -63,14 +64,21 @@ export default function CalendarSidebar({
     }
   }, []);
 
-  // Muat tugas dari project pribadi milik user
+  // Muat tugas dari seluruh project pribadi milik user
   const fetchPersonalTasks = useCallback(async (silent = false) => {
     try {
       if (!silent) {
         setLoadingPersonalTasks(true);
       }
       const proj = await projectApi.getMyPersonalProject();
-      if (proj?.id) {
+      if (proj?.teamId) {
+        const allProjects = await teamApi.listProjects(proj.teamId).catch(() => [proj]);
+        const projectList = allProjects.length > 0 ? allProjects : [proj];
+        const lists = await Promise.all(
+          projectList.map((p) => projectApi.listTasks(p.id).catch(() => [] as Task[])),
+        );
+        setPersonalTasks(lists.flat());
+      } else if (proj?.id) {
         const data = await projectApi.listTasks(proj.id);
         setPersonalTasks(data);
       } else {
@@ -128,12 +136,35 @@ export default function CalendarSidebar({
 
     socket.on('task:assigned', handleTaskAssigned);
     socket.on('task:updated', handleTaskAssigned);
+    socket.on('project:updated', handleTaskAssigned);
     socket.on('calendar:synced', handleTaskAssigned);
+    socket.on('personal-project:switched', handleTaskAssigned);
 
     return () => {
       socket.off('task:assigned', handleTaskAssigned);
       socket.off('task:updated', handleTaskAssigned);
+      socket.off('project:updated', handleTaskAssigned);
       socket.off('calendar:synced', handleTaskAssigned);
+      socket.off('personal-project:switched', handleTaskAssigned);
+    };
+  }, [socket, fetchAssignedTasks, fetchPersonalTasks]);
+
+  // Sinkronisasi otomatis saat pengguna kembali ke tab / menyalakan layar HP (focus / visibilitychange / online / reconnect)
+  useEffect(() => {
+    const resume = () => {
+      if (document.visibilityState !== 'visible') return;
+      void fetchAssignedTasks(true);
+      void fetchPersonalTasks(true);
+    };
+    window.addEventListener('focus', resume);
+    document.addEventListener('visibilitychange', resume);
+    window.addEventListener('online', resume);
+    socket?.on('connect', resume);
+    return () => {
+      window.removeEventListener('focus', resume);
+      document.removeEventListener('visibilitychange', resume);
+      window.removeEventListener('online', resume);
+      socket?.off('connect', resume);
     };
   }, [socket, fetchAssignedTasks, fetchPersonalTasks]);
 
@@ -231,7 +262,7 @@ export default function CalendarSidebar({
           <span className="truncate">Team Task</span>
           <span
             className={`rounded-full px-1.5 py-0.2 text-[10px] ${
-              activeTab === 'teamTask' ? 'bg-violet-100 text-violet-800' : 'bg-gray-200/60 text-gray-600'
+              activeTab === 'teamTask' ? 'bg-orange-100 text-orange-800' : 'bg-gray-200/60 text-gray-600'
             }`}
           >
             {unscheduledTeamTasks.length}
@@ -258,15 +289,15 @@ export default function CalendarSidebar({
         </button>
       </div>
 
-      {/* Input Pencarian & Tombol Segarkan */}
-      <div className="flex items-center gap-1.5 border-b border-gray-100 p-2">
-        <div className="relative flex-1">
+      {/* Input Pencarian */}
+      <div className="border-b border-gray-100 p-2">
+        <div className="relative w-full">
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={`Cari ${activeTab === 'item' ? 'item' : activeTab === 'teamTask' ? 'tugas tim' : 'project pribadi'}…`}
-            className="w-full rounded-md border border-gray-200 bg-gray-50/60 px-2.5 py-1 text-xs text-gray-800 placeholder:text-gray-400 focus:border-violet-400 focus:bg-white focus:outline-none"
+            className="w-full rounded-md border border-gray-200 bg-gray-50/60 px-2.5 py-1 text-xs text-gray-800 placeholder:text-gray-400 focus:border-orange-400 focus:bg-white focus:outline-none"
           />
           {search && (
             <button
@@ -278,30 +309,6 @@ export default function CalendarSidebar({
             </button>
           )}
         </div>
-
-        {(activeTab === 'teamTask' || activeTab === 'personalProject') && (
-          <button
-            type="button"
-            onClick={() => {
-              if (activeTab === 'teamTask') void fetchAssignedTasks(false);
-              else void fetchPersonalTasks(false);
-            }}
-            disabled={activeTab === 'teamTask' ? loadingTasks : loadingPersonalTasks}
-            title={`Segarkan ${activeTab === 'teamTask' ? 'daftar tugas tim' : 'daftar project pribadi'}`}
-            aria-label={`Segarkan ${activeTab === 'teamTask' ? 'daftar tugas tim' : 'daftar project pribadi'}`}
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-gray-200 bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-gray-800 transition disabled:opacity-50"
-          >
-            <svg
-              className={`h-3.5 w-3.5 ${(activeTab === 'teamTask' ? loadingTasks : loadingPersonalTasks) ? 'animate-spin text-violet-600' : ''}`}
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-          </button>
-        )}
       </div>
 
       {/* Daftar Kartu (Draggable - dibatasi maks 2 kartu, selebihnya di-scroll) */}
@@ -380,7 +387,7 @@ export default function CalendarSidebar({
           <>
             {loadingTasks && teamTasks.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-8 text-center text-xs text-gray-400">
-                <svg className="mb-2 h-5 w-5 animate-spin text-violet-500" fill="none" viewBox="0 0 24 24">
+                <svg className="mb-2 h-5 w-5 animate-spin text-orange-500" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
                 </svg>
@@ -410,16 +417,16 @@ export default function CalendarSidebar({
                       e.dataTransfer.setData('text/plain', jsonPayload);
                       e.dataTransfer.effectAllowed = 'copyMove';
                     }}
-                    className="group relative cursor-grab rounded-lg border border-violet-200/80 bg-violet-50/30 p-2.5 shadow-2xs transition hover:border-violet-300 hover:bg-violet-50/70 hover:shadow-xs active:cursor-grabbing"
+                    className="group relative cursor-grab rounded-lg border border-orange-200/80 bg-orange-50/30 p-2.5 shadow-2xs transition hover:border-orange-300 hover:bg-orange-50/70 hover:shadow-xs active:cursor-grabbing"
                   >
                     <div className="flex items-start gap-2">
-                      <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center text-violet-600">
+                      <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center text-orange-600">
                         <ActivityIcon name="check" className="h-3.5 w-3.5" />
                       </span>
 
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5 text-[10px] text-gray-500">
-                          <span className="font-mono font-bold text-violet-700">#{task.number}</span>
+                          <span className="font-mono font-bold text-orange-700">#{task.number}</span>
                           {task.project?.name && (
                             <span className="truncate max-w-[120px] font-medium text-gray-600">
                               {task.project.name}
@@ -427,7 +434,7 @@ export default function CalendarSidebar({
                           )}
                         </div>
 
-                        <h3 className="mt-0.5 truncate text-xs font-semibold text-gray-900 group-hover:text-violet-900">
+                        <h3 className="mt-0.5 truncate text-xs font-semibold text-gray-900 group-hover:text-orange-900">
                           {task.title}
                         </h3>
 
@@ -442,7 +449,7 @@ export default function CalendarSidebar({
                             </span>
                           )}
 
-                          <span className="text-[10px] text-violet-600 font-medium ml-auto">
+                          <span className="text-[10px] text-orange-600 font-medium ml-auto">
                             Seret ke kalender ⤳
                           </span>
                         </div>

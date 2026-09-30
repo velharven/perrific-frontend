@@ -385,7 +385,7 @@ export const DEFAULT_CATEGORY_OPTIONS = ['Task tim', 'Breakdown', 'Pribadi'] as 
 export function getCategoryBadgeStyle(cat: string | null | undefined): { bg: string; text: string } {
   const c = (cat || '').toLowerCase().trim();
   if (c === 'task tim' || c === 'task' || c === 'tim') {
-    return { bg: 'bg-violet-100 text-violet-700', text: 'text-violet-700' };
+    return { bg: 'bg-orange-100 text-orange-700', text: 'text-orange-700' };
   }
   if (c === 'breakdown' || c === 'proyek' || c === 'project') {
     return { bg: 'bg-blue-100 text-blue-700', text: 'text-blue-700' };
@@ -410,7 +410,7 @@ export function getStatusBadgeStyle(status: string | null | undefined): { bg: st
   if (s === 'selesai' || s === 'done' || s === 'completed') {
     return { bg: 'bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-200/60', text: 'text-emerald-700', dot: 'bg-emerald-500' };
   }
-  return { bg: 'bg-violet-50 hover:bg-violet-100/80 border border-violet-200/60', text: 'text-violet-700', dot: 'bg-violet-500' };
+  return { bg: 'bg-orange-50 hover:bg-orange-100/80 border border-orange-200/60', text: 'text-orange-700', dot: 'bg-orange-500' };
 }
 
 export function CopyIcon({ className = 'h-4 w-4' }: { className?: string }) {

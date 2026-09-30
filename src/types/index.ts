@@ -193,8 +193,8 @@ export type RecurrenceFrequency = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY';
 export type RecurrenceEndType = 'NEVER' | 'ON_DATE' | 'AFTER';
 
 export interface RecurrenceConfig {
-  freq: RecurrenceFrequency;
-  interval: number;
+  freq?: RecurrenceFrequency;
+  interval?: number;
   byDays?: number[]; // 0=Minggu .. 6=Sabtu
   weekStartsOn?: number; // Fase minggu dari aturan Google Calendar
   byMonthDay?: number; // 1..31
@@ -202,10 +202,12 @@ export interface RecurrenceConfig {
     week: number; // 1..4 atau -1 (terakhir)
     dayOfWeek: number; // 0..6
   };
-  endType: RecurrenceEndType;
+  endType?: RecurrenceEndType;
   untilDate?: string | null; // YYYY-MM-DD
   count?: number | null;
   excludeDates?: string[]; // YYYY-MM-DD daftar tanggal kejadian yang dikecualikan
+  isException?: boolean; // Menandakan instance hasil penyesuaian jadwal (exception) dari kegiatan berulang
+  masterActivityId?: string; // ID kegiatan master sumber perulangan
 }
 
 export type RecurrenceEditScope = 'THIS_EVENT' | 'THIS_AND_FOLLOWING' | 'ALL_EVENTS';

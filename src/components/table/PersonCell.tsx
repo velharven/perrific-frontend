@@ -150,7 +150,7 @@ export default function PersonCell({ value, onChange, ariaLabel }: PersonCellPro
                   onClick={() => handleSelect(p.name)}
                   className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs transition ${
                     isSelected
-                      ? 'bg-violet-50 font-medium text-perrific-violet'
+                      ? 'bg-orange-50 font-medium text-orange-600'
                       : 'text-gray-700 hover:bg-gray-100'
                   }`}
                 >
@@ -162,12 +162,12 @@ export default function PersonCell({ value, onChange, ariaLabel }: PersonCellPro
                   />
                   <span className="min-w-0 flex-1 truncate">{p.name}</span>
                   {p.isMe && (
-                    <span className="shrink-0 rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-medium text-violet-700">
+                    <span className="shrink-0 rounded bg-orange-100 px-1.5 py-0.5 text-[10px] font-medium text-orange-700">
                       Anda
                     </span>
                   )}
                   {isSelected && (
-                    <CheckIcon className="h-3.5 w-3.5 shrink-0 text-perrific-violet" />
+                    <CheckIcon className="h-3.5 w-3.5 shrink-0 text-orange-600" />
                   )}
                 </button>
               );

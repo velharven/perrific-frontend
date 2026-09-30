@@ -17,7 +17,6 @@ const mocks = vi.hoisted(() => ({
   fetchEvents: vi.fn().mockResolvedValue([]),
   setRange: vi.fn(),
   status: { connected: false } as GoogleCalendarStatus,
-  getLayout: vi.fn().mockResolvedValue([]),
   syncing: false,
   disconnecting: false,
   disconnect: vi.fn(),
@@ -57,12 +56,8 @@ vi.mock("@/store/calendarSync", () => ({
     autoSync: mocks.autoSync,
   }),
 }));
-vi.mock("@/store/socket", () => ({ useSocket: () => ({ socket: null }) }));
 vi.mock("@/api/calendar", () => ({
-  calendarApi: {
-    getLayout: mocks.getLayout,
-    saveLayout: vi.fn().mockResolvedValue({}),
-  },
+  calendarApi: {},
 }));
 vi.mock("@/components/ui/Toast", () => ({ showToast: vi.fn() }));
 vi.mock("./CalendarSidebar", () => ({ default: () => null }));
@@ -394,17 +389,16 @@ describe("linked activity movement", () => {
   });
 });
 
-it("hydrates the visible range manually and displays the last sync in WIB", async () => {
+it("keeps connected Google profile clean without visible sync buttons while syncing in the background", async () => {
   mocks.status = { connected: true, syncedAt: "2026-09-29T03:00:00Z" };
   render(<CalendarView {...props} activities={[]} />);
   await act(async () => {});
-  fireEvent.click(screen.getByTitle("Sinkronkan sekarang dengan Google Calendar"));
-  expect(mocks.autoSync).toHaveBeenCalledWith(...mocks.setRange.mock.lastCall!, { hydrateRange: true });
-  const timestamp = screen.getByTitle("Sinkronisasi terakhir");
-  expect(timestamp.getAttribute("datetime")).toBe(mocks.status.syncedAt);
-  expect(timestamp.textContent).toContain("10.00 WIB");
-  await act(async () => { vi.advanceTimersByTime(90000); });
-  expect(mocks.autoSync).toHaveBeenCalledTimes(1);
+  // Verify manual refresh button and status text are removed from the UI
+  expect(screen.queryByTitle("Sinkronkan sekarang dengan Google Calendar")).toBeNull();
+  expect(screen.queryByTitle("Sinkronisasi terakhir")).toBeNull();
+  expect(screen.queryByText("Tersinkron")).toBeNull();
+  // Disconnect button remains available
+  expect(screen.getByRole("button", { name: /putuskan/i })).toBeTruthy();
 });
 
 it("clears Google cards immediately on account change and ignores an old range response", async () => {
@@ -913,6 +907,128 @@ describe("Notion-style lifecycle sync", () => {
       });
     });
 
+    it("undoes sequential recurring moves in strict reverse chronological order (THIS_EVENT then ALL_EVENTS)", async () => {
+      const card1 = fixture({
+        id: "act-card-1",
+        title: "Card 1",
+        date: "2026-09-28T00:00:00Z",
+        startTime: "2026-09-28T09:00:00+07:00",
+        endTime: "2026-09-28T10:00:00+07:00",
+        recurrence: {
+          freq: "DAILY",
+          interval: 1,
+          endType: "NEVER",
+          excludeDates: [],
+        },
+      });
+
+      const card2 = fixture({
+        id: "act-card-2",
+        title: "Card 2",
+        date: "2026-09-28T00:00:00Z",
+        startTime: "2026-09-28T11:00:00+07:00",
+        endTime: "2026-09-28T12:00:00+07:00",
+        recurrence: {
+          freq: "DAILY",
+          interval: 1,
+          endType: "NEVER",
+          excludeDates: [],
+        },
+      });
+
+      mocks.createActivity.mockResolvedValueOnce({ id: "card-2-detached" });
+
+      render(
+        <CalendarView
+          {...props}
+          selectedDate={new Date("2026-09-28T00:00:00+07:00")}
+          activities={[card1, card2]}
+        />,
+      );
+
+      // 1. Pindahkan Card 2 ke atas dengan opsi "Event ini"
+      const card2Element = screen.getAllByTitle("Card 2")[0];
+      const dataTransfer2 = transfer();
+      dragStart(card2Element, dataTransfer2);
+
+      const targetCol2 = card2Element.parentElement!;
+      const drop2 = createEvent.drop(targetCol2, { dataTransfer: dataTransfer2 });
+      Object.defineProperty(drop2, "clientY", { value: 420 }); // 07:00
+      await act(async () => {
+        fireEvent(targetCol2, drop2);
+        await Promise.resolve();
+      });
+
+      fireEvent.click(screen.getByText("Event ini"));
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Terapkan" }));
+        await Promise.resolve();
+      });
+
+      expect(mocks.updateActivity).toHaveBeenCalledWith("act-card-2", {
+        recurrence: {
+          freq: "DAILY",
+          interval: 1,
+          excludeDates: ["2026-09-28"],
+          endType: "NEVER",
+        },
+      });
+      expect(mocks.createActivity).toHaveBeenCalledTimes(1);
+
+      // 2. Pindahkan Card 1 dengan opsi "Semua event"
+      const card1Element = screen.getAllByTitle("Card 1")[0];
+      const dataTransfer1 = transfer();
+      dragStart(card1Element, dataTransfer1);
+
+      const targetCol1 = card1Element.parentElement!;
+      const drop1 = createEvent.drop(targetCol1, { dataTransfer: dataTransfer1 });
+      Object.defineProperty(drop1, "clientY", { value: 840 }); // 14:00
+      await act(async () => {
+        fireEvent(targetCol1, drop1);
+        await Promise.resolve();
+      });
+
+      fireEvent.click(screen.getByText("Semua event"));
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Terapkan" }));
+        await Promise.resolve();
+      });
+
+      expect(props.onMoveActivity).toHaveBeenCalledTimes(1);
+
+      // 3. Tekan Ctrl+Z pertama -> Harus membatalkan Card 1 (aksi terakhir)
+      await act(async () => {
+        fireEvent.keyDown(window, { key: "z", ctrlKey: true });
+        await Promise.resolve();
+      });
+
+      // Card 1 dipulihkan posisinya via onMoveActivity
+      expect(props.onMoveActivity).toHaveBeenCalledTimes(2);
+      const [undoneId1, restoredData1] = props.onMoveActivity.mock.calls[1];
+      expect(undoneId1).toBe("act-card-1");
+      expect(restoredData1.startTime).toBe("2026-09-28T09:00:00+07:00");
+      expect(restoredData1.endTime).toBe("2026-09-28T10:00:00+07:00");
+
+      // Card 2 belum di-undo pada Ctrl+Z pertama
+      expect(mocks.removeActivity).not.toHaveBeenCalled();
+
+      // 4. Tekan Ctrl+Z kedua -> Sekarang giliran Card 2 yang dibatalkan
+      await act(async () => {
+        fireEvent.keyDown(window, { key: "z", ctrlKey: true });
+        await Promise.resolve();
+      });
+
+      expect(mocks.removeActivity).toHaveBeenCalledWith("card-2-detached");
+      expect(mocks.updateActivity).toHaveBeenLastCalledWith("act-card-2", {
+        recurrence: {
+          freq: "DAILY",
+          interval: 1,
+          excludeDates: [],
+          endType: "NEVER",
+        },
+      });
+    });
+
     it("can undo THIS_AND_FOLLOWING recurring move by removing created series and restoring master recurrence", async () => {
       const recurringAct = fixture({
         id: "standup-3",
@@ -1110,6 +1226,153 @@ describe("Notion-style lifecycle sync", () => {
           endType: "NEVER",
         },
       });
+    });
+  });
+
+  describe("Google & Notion Calendar cascading overlapping card layout", () => {
+    it("renders 2 overlapping cards with cascading overlap width, rising z-index, white border, and no reorder button", () => {
+      const cardA = fixture({
+        id: "overlap-a",
+        title: "Design Review",
+        date: "2026-09-29T00:00:00Z",
+        startTime: "2026-09-29T14:00:00+07:00",
+        endTime: "2026-09-29T15:30:00+07:00",
+      });
+      const cardB = fixture({
+        id: "overlap-b",
+        title: "Sprint Planning",
+        date: "2026-09-29T00:00:00Z",
+        startTime: "2026-09-29T14:00:00+07:00",
+        endTime: "2026-09-29T15:00:00+07:00",
+      });
+
+      render(<CalendarView {...props} activities={[cardA, cardB]} />);
+
+      const elA = screen.getByTitle("Design Review");
+      const elB = screen.getByTitle("Sprint Planning");
+
+      // Longer duration event placed in left column (colIndex 0) with cascading width (85%),
+      // shorter in right column (colIndex 1) stacked on top (zIndex 11 vs 10)
+      expect(elA.style.left).toBe("calc(0% + 2px)");
+      expect(elA.style.width).toBe("calc(85% - 2px)");
+      expect(elA.style.zIndex).toBe("10");
+
+      expect(elB.style.left).toBe("calc(50% + 0px)");
+      expect(elB.style.width).toBe("calc(50% - 4px)");
+      expect(elB.style.zIndex).toBe("11");
+
+      // White separator border applied
+      expect(elA.className).toContain("border-white");
+      expect(elB.className).toContain("border-white");
+
+      // No ⋮⋮ column reorder button is rendered
+      expect(screen.queryByRole("button", { name: /Ubah urutan/i })).toBeNull();
+      expect(elA.textContent).not.toContain("⋮⋮");
+      expect(elB.textContent).not.toContain("⋮⋮");
+    });
+
+    it("renders 3 overlapping cards with Google Calendar cascading widths (~56.67% on col 0 & 1, ~33.33% on col 2) and expands colSpan when free", () => {
+      const longEvent = fixture({
+        id: "long-1",
+        title: "Workshop",
+        date: "2026-09-29T00:00:00Z",
+        startTime: "2026-09-29T09:00:00+07:00",
+        endTime: "2026-09-29T12:00:00+07:00",
+      });
+      const earlyB = fixture({
+        id: "early-b",
+        title: "Sync A",
+        date: "2026-09-29T00:00:00Z",
+        startTime: "2026-09-29T09:00:00+07:00",
+        endTime: "2026-09-29T10:00:00+07:00",
+      });
+      const earlyC = fixture({
+        id: "early-c",
+        title: "Sync B",
+        date: "2026-09-29T00:00:00Z",
+        startTime: "2026-09-29T09:15:00+07:00",
+        endTime: "2026-09-29T10:00:00+07:00",
+      });
+      const laterSpanEvent = fixture({
+        id: "later-span",
+        title: "Follow-up",
+        date: "2026-09-29T00:00:00Z",
+        startTime: "2026-09-29T10:30:00+07:00",
+        endTime: "2026-09-29T11:30:00+07:00",
+      });
+
+      render(
+        <CalendarView
+          {...props}
+          activities={[longEvent, earlyB, earlyC, laterSpanEvent]}
+        />,
+      );
+
+      const workshopEl = screen.getByTitle("Workshop");
+      const syncAEl = screen.getByTitle("Sync A");
+      const syncBEl = screen.getByTitle("Sync B");
+      const followUpEl = screen.getByTitle("Follow-up");
+
+      // 3-column cascading widths: col 0 & col 1 get 1.7 * 33.33% = ~56.67% width
+      expect(workshopEl.style.width).toContain("56.66");
+      expect(syncAEl.style.left).toContain("33.33");
+      expect(syncAEl.style.width).toContain("56.66");
+      expect(syncBEl.style.left).toContain("66.66");
+      expect(syncBEl.style.width).toContain("33.33");
+
+      // Placed in colIndex 1 of 3, and expands across col 1 & col 2 (2/3 width = ~66.67%)
+      expect(followUpEl.style.left).toContain("33.33");
+      expect(followUpEl.style.width).toContain("66.66");
+    });
+
+    it('displays repeat icon on recurring card and modified tooltip on exception card', async () => {
+      const recurring = fixture({
+        id: 'rec-daily',
+        title: 'Daily Meeting',
+        date: '2026-09-29T00:00:00Z',
+        startTime: '2026-09-29T09:00:00+07:00',
+        endTime: '2026-09-29T10:00:00+07:00',
+        recurrence: {
+          freq: 'DAILY',
+          interval: 1,
+          endType: 'NEVER',
+        },
+      });
+
+      const { rerender } = render(
+        <CalendarView
+          {...props}
+          activities={[recurring]}
+        />,
+      );
+
+      expect(screen.getAllByTitle('Kegiatan berulang').length).toBeGreaterThan(1);
+
+      const exceptionCard = fixture({
+        id: 'rec-exception',
+        title: 'Daily Meeting (Rescheduled)',
+        date: '2026-09-29T00:00:00Z',
+        startTime: '2026-09-29T11:00:00+07:00',
+        endTime: '2026-09-29T12:00:00+07:00',
+        recurrence: {
+          freq: 'DAILY',
+          interval: 1,
+          endType: 'NEVER',
+          isException: true,
+          masterActivityId: 'rec-daily',
+        },
+      });
+
+      rerender(
+        <CalendarView
+          {...props}
+          activities={[exceptionCard]}
+        />,
+      );
+
+      // Exception card only renders on its own date, displaying the modified recurrence tooltip
+      expect(screen.getAllByTitle('Kegiatan berulang (jadwal diubah)')).toHaveLength(1);
+      expect(screen.queryAllByTitle('Kegiatan berulang')).toHaveLength(0);
     });
   });
 });

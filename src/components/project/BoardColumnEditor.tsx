@@ -65,7 +65,15 @@ function SortableColumnItem({ id, children }: { id: string; children: ReactNode 
   );
 }
 
-export default function BoardColumnEditor({ projectId }: { projectId: string }) {
+export default function BoardColumnEditor({
+  projectId,
+  onColumnsChange,
+  onTasksMoved,
+}: {
+  projectId: string;
+  onColumnsChange?: (columns: BoardColumn[]) => void;
+  onTasksMoved?: () => void;
+}) {
   const [columns, setColumns] = useState<BoardColumn[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
@@ -86,6 +94,7 @@ export default function BoardColumnEditor({ projectId }: { projectId: string }) 
         projectApi.listTasks(projectId),
       ]);
       setColumns(cols);
+      onColumnsChange?.(cols);
       const by: Record<string, number> = {};
       for (const t of tasks) by[t.columnId] = (by[t.columnId] ?? 0) + 1;
       setCounts(by);
@@ -94,7 +103,7 @@ export default function BoardColumnEditor({ projectId }: { projectId: string }) 
     } finally {
       setLoading(false);
     }
-  }, [projectId]);
+  }, [projectId, onColumnsChange]);
 
   useEffect(() => {
     void reload();
@@ -108,6 +117,7 @@ export default function BoardColumnEditor({ projectId }: { projectId: string }) 
 
   async function persistOrder(next: BoardColumn[]) {
     setColumns(next);
+    onColumnsChange?.(next);
     try {
       await projectApi.reorderColumns(projectId, next.map((c) => c.id));
     } catch {
@@ -132,7 +142,9 @@ export default function BoardColumnEditor({ projectId }: { projectId: string }) 
     setCreating(true);
     try {
       const created = await projectApi.createColumn(projectId, { name });
-      setColumns((prev) => [...prev, created]);
+      const next = [...columns, created];
+      setColumns(next);
+      onColumnsChange?.(next);
       setNewName('');
     } catch {
       showToast('Gagal menambah kolom.');
@@ -150,7 +162,9 @@ export default function BoardColumnEditor({ projectId }: { projectId: string }) 
     setBusy(true);
     try {
       const updated = await projectApi.updateColumn(projectId, col.id, { name });
-      setColumns((prev) => prev.map((c) => (c.id === col.id ? updated : c)));
+      const next = columns.map((c) => (c.id === col.id ? updated : c));
+      setColumns(next);
+      onColumnsChange?.(next);
       setEditingId(null);
     } catch {
       showToast('Gagal mengubah nama kolom.');
@@ -162,12 +176,17 @@ export default function BoardColumnEditor({ projectId }: { projectId: string }) 
   async function handleColor(col: BoardColumn, color: string) {
     if (color.toLowerCase() === col.color.toLowerCase()) return;
     const prev = columns;
-    setColumns((cs) => cs.map((c) => (c.id === col.id ? { ...c, color } : c)));
+    const optimistic = columns.map((c) => (c.id === col.id ? { ...c, color } : c));
+    setColumns(optimistic);
+    onColumnsChange?.(optimistic);
     try {
       const updated = await projectApi.updateColumn(projectId, col.id, { color });
-      setColumns((cs) => cs.map((c) => (c.id === col.id ? updated : c)));
+      const next = columns.map((c) => (c.id === col.id ? updated : c));
+      setColumns(next);
+      onColumnsChange?.(next);
     } catch {
       setColumns(prev);
+      onColumnsChange?.(prev);
       showToast('Gagal menyimpan warna kolom.');
     }
   }
@@ -187,7 +206,9 @@ export default function BoardColumnEditor({ projectId }: { projectId: string }) 
     setBusy(true);
     try {
       await projectApi.deleteColumn(projectId, confirmEmpty.id);
-      setColumns((prev) => prev.filter((c) => c.id !== confirmEmpty.id));
+      const next = columns.filter((c) => c.id !== confirmEmpty.id);
+      setColumns(next);
+      onColumnsChange?.(next);
       setConfirmEmpty(null);
     } catch {
       showToast('Gagal menghapus kolom.');
@@ -201,8 +222,11 @@ export default function BoardColumnEditor({ projectId }: { projectId: string }) 
     setBusy(true);
     try {
       const res = await projectApi.deleteColumn(projectId, moveTarget.id, targetId);
-      setColumns((prev) => prev.filter((c) => c.id !== moveTarget.id));
+      const next = columns.filter((c) => c.id !== moveTarget.id);
+      setColumns(next);
+      onColumnsChange?.(next);
       setCounts((prev) => ({ ...prev, [targetId]: (prev[targetId] ?? 0) + res.movedCount }));
+      onTasksMoved?.();
       setMoveTarget(null);
       showToast(`${res.movedCount} task dipindahkan.`);
     } catch (e: unknown) {

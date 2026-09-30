@@ -122,7 +122,7 @@ function TableGridPhoneCell({
             }}
             onClick={(e) => e.stopPropagation()}
             placeholder="Nomor telepon..."
-            className="w-full min-w-0 rounded border border-violet-300 bg-white px-1.5 py-0.5 text-xs text-gray-800 focus:outline-none"
+            className="w-full min-w-0 rounded border border-orange-300 bg-white px-1.5 py-0.5 text-xs text-gray-800 focus:outline-none"
           />
         ) : (
           <button
@@ -177,7 +177,7 @@ function TableGridCell({
         type="checkbox"
         checked={Boolean(val)}
         onChange={(e) => t.changeCell(row.id, col, e.target.checked)}
-        className="h-3.5 w-3.5 rounded border-gray-300 text-violet-600"
+        className="h-3.5 w-3.5 rounded border-gray-300 text-orange-600"
       />
     );
   }
@@ -252,7 +252,7 @@ function TableGridCell({
           type="time"
           value={strVal}
           onChange={(e) => t.changeCell(row.id, col, e.target.value)}
-          className="rounded border border-transparent bg-transparent px-1 py-0.5 text-xs text-gray-700 hover:border-gray-200 focus:border-violet-300 focus:bg-white focus:outline-none"
+          className="rounded border border-transparent bg-transparent px-1 py-0.5 text-xs text-gray-700 hover:border-gray-200 focus:border-orange-300 focus:bg-white focus:outline-none"
         />
       </div>
     );
