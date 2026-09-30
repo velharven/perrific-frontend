@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { calendarApi, type CalendarSyncResult } from "@/api/calendar";
+import { calendarApi, type CalendarSyncOptions, type CalendarSyncResult } from "@/api/calendar";
 import type { DailyActivity, GoogleCalendarStatus } from "@/types";
 import { setCalendarConnection } from "@/lib/calendarConnection";
 import { useAuth } from "./auth";
@@ -46,6 +46,7 @@ interface CalendarSyncContextValue {
   autoSync: (
     from?: string,
     to?: string,
+    options?: CalendarSyncOptions,
   ) => Promise<CalendarSyncResult | undefined>;
   setRange: (from: string, to: string) => void;
 }
@@ -54,6 +55,13 @@ const CalendarSyncContext = createContext<CalendarSyncContextValue | null>(
 );
 const identity = (s: GoogleCalendarStatus) =>
   s.connected ? s.connectionId || s.email || "legacy" : null;
+const canSync = () => document.visibilityState === "visible" && navigator.onLine;
+interface SyncRequest {
+  from: string;
+  to: string;
+  hydrateRange: boolean;
+}
+const sameRange = (a: SyncRequest, b: SyncRequest) => a.from === b.from && a.to === b.to;
 
 export function CalendarSyncProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
@@ -68,14 +76,19 @@ export function CalendarSyncProvider({ children }: { children: ReactNode }) {
   const [revision, setRevision] = useState(0);
   const [change, setChange] = useState<CalendarChange | null>(null);
   const [retryNeeded, setRetryNeeded] = useState(false);
+  // A fast failed retry can leave both syncing and retryNeeded unchanged after
+  // React batches updates. Give every unsuccessful attempt a new timer trigger.
+  const [retryRevision, setRetryRevision] = useState(0);
+  const [available, setAvailable] = useState(canSync);
   const retryAttempt = useRef(0);
   const statusRef = useRef(status);
   const rangeRef = useRef<readonly [string, string]>(defaultRange());
   const generation = useRef(0);
   const statusRequest = useRef(0);
   const inFlight = useRef<Promise<CalendarSyncResult | undefined> | null>(null);
-  const queued = useRef(false);
-  const lastStarted = useRef(0);
+  const queued = useRef<SyncRequest[]>([]);
+  const activeRequest = useRef<SyncRequest | null>(null);
+  const refreshAfterFailure = useRef(false);
   const lastRevisionRun = useRef<string | undefined>(undefined);
   const changedRevision = useCallback((runId?: string) => {
     if (runId && lastRevisionRun.current === runId) return;
@@ -87,7 +100,9 @@ export function CalendarSyncProvider({ children }: { children: ReactNode }) {
       generation.current++;
       statusRequest.current++;
       inFlight.current = null;
-      queued.current = false;
+      queued.current = [];
+      activeRequest.current = null;
+      refreshAfterFailure.current = false;
       setSyncing(false);
       setLoading(false);
       setError(null);
@@ -117,26 +132,37 @@ export function CalendarSyncProvider({ children }: { children: ReactNode }) {
     }
   }, [user?.id, setStatus]);
   const autoSync = useCallback(
-    (from?: string, to?: string): Promise<CalendarSyncResult | undefined> => {
+    (from?: string, to?: string, options: CalendarSyncOptions = {}): Promise<CalendarSyncResult | undefined> => {
       if (from && to) {
-        if (rangeRef.current[0] !== from || rangeRef.current[1] !== to)
-          queued.current = true;
         rangeRef.current = [from, to];
       }
       if (!user?.id || !statusRef.current.connected)
         return Promise.resolve(undefined);
+      const request: SyncRequest = {
+        from: rangeRef.current[0],
+        to: rangeRef.current[1],
+        hydrateRange: options.hydrateRange ?? false,
+      };
+      const active = activeRequest.current;
+      if (!active || !sameRange(active, request) || (request.hydrateRange && !active.hydrateRange)) {
+        const pending = queued.current.find(item => sameRange(item, request));
+        if (pending) pending.hydrateRange ||= request.hydrateRange;
+        else queued.current.push(request);
+      }
       if (inFlight.current) return inFlight.current;
+      // Keep requested ranges until the app can resume, including failed hydration.
+      if (!canSync()) return Promise.resolve(undefined);
       const current = generation.current;
       const run = async () => {
+        if (generation.current !== current) return undefined;
         setSyncing(true);
         setRetryNeeded(false);
         try {
-          let result: CalendarSyncResult;
-          do {
-            queued.current = false;
-            lastStarted.current = Date.now();
-            const range = rangeRef.current;
-            result = await calendarApi.autoSync(range[0], range[1]);
+          let result: CalendarSyncResult | undefined;
+          while (queued.current.length && canSync()) {
+            const next = queued.current.shift()!;
+            activeRequest.current = next;
+            result = await calendarApi.autoSync(next.from, next.to, { hydrateRange: next.hydrateRange });
             if (
               generation.current !== current ||
               !statusRef.current.connected ||
@@ -145,6 +171,7 @@ export function CalendarSyncProvider({ children }: { children: ReactNode }) {
             )
               return undefined;
             setPendingCount(result.pendingCount);
+            if (result.pendingCount > 0) setRetryRevision(v => v + 1);
             setError(
               result.pendingCount > 0
                 ? "Sebagian perubahan menunggu sinkronisasi."
@@ -153,19 +180,26 @@ export function CalendarSyncProvider({ children }: { children: ReactNode }) {
             if (result.syncedAt)
               setStatus({ ...statusRef.current, syncedAt: result.syncedAt });
             if (
+              next.hydrateRange ||
+              refreshAfterFailure.current ||
               result.importedCount ||
               result.updatedCount ||
               result.deletedCount ||
               result.pushedCount
             )
               changedRevision(result.syncRunId);
+            refreshAfterFailure.current = false;
             if (!result.pendingCount) retryAttempt.current = 0;
-          } while (queued.current);
+            activeRequest.current = null;
+          }
           return result;
         } catch (err) {
           if (generation.current === current) {
+            refreshAfterFailure.current = true;
+            if (activeRequest.current) queued.current.unshift(activeRequest.current);
             setError("Sinkronisasi tertunda. Akan dicoba kembali otomatis.");
             setRetryNeeded(true);
+            setRetryRevision(v => v + 1);
             const code = (err as { response?: { status?: number } }).response
               ?.status;
             if ([400, 401, 403, 409].includes(code || 0)) await refreshStatus();
@@ -175,10 +209,11 @@ export function CalendarSyncProvider({ children }: { children: ReactNode }) {
           if (generation.current === current) {
             setSyncing(false);
             inFlight.current = null;
+            activeRequest.current = null;
           }
         }
       };
-      const promise = run();
+      const promise = Promise.resolve().then(run);
       inFlight.current = promise;
       return promise;
     },
@@ -186,10 +221,8 @@ export function CalendarSyncProvider({ children }: { children: ReactNode }) {
   );
   const setRange = useCallback(
     (from: string, to: string) => {
-      if (rangeRef.current[0] !== from || rangeRef.current[1] !== to)
-        queued.current = true;
       rangeRef.current = [from, to];
-      void autoSync();
+      void autoSync(from, to, { hydrateRange: true });
     },
     [autoSync],
   );
@@ -197,10 +230,16 @@ export function CalendarSyncProvider({ children }: { children: ReactNode }) {
     generation.current++;
     statusRequest.current++;
     inFlight.current = null;
-    queued.current = false;
+    queued.current = [];
+    activeRequest.current = null;
+    refreshAfterFailure.current = false;
+    retryAttempt.current = 0;
+    setRetryNeeded(false);
+    setPendingCount(0);
+    setChange(null);
+    setStatus({ connected: false });
     if (!user?.id) {
       rangeRef.current = defaultRange();
-      setStatus({ connected: false });
     } else {
       setSyncing(false);
       setError(null);
@@ -213,16 +252,19 @@ export function CalendarSyncProvider({ children }: { children: ReactNode }) {
   }, [user?.id, refreshStatus, setStatus]);
   useEffect(() => {
     if (!user?.id || !status.connected) return;
-    void autoSync();
+    setAvailable(canSync());
+    void autoSync(undefined, undefined, { hydrateRange: true });
     const resume = () => {
-      if (document.visibilityState !== "visible") return;
-      void autoSync();
+      setAvailable(canSync());
+      if (canSync()) void autoSync();
     };
     window.addEventListener("online", resume);
+    window.addEventListener("offline", resume);
     window.addEventListener("focus", resume);
     document.addEventListener("visibilitychange", resume);
     return () => {
       window.removeEventListener("online", resume);
+      window.removeEventListener("offline", resume);
       window.removeEventListener("focus", resume);
       document.removeEventListener("visibilitychange", resume);
     };
@@ -235,7 +277,13 @@ export function CalendarSyncProvider({ children }: { children: ReactNode }) {
     refreshStatus,
   ]);
   useEffect(() => {
-    if (!status.connected || syncing || (!retryNeeded && pendingCount === 0))
+    if (!user?.id || !status.connected || !available || syncing || retryNeeded || pendingCount > 0)
+      return;
+    const timer = window.setInterval(() => { void autoSync(); }, 30000);
+    return () => window.clearInterval(timer);
+  }, [user?.id, status.connected, status.connectionId, available, syncing, retryNeeded, pendingCount, autoSync]);
+  useEffect(() => {
+    if (!user?.id || !status.connected || !available || syncing || (!retryNeeded && pendingCount === 0))
       return;
     const timer = window.setTimeout(
       () => {
@@ -245,16 +293,20 @@ export function CalendarSyncProvider({ children }: { children: ReactNode }) {
     );
     return () => window.clearTimeout(timer);
   }, [
+    user?.id,
+    available,
     status.connected,
     status.connectionId,
     syncing,
     retryNeeded,
+    retryRevision,
     pendingCount,
     autoSync,
   ]);
   useEffect(() => {
     const changed = (payload?: CalendarChange) => {
       if (
+        !user?.id ||
         !payload ||
         (payload.connectionId !== undefined &&
           payload.connectionId !== statusRef.current.connectionId)
@@ -293,7 +345,7 @@ export function CalendarSyncProvider({ children }: { children: ReactNode }) {
       socket?.off("calendar:synced", changed);
       socket?.off("calendar:connection-changed", connectionChanged);
     };
-  }, [socket, refreshStatus, setStatus, changedRevision]);
+  }, [user?.id, socket, refreshStatus, setStatus, changedRevision, autoSync]);
   return (
     <CalendarSyncContext.Provider
       value={{

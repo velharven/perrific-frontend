@@ -61,7 +61,7 @@ api.interceptors.response.use(
         res.config.method === "delete" &&
         (url.includes("/activities/") ||
           url.includes("/calendar/google/events/"));
-      if (activity || deleted)
+      if (activity || deleted || data?.activities)
         window.dispatchEvent(
           new CustomEvent("calendar:mutation", {
             detail: {
@@ -69,12 +69,17 @@ api.interceptors.response.use(
               pendingCount: res.data.pendingCount,
               retry: data?.pending,
               activity,
+              activities: data?.activities,
+              deletedActivityIds: data?.deletedActivityIds,
+              events: data?.events,
+              affectedSeriesIds: data?.affectedSeriesIds,
+              operationId: data?.operationId,
               activityId: data?.id,
               eventId: url.includes("/calendar/google/events/")
                 ? data?.id
                 : undefined,
               googleEventId: data?.googleEventId,
-              action: deleted ? "delete" : "update",
+              action: data?.activities ? 'seriesMove' : deleted ? "delete" : "update",
             },
           }),
         );

@@ -26,8 +26,8 @@ import TimePickerInput from '@/components/ui/TimePickerInput';
 import { showToast } from '@/components/ui/Toast';
 
 export type CombinedItem =
-  | { type: 'activity'; id: string; act: DailyActivity; time?: string | null }
-  | { type: 'google'; id: string; gEv: GoogleCalendarEvent; time?: string };
+  | { type: 'activity'; id: string; act: DailyActivity; time?: string | null; instanceDate?: string }
+  | { type: 'google'; id: string; gEv: GoogleCalendarEvent; time?: string; instanceDate?: string };
 
 export type CalendarUndoAction =
   | {
@@ -126,7 +126,7 @@ interface CalendarCardSettingsProps {
   onClose: () => void;
   onRefresh?: () => void;
   onOpenActivity?: (activity: DailyActivity) => void;
-  onDelete?: (item: CombinedItem) => Promise<void>;
+  onDelete?: (item: CombinedItem, forceAll?: boolean) => Promise<void>;
   onRecordUndo?: (action: CalendarUndoAction) => void;
   onUndo?: (actionId?: number) => void;
   getNextUndoId?: () => number;
@@ -255,6 +255,7 @@ export default function CalendarCardSettings({
       nextEndTimeStr?: string;
       nextDateStr?: string;
       nextColor?: string | null;
+      nextAllDay?: boolean;
     };
   }
 
@@ -274,6 +275,13 @@ export default function CalendarCardSettings({
   const [customUntilDate, setCustomUntilDate] = useState<string>('');
   const [customCount, setCustomCount] = useState<number>(13);
 
+  const resolvedInstanceDateStr = useMemo(
+    () =>
+      selectedItem.instanceDate ||
+      toDateInputValue(selectedItem.time || (isAct ? act?.date : gEv?.start)),
+    [selectedItem.instanceDate, selectedItem.time, isAct, act?.date, gEv?.start],
+  );
+
   // Inisialisasi state dari item yang dipilih
   useEffect(() => {
     setRepeatMenuOpen(false);
@@ -282,9 +290,8 @@ export default function CalendarCardSettings({
     setScopeModal({ isOpen: false, actionType: 'rename' });
     if (isAct && act) {
       setTitle(act.title || '');
-      const instanceDate = toDateInputValue(selectedItem.time || act.date);
-      setDateStr(instanceDate);
-      const hasTime = Boolean(act.startTime);
+      setDateStr(resolvedInstanceDateStr);
+      const hasTime = Boolean(act.startTime) && !act.allDay;
       setIsAllDay(!hasTime);
       setStartTimeStr(toTimeInputValue(act.startTime));
       setEndTimeStr(
@@ -299,16 +306,15 @@ export default function CalendarCardSettings({
       setColor(act.color ?? null);
     } else if (gEv) {
       setTitle(gEv.title || 'Event Google');
-      const instanceDate = toDateInputValue(selectedItem.time || gEv.start);
-      setDateStr(instanceDate);
-      const hasTime = Boolean(gEv.start?.includes('T'));
+      setDateStr(resolvedInstanceDateStr);
+      const hasTime = Boolean(gEv.start?.includes('T')) && !gEv.allDay;
       setIsAllDay(!hasTime);
       setStartTimeStr(toTimeInputValue(gEv.start));
       setEndTimeStr(toTimeInputValue(gEv.end));
       setRecurrence(null);
       setColor(gEv.colorId ?? null);
     }
-  }, [selectedItem, isAct, act, gEv]);
+  }, [selectedItem, isAct, act, gEv, resolvedInstanceDateStr]);
 
   // Hitung posisi menu Repeat agar muncul di sebelah KIRI tombol Repeat
   // dan menyesuaikan posisi vertikal (top) agar selalu terlihat 100% penuh di layar.
@@ -459,15 +465,9 @@ export default function CalendarCardSettings({
     return !presets.some((p) => p.config && isSameRecurrence(p.config, recurrence));
   }, [recurrence, presets]);
 
-  const recurrenceSummaryLabel = useMemo(
-    () => formatRecurrenceLabel(recurrence, dateStr || new Date()),
-    [recurrence, dateStr],
-  );
+  const recurrenceSummaryLabel = formatRecurrenceLabel(recurrence, dateStr || new Date());
 
-  const isRepeating = Boolean(
-    (isAct && act?.recurrence) ||
-    (!isAct && (gEv?.recurringEventId || gEv?.id?.includes('_'))),
-  );
+  const isRepeating = Boolean(isAct && act?.recurrence);
 
   // Simpan perubahan ke backend
   const handleSave = (
@@ -485,9 +485,14 @@ export default function CalendarCardSettings({
     if (deletingRef.current) return Promise.resolve();
     const effectiveTitle = override?.nextTitle !== undefined ? override.nextTitle : title;
     const effectiveAllDay = override?.allDay !== undefined ? override.allDay : isAllDay;
-    const effectiveDateStr = override?.nextDateStr !== undefined ? override.nextDateStr : dateStr;
     const effectiveRecurrence =
       override?.nextRecurrence !== undefined ? override.nextRecurrence : recurrence;
+    const effectiveDateStr =
+      override?.nextDateStr !== undefined
+        ? override.nextDateStr
+        : isAct && act && (isRepeating || Boolean(effectiveRecurrence))
+          ? toDateInputValue(act.date || act.startTime || dateStr)
+          : dateStr;
     const effectiveColor =
       override?.nextColor !== undefined ? override.nextColor : color;
     const effectiveStartTimeStr = override?.nextStartTimeStr ?? startTimeStr;
@@ -582,6 +587,37 @@ export default function CalendarCardSettings({
     }
   };
 
+  const shiftRecurrenceForDateChange = (
+    baseRec: RecurrenceConfig,
+    fromDateStr: string,
+    toDateStr: string,
+  ): RecurrenceConfig => {
+    const nextRec: RecurrenceConfig = { ...baseRec };
+    if (fromDateStr === toDateStr) return nextRec;
+    const oldDate = toLocalMidnight(fromDateStr);
+    const newDate = toLocalMidnight(toDateStr);
+    if (nextRec.freq === 'WEEKLY') {
+      const oldDay = oldDate.getDay();
+      const newDay = newDate.getDay();
+      if (oldDay !== newDay) {
+        const currentDays =
+          nextRec.byDays && nextRec.byDays.length > 0 ? nextRec.byDays : [oldDay];
+        const updatedDays = currentDays.includes(oldDay)
+          ? currentDays.map((d) => (d === oldDay ? newDay : d))
+          : [...currentDays, newDay];
+        nextRec.byDays = [...new Set(updatedDays)].sort((a, b) => a - b);
+      }
+    } else if (nextRec.freq === 'MONTHLY') {
+      if (nextRec.byWeekOfMonth) {
+        const { week, dayOfWeek } = getNthWeekdayInfo(newDate);
+        nextRec.byWeekOfMonth = { week, dayOfWeek };
+      } else if (nextRec.byMonthDay !== undefined) {
+        nextRec.byMonthDay = newDate.getDate();
+      }
+    }
+    return nextRec;
+  };
+
   // Konfirmasi perubahan cakupan (move, time, rename, color, delete)
   const handleConfirmScope = async (scope: RecurrenceEditScope) => {
     const { actionType, pendingOverride } = scopeModal;
@@ -592,12 +628,13 @@ export default function CalendarCardSettings({
     const effectiveEndTimeStr = pendingOverride?.nextEndTimeStr ?? endTimeStr;
     const effectiveTitle = (pendingOverride?.nextTitle !== undefined ? pendingOverride.nextTitle : title).trim() || 'Tanpa judul';
     const effectiveColor = pendingOverride?.nextColor !== undefined ? pendingOverride.nextColor : color;
+    const effectiveAllDay = pendingOverride?.nextAllDay !== undefined ? pendingOverride.nextAllDay : isAllDay;
 
-    const instanceDate = toDateInputValue(selectedItem.time || (isAct ? act?.date : gEv?.start));
+    const instanceDate = resolvedInstanceDateStr;
 
     if (actionType === 'delete') {
       if (scope === 'ALL_EVENTS') {
-        await handleDelete();
+        await handleDelete(true);
       } else if (scope === 'THIS_EVENT') {
         if (isAct && act) {
           const prevExcludeDates = [...(act.recurrence?.excludeDates || [])];
@@ -674,12 +711,43 @@ export default function CalendarCardSettings({
             }
           : null;
 
+      const masterAnchorDateStr =
+        isAct && act ? toDateInputValue(act.date || act.startTime || instanceDate) : instanceDate;
+      let saveDateStr = masterAnchorDateStr;
+      let nextRecurrenceForAll: RecurrenceConfig | null | undefined = undefined;
+
+      if (pendingOverride?.nextDateStr !== undefined) {
+        const targetStr = pendingOverride.nextDateStr;
+        saveDateStr = targetStr < masterAnchorDateStr ? targetStr : masterAnchorDateStr;
+        if (isAct && act?.recurrence) {
+          nextRecurrenceForAll = shiftRecurrenceForDateChange(
+            act.recurrence,
+            instanceDate,
+            targetStr,
+          );
+          setRecurrence(nextRecurrenceForAll);
+        }
+      }
+
       if (pendingOverride?.nextColor !== undefined) setColor(effectiveColor);
       if (pendingOverride?.nextTitle !== undefined) setTitle(effectiveTitle);
       if (pendingOverride?.nextDateStr !== undefined) setDateStr(effectiveDateStr);
       if (pendingOverride?.nextStartTimeStr !== undefined) setStartTimeStr(effectiveStartTimeStr);
       if (pendingOverride?.nextEndTimeStr !== undefined) setEndTimeStr(effectiveEndTimeStr);
-      await handleSave(pendingOverride, true);
+      if (pendingOverride?.nextAllDay !== undefined) setIsAllDay(effectiveAllDay);
+
+      await handleSave(
+        {
+          nextTitle: pendingOverride?.nextTitle,
+          nextColor: pendingOverride?.nextColor,
+          nextStartTimeStr: pendingOverride?.nextStartTimeStr,
+          nextEndTimeStr: pendingOverride?.nextEndTimeStr,
+          allDay: pendingOverride?.nextAllDay,
+          nextDateStr: saveDateStr,
+          ...(nextRecurrenceForAll !== undefined ? { nextRecurrence: nextRecurrenceForAll } : {}),
+        },
+        true,
+      );
 
       if (isAct && act && prevSnapshot && onRecordUndo && getNextUndoId) {
         const actionId = getNextUndoId();
@@ -713,7 +781,7 @@ export default function CalendarCardSettings({
         // 2. Buat kegiatan baru mandiri (non-repeating)
         let startIso: string | null = null;
         let endIso: string | null = null;
-        if (!isAllDay) {
+        if (!effectiveAllDay) {
           startIso = new Date(`${effectiveDateStr}T${effectiveStartTimeStr}:00`).toISOString();
           endIso = new Date(`${effectiveDateStr}T${effectiveEndTimeStr}:00`).toISOString();
         }
@@ -723,7 +791,7 @@ export default function CalendarCardSettings({
           date: new Date(`${effectiveDateStr}T00:00:00`).toISOString(),
           startTime: startIso,
           endTime: endIso,
-          allDay: isAllDay,
+          allDay: effectiveAllDay,
           type: act.type || 'CUSTOM',
           status: act.status || 'PENDING',
           icon: act.icon,
@@ -774,25 +842,20 @@ export default function CalendarCardSettings({
         // 2. Buat kegiatan baru berulang mulai dari effectiveDateStr
         let startIso: string | null = null;
         let endIso: string | null = null;
-        if (!isAllDay) {
+        if (!effectiveAllDay) {
           startIso = new Date(`${effectiveDateStr}T${effectiveStartTimeStr}:00`).toISOString();
           endIso = new Date(`${effectiveDateStr}T${effectiveEndTimeStr}:00`).toISOString();
         }
 
-        let nextRecurrence: RecurrenceConfig = { ...act.recurrence };
-        if (nextRecurrence.freq === 'WEEKLY' && effectiveDateStr !== instanceDate) {
-          const oldDay = toLocalMidnight(instanceDate).getDay();
-          const newDay = toLocalMidnight(effectiveDateStr).getDay();
-          if (oldDay !== newDay) {
-            const currentDays =
-              nextRecurrence.byDays && nextRecurrence.byDays.length > 0
-                ? nextRecurrence.byDays
-                : [oldDay];
-            const updatedDays = currentDays.includes(oldDay)
-              ? currentDays.map((d) => (d === oldDay ? newDay : d))
-              : [...currentDays, newDay];
-            nextRecurrence.byDays = [...new Set(updatedDays)].sort((a, b) => a - b);
-          }
+        const nextRecurrence = shiftRecurrenceForDateChange(
+          act.recurrence,
+          instanceDate,
+          effectiveDateStr,
+        );
+        if (nextRecurrence.excludeDates) {
+          nextRecurrence.excludeDates = nextRecurrence.excludeDates.filter(
+            (d) => d >= effectiveDateStr,
+          );
         }
 
         const created = await activityApi.create({
@@ -801,7 +864,7 @@ export default function CalendarCardSettings({
           date: new Date(`${effectiveDateStr}T00:00:00`).toISOString(),
           startTime: startIso,
           endTime: endIso,
-          allDay: isAllDay,
+          allDay: effectiveAllDay,
           type: act.type || 'CUSTOM',
           status: act.status || 'PENDING',
           icon: act.icon,
@@ -832,16 +895,26 @@ export default function CalendarCardSettings({
   };
 
   const handleCloseScopeModal = () => {
-    const { actionType } = scopeModal;
+    const { actionType, pendingOverride } = scopeModal;
     setScopeModal({ isOpen: false, actionType: 'rename' });
     if (isAct && act) {
       if (actionType === 'rename') setTitle(act.title || '');
       if (actionType === 'time') {
+        if (pendingOverride?.nextAllDay !== undefined) {
+          setIsAllDay(!act.startTime || Boolean(act.allDay));
+        }
         setStartTimeStr(toTimeInputValue(act.startTime));
-        setEndTimeStr(toTimeInputValue(act.endTime));
+        setEndTimeStr(
+          toTimeInputValue(
+            act.endTime ||
+              (act.startTime
+                ? new Date(new Date(act.startTime).getTime() + 3600000).toISOString()
+                : '10:00'),
+          ),
+        );
       }
       if (actionType === 'move') {
-        setDateStr(toDateInputValue(selectedItem.time || act.date));
+        setDateStr(resolvedInstanceDateStr);
       }
     }
   };
@@ -914,14 +987,14 @@ export default function CalendarCardSettings({
   };
 
   // Hapus kegiatan
-  const handleDelete = async () => {
+  const handleDelete = async (forceAll = false) => {
     if (deletingRef.current) return;
     deletingRef.current = true;
     setDeleting(true);
     try {
       await savingPromiseRef.current;
       if (onDelete) {
-        await onDelete(selectedItem);
+        await onDelete(selectedItem, forceAll);
         onClose();
       } else {
         if (!window.confirm(`Hapus kegiatan "${title || 'Tanpa judul'}"?`)) {
@@ -1172,7 +1245,15 @@ export default function CalendarCardSettings({
             onChange={(e) => {
               const val = e.target.checked;
               setIsAllDay(val);
-              void handleSave({ allDay: val });
+              if (isRepeating) {
+                setScopeModal({
+                  isOpen: true,
+                  actionType: 'time',
+                  pendingOverride: { nextAllDay: val },
+                });
+              } else {
+                void handleSave({ allDay: val });
+              }
             }}
             className="sr-only peer"
           />
@@ -1715,7 +1796,7 @@ export default function CalendarCardSettings({
       <RecurrenceScopeModal
         isOpen={scopeModal.isOpen}
         actionType={scopeModal.actionType}
-        targetDate={toDateInputValue(selectedItem.time || (isAct ? act?.date : gEv?.start) || dateStr)}
+        targetDate={resolvedInstanceDateStr}
         recurrence={isAct ? act?.recurrence : null}
         activityTitle={title}
         onSelect={(scope) => void handleConfirmScope(scope)}

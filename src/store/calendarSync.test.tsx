@@ -32,6 +32,8 @@ function Probe({ page = "Daily" }: { page?: string }) {
       </span>
       <span data-testid="error">{sync.error}</span>
       <span data-testid="account">{sync.status.connectionId}</span>
+      <span data-testid="revision">{sync.revision}</span>
+      <span data-testid="synced">{sync.status.syncedAt}</span>
       <button
         onClick={() =>
           sync.setStatus({ connected: true, connectionId: "account-b" })
@@ -40,6 +42,8 @@ function Probe({ page = "Daily" }: { page?: string }) {
         switch
       </button>
       <button onClick={() => void sync.autoSync()}>trigger</button>
+      <button onClick={() => void sync.autoSync(undefined, undefined, { hydrateRange: true })}>hydrate</button>
+      <button onClick={() => sync.setStatus({ connected: false })}>disconnect</button>
     </div>
   );
 }
@@ -51,6 +55,8 @@ function RangeProbe({ from, to }: { from: string; to: string }) {
   return <Probe />;
 }
 beforeEach(() => {
+  vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
+  vi.spyOn(navigator, "onLine", "get").mockReturnValue(true);
   mocks.user = { id: "user-1" };
   mocks.getStatus.mockReset().mockResolvedValue({ connected: true });
   mocks.autoSync.mockReset().mockResolvedValue(result);
@@ -90,7 +96,7 @@ it("switches Google identity while connected and discards late sync and socket d
   expect(screen.getByTestId("error").textContent).toBe("");
 });
 
-it("retries an offline failure with backoff instead of an interval", async () => {
+it("retries failures with backoff and resumes polling after success", async () => {
   vi.useFakeTimers();
   mocks.autoSync.mockRejectedValueOnce(new Error("offline"));
   render(
@@ -111,16 +117,17 @@ it("retries an offline failure with backoff instead of an interval", async () =>
   });
   expect(mocks.autoSync).toHaveBeenCalledTimes(2);
   await act(async () => {
-    vi.advanceTimersByTime(120000);
+    vi.advanceTimersByTime(30000);
   });
-  expect(mocks.autoSync).toHaveBeenCalledTimes(2);
+  expect(mocks.autoSync).toHaveBeenCalledTimes(3);
 });
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
+  vi.restoreAllMocks();
 });
 
-it("syncs on focus without polling and stops after logout", async () => {
+it("polls every 30 seconds across pages, syncs on focus and stops after logout", async () => {
   vi.useFakeTimers();
   const view = render(
     <CalendarSyncProvider>
@@ -139,11 +146,11 @@ it("syncs on focus without polling and stops after logout", async () => {
   await act(async () => {
     vi.advanceTimersByTime(30000);
   });
-  expect(mocks.autoSync).toHaveBeenCalledTimes(1);
+  expect(mocks.autoSync).toHaveBeenCalledTimes(2);
   await act(async () => {
     window.dispatchEvent(new Event("focus"));
   });
-  expect(mocks.autoSync).toHaveBeenCalledTimes(2);
+  expect(mocks.autoSync).toHaveBeenCalledTimes(3);
   mocks.user = null;
   view.rerender(
     <CalendarSyncProvider>
@@ -153,7 +160,7 @@ it("syncs on focus without polling and stops after logout", async () => {
   await act(async () => {
     vi.advanceTimersByTime(60000);
   });
-  expect(mocks.autoSync).toHaveBeenCalledTimes(2);
+  expect(mocks.autoSync).toHaveBeenCalledTimes(3);
   expect(screen.getByTestId("status").textContent).toBe("disconnected");
 });
 
@@ -220,7 +227,7 @@ it("retains the mounted calendar range and syncs the latest range after an in-fl
       <RangeProbe from={from} to={to} />
     </CalendarSyncProvider>,
   );
-  await waitFor(() => expect(mocks.autoSync).toHaveBeenCalledWith(from, to));
+  await waitFor(() => expect(mocks.autoSync).toHaveBeenCalledWith(from, to, { hydrateRange: true }));
   view.rerender(
     <CalendarSyncProvider>
       <RangeProbe from="2026-11-01T00:00:00Z" to="2026-12-01T00:00:00Z" />
@@ -234,5 +241,145 @@ it("retains the mounted calendar range and syncs the latest range after an in-fl
   expect(mocks.autoSync).toHaveBeenLastCalledWith(
     "2026-11-01T00:00:00Z",
     "2026-12-01T00:00:00Z",
+    { hydrateRange: true },
   );
+});
+
+it("queues every distinct visible range while a sync is in flight", async () => {
+  let finish!: (value: typeof result) => void;
+  mocks.autoSync.mockImplementationOnce(() => new Promise(done => { finish = done; }));
+  const view = render(<CalendarSyncProvider><RangeProbe from="2026-10-01" to="2026-11-01" /></CalendarSyncProvider>);
+  await waitFor(() => expect(mocks.autoSync).toHaveBeenCalledTimes(1));
+  view.rerender(<CalendarSyncProvider><RangeProbe from="2026-11-01" to="2026-12-01" /></CalendarSyncProvider>);
+  view.rerender(<CalendarSyncProvider><RangeProbe from="2026-12-01" to="2027-01-01" /></CalendarSyncProvider>);
+  await act(async () => { finish(result); });
+  expect(mocks.autoSync).toHaveBeenCalledTimes(3);
+  expect(mocks.autoSync).toHaveBeenNthCalledWith(2, "2026-11-01", "2026-12-01", { hydrateRange: true });
+  expect(mocks.autoSync).toHaveBeenNthCalledWith(3, "2026-12-01", "2027-01-01", { hydrateRange: true });
+});
+
+it("pauses polling in hidden and offline tabs and resumes immediately", async () => {
+  vi.useFakeTimers();
+  render(<CalendarSyncProvider><Probe /></CalendarSyncProvider>);
+  await act(async () => {});
+  expect(mocks.autoSync).toHaveBeenCalledTimes(1);
+  const visibility = vi.spyOn(document, "visibilityState", "get");
+  const online = vi.spyOn(navigator, "onLine", "get");
+  await act(async () => {
+    visibility.mockReturnValue("hidden");
+    document.dispatchEvent(new Event("visibilitychange"));
+    vi.advanceTimersByTime(90000);
+    window.dispatchEvent(new Event("focus"));
+  });
+  expect(mocks.autoSync).toHaveBeenCalledTimes(1);
+  await act(async () => {
+    visibility.mockReturnValue("visible");
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+  expect(mocks.autoSync).toHaveBeenCalledTimes(2);
+  expect(mocks.autoSync.mock.lastCall?.[2]).toEqual({ hydrateRange: false });
+  await act(async () => {
+    online.mockReturnValue(false);
+    window.dispatchEvent(new Event("offline"));
+    vi.advanceTimersByTime(90000);
+  });
+  expect(mocks.autoSync).toHaveBeenCalledTimes(2);
+  await act(async () => {
+    online.mockReturnValue(true);
+    window.dispatchEvent(new Event("online"));
+  });
+  expect(mocks.autoSync).toHaveBeenCalledTimes(3);
+  await act(async () => { screen.getByText("disconnect").click(); });
+  await act(async () => {
+    vi.advanceTimersByTime(90000);
+    window.dispatchEvent(new Event("online"));
+    window.dispatchEvent(new Event("focus"));
+  });
+  expect(mocks.autoSync).toHaveBeenCalledTimes(3);
+});
+
+it("defers initial range hydration until the connected app is online", async () => {
+  vi.useFakeTimers();
+  const online = vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+  render(<CalendarSyncProvider><RangeProbe from="2026-11-01" to="2026-12-01" /></CalendarSyncProvider>);
+  await act(async () => { vi.advanceTimersByTime(60000); });
+  expect(mocks.autoSync).not.toHaveBeenCalled();
+  await act(async () => {
+    online.mockReturnValue(true);
+    window.dispatchEvent(new Event("online"));
+  });
+  expect(mocks.autoSync).toHaveBeenCalledExactlyOnceWith("2026-11-01", "2026-12-01", { hydrateRange: true });
+});
+
+it("retries a failed hydration before importing the next queued month", async () => {
+  vi.useFakeTimers();
+  let fail!: (reason: Error) => void;
+  mocks.autoSync.mockImplementationOnce(() => new Promise((_, reject) => { fail = reject; }));
+  const view = render(<CalendarSyncProvider><RangeProbe from="2026-10-01" to="2026-11-01" /></CalendarSyncProvider>);
+  await act(async () => {});
+  view.rerender(<CalendarSyncProvider><RangeProbe from="2026-11-01" to="2026-12-01" /></CalendarSyncProvider>);
+  await act(async () => { fail(new Error("offline")); });
+  expect(screen.getByTestId("error").textContent).toContain("tertunda");
+  await act(async () => { vi.advanceTimersByTime(5000); });
+  expect(mocks.autoSync).toHaveBeenCalledTimes(3);
+  expect(mocks.autoSync).toHaveBeenNthCalledWith(2, "2026-10-01", "2026-11-01", { hydrateRange: true });
+  expect(mocks.autoSync).toHaveBeenNthCalledWith(3, "2026-11-01", "2026-12-01", { hydrateRange: true });
+  expect(screen.getByTestId("error").textContent).toBe("");
+  expect(screen.getByTestId("revision").textContent).toBe("2");
+});
+
+it("uses capped exponential retry delays without polling over failed requests", async () => {
+  vi.useFakeTimers();
+  mocks.autoSync.mockRejectedValue(new Error("offline"));
+  render(<CalendarSyncProvider><Probe /></CalendarSyncProvider>);
+  await act(async () => {});
+  let calls = 1;
+  for (const delay of [5000, 10000, 20000, 40000, 60000, 60000]) {
+    await act(async () => { vi.advanceTimersByTime(delay - 1); });
+    expect(mocks.autoSync).toHaveBeenCalledTimes(calls);
+    await act(async () => { vi.advanceTimersByTime(1); });
+    expect(mocks.autoSync).toHaveBeenCalledTimes(++calls);
+  }
+});
+
+it("refreshes subscribers when polling imports an event and updates the sync timestamp", async () => {
+  vi.useFakeTimers();
+  render(<CalendarSyncProvider><Probe /></CalendarSyncProvider>);
+  await act(async () => {});
+  const initialRevision = Number(screen.getByTestId("revision").textContent);
+  mocks.autoSync.mockResolvedValueOnce({ ...result, importedCount: 1, syncedAt: "2026-09-29T03:00:30Z" });
+  await act(async () => { vi.advanceTimersByTime(30000); });
+  expect(Number(screen.getByTestId("revision").textContent)).toBe(initialRevision + 1);
+  expect(screen.getByTestId("synced").textContent).toBe("2026-09-29T03:00:30Z");
+});
+
+it("queues a hydration requested during an incremental sync of the same range", async () => {
+  render(<CalendarSyncProvider><Probe /></CalendarSyncProvider>);
+  await act(async () => {});
+  let finish!: (value: typeof result) => void;
+  mocks.autoSync.mockImplementationOnce(() => new Promise(done => { finish = done; }));
+  await act(async () => { screen.getByText("trigger").click(); });
+  await act(async () => {
+    screen.getByText("hydrate").click();
+    window.dispatchEvent(new Event("focus"));
+    window.dispatchEvent(new Event("online"));
+  });
+  expect(mocks.autoSync).toHaveBeenCalledTimes(2);
+  await act(async () => { finish(result); });
+  expect(mocks.autoSync).toHaveBeenCalledTimes(3);
+  expect(mocks.autoSync.mock.calls[1][2]).toEqual({ hydrateRange: false });
+  expect(mocks.autoSync.mock.calls[2][2]).toEqual({ hydrateRange: true });
+});
+
+it("keeps backing off when successful requests report the same pending changes", async () => {
+  vi.useFakeTimers();
+  mocks.autoSync.mockResolvedValue({ ...result, pendingCount: 1 });
+  render(<CalendarSyncProvider><Probe /></CalendarSyncProvider>);
+  await act(async () => {});
+  await act(async () => { vi.advanceTimersByTime(5000); });
+  expect(mocks.autoSync).toHaveBeenCalledTimes(2);
+  await act(async () => { vi.advanceTimersByTime(9999); });
+  expect(mocks.autoSync).toHaveBeenCalledTimes(2);
+  await act(async () => { vi.advanceTimersByTime(1); });
+  expect(mocks.autoSync).toHaveBeenCalledTimes(3);
 });

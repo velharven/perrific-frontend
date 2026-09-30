@@ -9,6 +9,8 @@ export interface RecurrenceScopeModalProps {
   targetDate: Date | string;
   recurrence?: RecurrenceConfig | null;
   activityTitle?: string;
+  busy?: boolean;
+  error?: string | null;
   onSelect: (scope: RecurrenceEditScope) => void;
   onClose: () => void;
 }
@@ -28,6 +30,8 @@ export default function RecurrenceScopeModal({
   targetDate,
   recurrence,
   activityTitle,
+  busy = false,
+  error,
   onSelect,
   onClose,
 }: RecurrenceScopeModalProps) {
@@ -42,13 +46,13 @@ export default function RecurrenceScopeModal({
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (e.key === 'Escape' && !busy) {
         onClose();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, busy]);
 
   if (!isOpen) return null;
 
@@ -77,7 +81,13 @@ export default function RecurrenceScopeModal({
 
   return createPortal(
     <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/40 p-4 backdrop-blur-[1px] animate-in fade-in duration-150 font-givonic">
-      <div className="w-full max-w-sm rounded-2xl border border-gray-100 bg-white p-5 shadow-2xl animate-in zoom-in-95 duration-150">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        aria-busy={busy}
+        className="w-full max-w-sm rounded-2xl border border-gray-100 bg-white p-5 shadow-2xl animate-in zoom-in-95 duration-150"
+      >
         {/* Header */}
         <div className="flex items-center gap-3 border-b border-gray-100 pb-3">
           <div
@@ -132,6 +142,7 @@ export default function RecurrenceScopeModal({
               type="radio"
               name="recurrence-scope"
               value="THIS_EVENT"
+              disabled={busy}
               checked={selectedScope === 'THIS_EVENT'}
               onChange={() => setSelectedScope('THIS_EVENT')}
               className={`mt-0.5 cursor-pointer ${isDelete ? 'text-red-600 focus:ring-red-500' : 'text-blue-600 focus:ring-blue-500'}`}
@@ -160,6 +171,7 @@ export default function RecurrenceScopeModal({
               type="radio"
               name="recurrence-scope"
               value="THIS_AND_FOLLOWING"
+              disabled={busy}
               checked={selectedScope === 'THIS_AND_FOLLOWING'}
               onChange={() => setSelectedScope('THIS_AND_FOLLOWING')}
               className={`mt-0.5 cursor-pointer ${isDelete ? 'text-red-600 focus:ring-red-500' : 'text-blue-600 focus:ring-blue-500'}`}
@@ -188,6 +200,7 @@ export default function RecurrenceScopeModal({
               type="radio"
               name="recurrence-scope"
               value="ALL_EVENTS"
+              disabled={busy}
               checked={selectedScope === 'ALL_EVENTS'}
               onChange={() => setSelectedScope('ALL_EVENTS')}
               className={`mt-0.5 cursor-pointer ${isDelete ? 'text-red-600 focus:ring-red-500' : 'text-blue-600 focus:ring-blue-500'}`}
@@ -204,10 +217,12 @@ export default function RecurrenceScopeModal({
         </div>
 
         {/* Footer Buttons */}
+        {error && <p role="alert" className="mb-3 text-xs text-red-600">{error}</p>}
         <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100">
           <button
             type="button"
             onClick={onClose}
+            disabled={busy}
             className="rounded-xl px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-100 transition cursor-pointer"
           >
             Batal
@@ -215,13 +230,14 @@ export default function RecurrenceScopeModal({
           <button
             type="button"
             onClick={() => onSelect(selectedScope)}
+            disabled={busy}
             className={`rounded-xl px-4 py-1.5 text-xs font-semibold text-white shadow-sm transition cursor-pointer ${
               isDelete
                 ? 'bg-red-600 hover:bg-red-700 active:bg-red-800'
                 : 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800'
             }`}
           >
-            {isDelete ? 'Hapus' : 'Terapkan'}
+            {busy ? 'Menyimpan...' : isDelete ? 'Hapus' : 'Terapkan'}
           </button>
         </div>
       </div>

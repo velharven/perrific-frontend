@@ -8,7 +8,7 @@ import { showToast } from '@/components/ui/Toast';
 import CalendarSidebar from './CalendarSidebar';
 import CalendarCardSettings, { type CombinedItem, type CalendarUndoAction } from './CalendarCardSettings';
 import RecurrenceScopeModal from './RecurrenceScopeModal';
-import { doesActivityOccurOnDate, getDayBefore, projectActivityOntoDate } from '@/lib/recurrence';
+import { doesActivityOccurOnDate, getDayBefore, getNthWeekdayInfo, projectActivityOntoDate } from '@/lib/recurrence';
 import { getCalendarColorMeta } from '@/lib/calendarColors';
 import { calendarCardEnd, isCalendarCardPast } from '@/lib/calendarTiming';
 import { useCalendarSync } from '@/store/calendarSync';
@@ -33,6 +33,13 @@ interface CalendarViewProps {
       recurrence?: RecurrenceConfig | null;
     },
   ) => Promise<DailyActivity>;
+}
+
+interface LinkedActivityMove {
+  token: symbol;
+  activity: DailyActivity;
+  saving: boolean;
+  observedEvent?: GoogleCalendarEvent;
 }
 
 const MONTH_NAMES = [
@@ -108,6 +115,17 @@ function isSameDay(d1: Date, d2: Date): boolean {
     d1.getMonth() === d2.getMonth() &&
     d1.getDate() === d2.getDate()
   );
+}
+
+function googleEventMatchesActivityTime(event: GoogleCalendarEvent, activity: DailyActivity): boolean {
+  if (Boolean(event.allDay) !== Boolean(activity.allDay)) return false;
+  if (activity.allDay) {
+    const date = new Date(activity.date);
+    return event.start === toISODate(date) && event.end === toISODate(dateAtMinutes(date, 1440));
+  }
+  if (!event.start || !activity.startTime) return false;
+  return new Date(event.start).getTime() === new Date(activity.startTime).getTime() &&
+    calendarCardEnd(event.start, event.end) === calendarCardEnd(activity.startTime, activity.endTime);
 }
 
 function formatTime(isoString?: string | null): string {
@@ -274,6 +292,15 @@ export default function CalendarView({
   const [viewMode, setViewMode] = useState<CalendarViewMode>('week');
   const [isViewMenuOpen, setIsViewMenuOpen] = useState(false);
   const [googleEvents, setGoogleEvents] = useState<GoogleCalendarEvent[]>([]);
+  const [linkedActivityMoves, setLinkedActivityMoves] = useState<Map<string, LinkedActivityMove>>(new Map());
+  const linkedActivityMovesRef = useRef(linkedActivityMoves);
+  const updateLinkedActivityMove = useCallback((eventId: string, move?: LinkedActivityMove) => {
+    const next = new Map(linkedActivityMovesRef.current);
+    if (move) next.set(eventId, move);
+    else next.delete(eventId);
+    linkedActivityMovesRef.current = next;
+    setLinkedActivityMoves(next);
+  }, []);
   const [layoutPositions, setLayoutPositions] = useState<Record<string, Record<string, number>>>({});
   const layoutPositionsRef = useRef(layoutPositions);
   const layoutRequestRef = useRef(0);
@@ -427,20 +454,32 @@ export default function CalendarView({
       if (requestId !== googleEventsRequestRef.current) return;
       // ID instance berulang berbeda: jangan sembunyikan seluruh rangkaian.
       const activeEvents = events.filter((g) => !deletedGoogleIdsRef.current.has(g.id));
+      for (const [eventId, move] of linkedActivityMovesRef.current) {
+        const event = activeEvents.find(candidate => candidate.id === eventId);
+        if (move.saving) {
+          updateLinkedActivityMove(eventId, { ...move, observedEvent: event });
+        } else if (event && googleEventMatchesActivityTime(event, move.activity)) {
+          updateLinkedActivityMove(eventId);
+        }
+      }
       setGoogleEvents(activeEvents);
     } catch (e) {
       console.error('Gagal memuat event Google Calendar:', e);
     }
-  }, [gcalStatus.connected, gcalStatus.connectionId, fetchEvents, rangeStart, rangeEnd]);
+  }, [gcalStatus.connected, gcalStatus.connectionId, fetchEvents, rangeStart, rangeEnd, updateLinkedActivityMove]);
 
   useEffect(() => {
     ++googleEventsRequestRef.current;
+    setRecurringMovePrompt(null); setRecurringDeletePrompt(null);
     setGoogleEvents([]); setSelectedCardItem(null); setSelectedEvent(null);
     selectedCardItemRef.current = null; undoStackRef.current = [];
     deletedActivityIdsRef.current.clear(); deletedGoogleIdsRef.current.clear();
     deletingIdsRef.current.clear(); pendingActivityMoveIdsRef.current.clear();
+    linkedActivityMovesRef.current = new Map();
+    setLinkedActivityMoves(linkedActivityMovesRef.current);
     clearDragState();
   }, [gcalStatus.connectionId, gcalStatus.connected]);
+
   useEffect(() => {
     if (!calendarChange) return;
     ++googleEventsRequestRef.current;
@@ -458,17 +497,69 @@ export default function CalendarView({
     }
   }, [calendarChange]);
 
+  useEffect(() => {
+    for (const [eventId, move] of linkedActivityMoves) {
+      const activity = activities.find(candidate => candidate.id === move.activity.id);
+      if (!activity || activity.googleEventId !== eventId || activity.recurrence || deletedActivityIdsRef.current.has(activity.id)) {
+        updateLinkedActivityMove(eventId);
+      }
+    }
+  }, [activities, googleEvents, linkedActivityMoves, updateLinkedActivityMove]);
+
+  const moveActivity = useCallback(async (
+    activityId: string,
+    position: Parameters<CalendarViewProps['onMoveActivity']>[1],
+  ): Promise<DailyActivity> => {
+    const original = activities.find(activity => activity.id === activityId);
+    const eventId = original?.googleEventId;
+    if (!gcalStatus.connected || !eventId || original.recurrence) {
+      return onMoveActivity(activityId, position);
+    }
+
+    const previousMove = linkedActivityMovesRef.current.get(eventId);
+    const move: LinkedActivityMove = {
+      token: Symbol(), activity: { ...original, ...position }, saving: true,
+    };
+    // A response requested before this move cannot confirm its new position.
+    ++googleEventsRequestRef.current;
+    updateLinkedActivityMove(eventId, move);
+    try {
+      const saved = await onMoveActivity(activityId, position);
+      const current = linkedActivityMovesRef.current.get(eventId);
+      if (current?.token === move.token) {
+        if (saved.googleEventId !== eventId || saved.recurrence ||
+            (current.observedEvent && googleEventMatchesActivityTime(current.observedEvent, saved))) {
+          updateLinkedActivityMove(eventId);
+        } else {
+          updateLinkedActivityMove(eventId, { ...current, activity: saved, saving: false });
+        }
+      }
+      return saved;
+    } catch (error) {
+      if (linkedActivityMovesRef.current.get(eventId)?.token === move.token) {
+        updateLinkedActivityMove(eventId, previousMove);
+      }
+      throw error;
+    }
+  }, [activities, gcalStatus.connected, onMoveActivity, updateLinkedActivityMove]);
+
   // Sinkronkan data kartu yang sedang dipilih saat data aktivitas/googleEvents diperbarui
   useEffect(() => {
     if (!selectedCardItem) return;
     if (selectedCardItem.type === 'activity') {
       const updated = activities.find((a) => a.id === selectedCardItem.act.id);
       if (updated) {
+        const instanceDate = selectedCardItem.instanceDate;
+        const projected =
+          updated.recurrence && instanceDate
+            ? projectActivityOntoDate(updated, new Date(`${instanceDate}T12:00:00`))
+            : updated;
         setSelectedCardItem({
           type: 'activity',
           id: selectedCardItem.id,
           act: updated,
-          time: updated.startTime,
+          time: projected.startTime,
+          instanceDate,
         });
       } else {
         setSelectedCardItem(null);
@@ -481,6 +572,7 @@ export default function CalendarView({
           id: `gcal-${updated.id}`,
           gEv: updated,
           time: updated.start,
+          instanceDate: selectedCardItem.instanceDate,
         });
       }
     }
@@ -553,7 +645,7 @@ export default function CalendarView({
       if (last.type === 'move-calendar-card') {
         try {
           if (last.itemType === 'activity') {
-            await onMoveActivity(last.rawId, {
+            await moveActivity(last.rawId, {
               ...(last.prevDate ? { date: last.prevDate } : {}),
               startTime: last.prevStartTime,
               endTime: last.prevEndTime,
@@ -796,7 +888,7 @@ export default function CalendarView({
     } finally {
       isUndoingRef.current = false;
     }
-  }, [onRefreshActivities, loadGoogleEvents, onMoveActivity, saveCalendarColumns, activities]);
+  }, [onRefreshActivities, loadGoogleEvents, moveActivity, saveCalendarColumns, activities]);
 
   // Fungsi internal menghapus kartu terpilih
   const executeDeleteCard = useCallback(
@@ -946,12 +1038,14 @@ export default function CalendarView({
 
   // Fungsi menghapus kartu terpilih (mendukung prompt kegiatan berulang)
   const handleDeleteCard = useCallback(
-    async (itemToDelete: CombinedItem) => {
+    async (itemToDelete: CombinedItem, forceAll = false) => {
       const isAct = itemToDelete.type === 'activity';
       const act = isAct ? itemToDelete.act : null;
 
-      if (isAct && act?.recurrence) {
-        const instanceDateStr = toISODate(new Date(itemToDelete.time || act.date));
+      if (!forceAll && isAct && act?.recurrence) {
+        const instanceDateStr =
+          itemToDelete.instanceDate ||
+          toISODate(new Date(itemToDelete.time || act.date));
         setRecurringDeletePrompt({
           isOpen: true,
           item: itemToDelete,
@@ -986,16 +1080,17 @@ export default function CalendarView({
         const origAnchorDate = new Date(origDateObj.getFullYear(), origDateObj.getMonth(), origDateObj.getDate(), 0, 0, 0, 0);
         const targetMidnight = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), 0, 0, 0, 0);
 
-        let finalAnchorDate = targetMidnight < origAnchorDate ? targetMidnight : origAnchorDate;
+        const finalAnchorDate = targetMidnight < origAnchorDate ? targetMidnight : origAnchorDate;
+
         let nextRecurrence: RecurrenceConfig | null = originalAct.recurrence ? { ...originalAct.recurrence } : null;
         const prevRecurrence = originalAct.recurrence ? { ...originalAct.recurrence } : null;
 
-        if (nextRecurrence && nextRecurrence.freq === 'WEEKLY') {
+        if (nextRecurrence) {
           const sourceDateObj = payload.cardDate ? new Date(`${payload.cardDate}T12:00:00`) : origDateObj;
           const sourceDay = sourceDateObj.getDay();
           const targetDay = targetDate.getDay();
 
-          if (sourceDay !== targetDay) {
+          if (nextRecurrence.freq === 'WEEKLY' && sourceDay !== targetDay) {
             const currentDays = nextRecurrence.byDays && nextRecurrence.byDays.length > 0
               ? nextRecurrence.byDays
               : [sourceDay];
@@ -1003,6 +1098,13 @@ export default function CalendarView({
               ? currentDays.map((d) => (d === sourceDay ? targetDay : d))
               : [...currentDays, targetDay];
             nextRecurrence.byDays = [...new Set(updatedDays)].sort((a, b) => a - b);
+          } else if (nextRecurrence.freq === 'MONTHLY' && !isSameDay(sourceDateObj, targetDate)) {
+            if (nextRecurrence.byWeekOfMonth !== undefined && nextRecurrence.byWeekOfMonth !== null) {
+              const { week, dayOfWeek } = getNthWeekdayInfo(targetDate);
+              nextRecurrence.byWeekOfMonth = { week, dayOfWeek };
+            } else {
+              nextRecurrence.byMonthDay = targetDate.getDate();
+            }
           }
         }
 
@@ -1055,6 +1157,7 @@ export default function CalendarView({
           date: newDateStr,
           startTime: newStartTimeStr,
           endTime: newEndTimeStr,
+          allDay: false,
           type: originalAct.type || 'CUSTOM',
           status: originalAct.status || 'PENDING',
           icon: originalAct.icon,
@@ -1093,12 +1196,19 @@ export default function CalendarView({
           },
         });
 
-        let nextRecurrence: RecurrenceConfig | null = originalAct.recurrence ? { ...originalAct.recurrence } : null;
-        if (nextRecurrence && nextRecurrence.freq === 'WEEKLY') {
+        let nextRecurrence: RecurrenceConfig | null = originalAct.recurrence
+          ? {
+              ...originalAct.recurrence,
+              excludeDates: (originalAct.recurrence.excludeDates || []).filter(
+                (d) => d >= toISODate(targetDate),
+              ),
+            }
+          : null;
+        if (nextRecurrence) {
           const sourceDateObj = new Date(`${instanceDateStr}T12:00:00`);
           const sourceDay = sourceDateObj.getDay();
           const targetDay = targetDate.getDay();
-          if (sourceDay !== targetDay) {
+          if (nextRecurrence.freq === 'WEEKLY' && sourceDay !== targetDay) {
             const currentDays = nextRecurrence.byDays && nextRecurrence.byDays.length > 0
               ? nextRecurrence.byDays
               : [sourceDay];
@@ -1106,6 +1216,13 @@ export default function CalendarView({
               ? currentDays.map((d) => (d === sourceDay ? targetDay : d))
               : [...currentDays, targetDay];
             nextRecurrence.byDays = [...new Set(updatedDays)].sort((a, b) => a - b);
+          } else if (nextRecurrence.freq === 'MONTHLY' && !isSameDay(sourceDateObj, targetDate)) {
+            if (nextRecurrence.byWeekOfMonth !== undefined && nextRecurrence.byWeekOfMonth !== null) {
+              const { week, dayOfWeek } = getNthWeekdayInfo(targetDate);
+              nextRecurrence.byWeekOfMonth = { week, dayOfWeek };
+            } else {
+              nextRecurrence.byMonthDay = targetDate.getDate();
+            }
           }
         }
 
@@ -1115,6 +1232,7 @@ export default function CalendarView({
           date: newDateStr,
           startTime: newStartTimeStr,
           endTime: newEndTimeStr,
+          allDay: false,
           type: originalAct.type || 'CUSTOM',
           status: originalAct.status || 'PENDING',
           icon: originalAct.icon,
@@ -1221,7 +1339,7 @@ export default function CalendarView({
 
           pendingActivityMoveIdsRef.current.add(payload.id);
           try {
-            await onMoveActivity(payload.id, {
+            await moveActivity(payload.id, {
               date: newDateStr,
               startTime: newStartTimeStr,
               endTime: newEndTimeStr,
@@ -1419,7 +1537,6 @@ export default function CalendarView({
       onRefreshActivitiesRef.current?.();
       void loadLayoutPositions();
       void loadGoogleEvents();
-      void autoSync?.();
     };
     window.addEventListener('focus', resume);
     document.addEventListener('visibilitychange', resume);
@@ -1429,18 +1546,7 @@ export default function CalendarView({
       document.removeEventListener('visibilitychange', resume);
       window.removeEventListener('online', resume);
     };
-  }, [draggingCardId, loadLayoutPositions, loadGoogleEvents, autoSync]);
-
-  // Sinkronisasi otomatis dua arah setiap 10 detik saat tab kalender aktif
-  useEffect(() => {
-    if (!gcalStatus.connected) return;
-    const interval = window.setInterval(() => {
-      if (document.visibilityState === 'visible' && !draggingCardId && !activeReorderRef.current) {
-        void autoSync?.();
-      }
-    }, 10000);
-    return () => window.clearInterval(interval);
-  }, [gcalStatus.connected, draggingCardId, autoSync]);
+  }, [draggingCardId, loadLayoutPositions, loadGoogleEvents]);
 
   const viewMenuRef = useRef<HTMLDivElement>(null);
   const timelineScrollRef = useRef<HTMLDivElement>(null);
@@ -1636,17 +1742,6 @@ export default function CalendarView({
   }
 
   // Helper untuk mendapatkan gabungan aktivitas & Google event pada suatu hari
-  // Set seluruh ID event Google yang tertaut dengan kegiatan lokal Purrific
-  const linkedGoogleEventIds = useMemo(() => {
-    const set = new Set<string>();
-    for (const act of activities) {
-      if (act.googleEventId) {
-        set.add(act.googleEventId);
-      }
-    }
-    return set;
-  }, [activities]);
-
   const getDayItems = useCallback(
     (dayDate: Date): CombinedItem[] => {
       const dayActivities = activities
@@ -1664,19 +1759,26 @@ export default function CalendarView({
         .map((act) => (act.recurrence ? projectActivityOntoDate(act, dayDate) : act));
 
       const dayGoogleEvents = googleEvents.filter((gEv) => {
-        const baseGId = gEv.id.includes('_') ? gEv.id.split('_')[0] : gEv.id;
+        const baseGId = gEv.recurringEventId || (gEv.id.includes('_') ? gEv.id.split('_')[0] : gEv.id);
         if (deletedGoogleIdsRef.current.has(gEv.id)) return false;
-        // Hanya filter jika ID spesifik sudah tertaut di aktivitas
-        if (linkedGoogleEventIds.has(gEv.id)) return false;
+        const move = linkedActivityMoves.get(gEv.id);
+        // Local moves own the card across dates until a fetched Google event catches up.
+        if (move && activities.some(activity => activity.id === move.activity.id && activity.googleEventId === gEv.id &&
+            !deletedActivityIdsRef.current.has(activity.id))) return false;
         if (!gEv.start) return false;
         const gStartStr = gEv.start;
         const gDate = new Date(gStartStr);
         if (!isSameDay(gDate, dayDate)) return false;
 
-        // De-duplikasi terhadap aktivitas lokal HARI INI:
-        // Gunakan ID event dan rangkaian berulang yang tertaut.
-        const isDuplicateOfActivity = dayActivities.some((act) => act.googleEventId === gEv.id ||
-          (Boolean(act.recurrence) && act.googleEventId === baseGId));
+        // De-duplikasi terhadap aktivitas lokal HARI INI maupun seri berulang lokal:
+        const isDuplicateOfActivity =
+          dayActivities.some((act) => act.googleEventId === gEv.id) ||
+          activities.some(
+            (act) =>
+              !deletedActivityIdsRef.current.has(act.id) &&
+              Boolean(act.recurrence) &&
+              act.googleEventId === baseGId,
+          );
 
         return !isDuplicateOfActivity;
       });
@@ -1688,18 +1790,20 @@ export default function CalendarView({
           id: act.recurrence ? `act-${act.id}-${dayKey}` : `act-${act.id}`,
           act,
           time: act.startTime,
+          instanceDate: dayKey,
         })),
         ...dayGoogleEvents.map((gEv) => ({
           type: 'google' as const,
           id: `gcal-${gEv.id}`,
           gEv,
           time: gEv.start,
+          instanceDate: dayKey,
         })),
       ];
 
       return items;
     },
-    [activities, googleEvents, linkedGoogleEventIds],
+    [activities, googleEvents, linkedActivityMoves],
   );
 
   function renderAllDayRow(days: Date[]) {
@@ -1713,13 +1817,14 @@ export default function CalendarView({
           <div key={toISODate(days[index])} className="space-y-1 border-r border-gray-200 p-1 last:border-r-0">
             {dayItems.map((item) => {
               const activity = item.type === 'activity' ? item.act : null;
+              const masterAct = activity ? (activities.find((a) => a.id === activity.id) ?? activity) : null;
               const google = item.type === 'google' ? item.gEv : null;
               const title = activity?.title || google?.title || 'Tanpa judul';
-              const color = getCalendarColorMeta(activity?.color || google?.colorId);
+              const color = getCalendarColorMeta(masterAct?.color || google?.colorId);
               return (
                 <button key={item.id} type="button" title={title} draggable
                   className={`w-full truncate rounded border-l-2 px-2 py-1 text-left text-[11px] font-medium ${color.bgClass} ${color.borderClass} ${color.textClass} ${draggingCardId === item.id ? 'opacity-40' : 'opacity-100'}`}
-                  onClick={() => setSelectedCardItem(item)}
+                  onClick={() => setSelectedCardItem(item.type === 'activity' && masterAct ? { ...item, act: masterAct } : item)}
                   onDragStart={(event) => {
                     event.stopPropagation();
                     if (activity && pendingActivityMoveIdsRef.current.has(activity.id)) {
@@ -1735,11 +1840,11 @@ export default function CalendarView({
                       cardDate: toISODate(days[index]),
                       cardStartTime: null,
                       cardEndTime: null,
-                      hasRecurrence: Boolean(activity?.recurrence),
-                      recurrence: activity?.recurrence || null,
-                      originalDate: activity?.date || google?.start,
-                      originalStartTime: activity?.startTime || null,
-                      originalEndTime: activity?.endTime || null,
+                      hasRecurrence: Boolean(masterAct?.recurrence),
+                      recurrence: masterAct?.recurrence || null,
+                      originalDate: masterAct?.date || google?.start,
+                      originalStartTime: masterAct?.startTime || null,
+                      originalEndTime: masterAct?.endTime || null,
                       originalAllDay: true,
                       durationMinutes: 60,
                       grabOffsetMinutes: 0,
@@ -1820,6 +1925,7 @@ export default function CalendarView({
     const colorMeta = getCalendarColorMeta(colorId);
     const hasGoogle = isAct && Boolean(item.act.googleEventId);
     const hasRecurrence = isAct && Boolean(item.act.recurrence);
+    const showRecurrenceIndicator = hasRecurrence || (!isAct && Boolean(item.gEv.recurringEventId));
     const isDragOverThis = dragOverCardId === item.id;
     const isReorderTarget = reorderTargetId === item.id;
     const reorderFromLeft = (activeReorderRef.current?.colIndex ?? -1) < colIndex;
@@ -2005,7 +2111,7 @@ export default function CalendarView({
           <span className="truncate font-semibold text-[11px] drop-shadow-[0_1px_1px_rgba(0,0,0,0.12)]">
             {isAct ? item.act.title : item.gEv.title}
           </span>
-          {hasRecurrence && (
+          {showRecurrenceIndicator && (
             <span
               title="Kegiatan berulang"
               className={`shrink-0 ${isDarkText ? 'text-gray-800' : 'text-white/90'}`}
@@ -2228,10 +2334,17 @@ export default function CalendarView({
                   {syncError || pendingCount > 0 ? 'Menunggu sinkronisasi' : gcalStatus.syncedAt ? 'Tersinkron' : 'Tersambung'}
                 </span>
               )}
+              {gcalStatus.syncedAt && (
+                <time dateTime={gcalStatus.syncedAt} className="text-[10px] text-gray-500" title="Sinkronisasi terakhir">
+                  Terakhir: {new Date(gcalStatus.syncedAt).toLocaleString('id-ID', {
+                    timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
+                  })} WIB
+                </time>
+              )}
               <button
                 type="button"
                 disabled={gcalSyncing}
-                onClick={() => void autoSync?.()}
+                onClick={() => void autoSync(rangeStart.toISOString(), rangeEnd.toISOString(), { hydrateRange: true })}
                 className="inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white p-1.5 text-gray-600 hover:text-gray-900 hover:bg-gray-50 disabled:opacity-50 transition cursor-pointer"
                 title="Sinkronkan sekarang dengan Google Calendar"
               >

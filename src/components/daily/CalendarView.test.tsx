@@ -7,9 +7,11 @@ import {
   screen,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { useState, type ComponentProps } from "react";
 import CalendarView from "./CalendarView";
 import type { DailyActivity, GoogleCalendarStatus } from "@/types";
 import { calendarCardEnd, isCalendarCardPast } from "@/lib/calendarTiming";
+import type { CalendarChange } from '@/store/calendarSync';
 
 const mocks = vi.hoisted(() => ({
   fetchEvents: vi.fn().mockResolvedValue([]),
@@ -20,6 +22,8 @@ const mocks = vi.hoisted(() => ({
   disconnecting: false,
   disconnect: vi.fn(),
   autoSync: vi.fn(),
+  revision: 0,
+  change: null as CalendarChange | null,
   updateActivity: vi.fn().mockResolvedValue({}),
   createActivity: vi.fn().mockResolvedValue({ id: "created-act-1" }),
   removeActivity: vi.fn().mockResolvedValue({}),
@@ -45,7 +49,8 @@ vi.mock("@/hooks/useGoogleCalendar", () => ({
 }));
 vi.mock("@/store/calendarSync", () => ({
   useCalendarSync: () => ({
-    revision: 0,
+    revision: mocks.revision,
+    change: mocks.change,
     setRange: mocks.setRange,
     pendingCount: 0,
     error: null,
@@ -110,6 +115,11 @@ beforeEach(() => {
   mocks.syncing = false;
   mocks.disconnecting = false;
   mocks.disconnect.mockReset();
+  mocks.fetchEvents.mockReset().mockResolvedValue([]);
+  mocks.autoSync.mockReset();
+  mocks.revision = 0;
+  mocks.change = null;
+  mocks.setRange.mockReset();
   mocks.updateActivity.mockReset().mockResolvedValue({});
   mocks.createActivity.mockReset().mockResolvedValue({ id: "created-act-1" });
   mocks.removeActivity.mockReset().mockResolvedValue({});
@@ -117,6 +127,284 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
+});
+
+it("replaces a Google card with its imported Daily activity without reloading", async () => {
+  mocks.status = { connected: true };
+  mocks.fetchEvents.mockResolvedValue([{ id: "google-event", title: "Google card", start: "2026-09-29T14:00:00+07:00" }]);
+  const view = render(<CalendarView {...props} activities={[]} />);
+  await act(async () => {});
+  expect(screen.getByTitle("Google card")).toBeTruthy();
+  view.rerender(<CalendarView {...props} activities={[fixture({ googleEventId: "google-event" })]} />);
+  expect(screen.queryByTitle("Google card")).toBeNull();
+  expect(screen.getByTitle("Future card")).toBeTruthy();
+});
+
+it("keeps a Google card visible until its linked activity exists on that date", async () => {
+  mocks.status = { connected: true };
+  mocks.fetchEvents.mockResolvedValue([{ id: "google-event", title: "Google moved card", start: "2026-09-29T14:00:00+07:00" }]);
+  render(<CalendarView {...props} activities={[fixture({ googleEventId: "google-event", date: "2026-09-30T00:00:00Z" })]} />);
+  await act(async () => {});
+  expect(screen.getByTitle("Google moved card")).toBeTruthy();
+});
+
+it("deduplicates recurring Google instances using their explicit series relationship even on excluded dates", async () => {
+  mocks.status = { connected: true };
+  mocks.fetchEvents.mockResolvedValue([
+    { id: "series-master_20260928", recurringEventId: "series-master", title: "Google instance", start: "2026-09-28T14:00:00+07:00" },
+    { id: "series-master_20260929", recurringEventId: "series-master", title: "Google instance", start: "2026-09-29T14:00:00+07:00" },
+  ]);
+  render(
+    <CalendarView
+      {...props}
+      activities={[
+        fixture({
+          date: "2026-09-28T00:00:00Z",
+          startTime: "2026-09-28T14:00:00+07:00",
+          endTime: "2026-09-28T15:00:00+07:00",
+          googleEventId: "series-master",
+          recurrence: {
+            freq: "DAILY",
+            interval: 1,
+            excludeDates: ["2026-09-29"],
+            endType: "NEVER",
+          },
+        }),
+      ]}
+    />,
+  );
+  await act(async () => {});
+  expect(screen.queryByTitle("Google instance")).toBeNull();
+  expect(screen.getAllByTitle("Future card").length).toBeGreaterThan(0);
+});
+
+describe("linked activity movement", () => {
+  type MovePosition = Parameters<ComponentProps<typeof CalendarView>["onMoveActivity"]>[1];
+
+  function deferred<T>() {
+    let resolve!: (value: T) => void;
+    let reject!: (reason: Error) => void;
+    const promise = new Promise<T>((done, fail) => {
+      resolve = done;
+      reject = fail;
+    });
+    return { promise, resolve, reject };
+  }
+
+  const initial = fixture({ googleEventId: "google-event" });
+  const originalGoogle = {
+    id: "google-event",
+    title: initial.title,
+    start: initial.startTime!,
+    end: initial.endTime!,
+  };
+
+  function renderOptimisticCalendar() {
+    mocks.status = { connected: true, connectionId: "account-a" };
+    mocks.fetchEvents.mockResolvedValue([originalGoogle]);
+    mocks.updateActivity.mockImplementation(async (_id, position) => ({ ...initial, ...position }));
+    let replaceActivities!: (activities: DailyActivity[]) => void;
+
+    function CalendarParent() {
+      const [activities, setActivities] = useState([initial]);
+      replaceActivities = setActivities;
+      const move = async (id: string, position: MovePosition) => {
+        props.onMoveActivity(id, position);
+        const original = activities.find(activity => activity.id === id)!;
+        setActivities(previous => previous.map(activity => activity.id === id ? { ...activity, ...position } : activity));
+        try {
+          const saved = await mocks.updateActivity(id, position);
+          setActivities(previous => previous.map(activity => activity.id === id ? saved : activity));
+          return saved;
+        } catch (error) {
+          setActivities(previous => previous.map(activity => activity.id === id ? original : activity));
+          throw error;
+        }
+      };
+      return <CalendarView {...props} activities={activities} onMoveActivity={move} />;
+    }
+
+    const view = render(<CalendarParent />);
+    return {
+      refresh: async () => {
+        await act(async () => {
+          mocks.revision++;
+          view.rerender(<CalendarParent />);
+        });
+      },
+      replaceActivities: async (activities: DailyActivity[]) => {
+        await act(async () => { replaceActivities(activities); });
+      },
+    };
+  }
+
+  async function dropOnNextDate() {
+    await act(async () => {});
+    const card = screen.getByTitle(initial.title);
+    const sourceColumn = card.parentElement!;
+    const targetColumn = sourceColumn.nextElementSibling!;
+    const dataTransfer = transfer();
+    dragStart(card, dataTransfer);
+    const drop = createEvent.drop(targetColumn, { dataTransfer });
+    Object.defineProperty(drop, "clientY", { value: 960 });
+    await act(async () => { fireEvent(targetColumn, drop); });
+    return { sourceColumn, targetColumn };
+  }
+
+  function expectSingleCardIn(column: Element) {
+    const cards = screen.getAllByTitle(initial.title);
+    expect(cards).toHaveLength(1);
+    expect(cards[0].parentElement).toBe(column);
+    expect(cards[0].className).not.toContain("opacity-40");
+  }
+
+  function movedActivity() {
+    return fixture({ ...props.onMoveActivity.mock.calls[0][1], googleEventId: "google-event" });
+  }
+
+  it("keeps one card across dates while saving and receiving stale Google responses, then releases it after Google catches up", async () => {
+    const view = renderOptimisticCalendar();
+    const save = deferred<DailyActivity>();
+    mocks.updateActivity.mockReturnValueOnce(save.promise);
+    const { targetColumn } = await dropOnNextDate();
+    expect(props.onMoveActivity).toHaveBeenCalledTimes(1);
+    expectSingleCardIn(targetColumn);
+
+    await view.refresh();
+    expectSingleCardIn(targetColumn);
+    const moved = movedActivity();
+    await act(async () => { save.resolve(moved); });
+    await view.refresh();
+    expectSingleCardIn(targetColumn);
+
+    mocks.fetchEvents.mockResolvedValue([{ ...originalGoogle, start: moved.startTime!, end: moved.endTime! }]);
+    await view.refresh();
+    expectSingleCardIn(targetColumn);
+
+    // A subsequent external Google move must remain visible until its activity catches up.
+    mocks.fetchEvents.mockResolvedValue([{ ...originalGoogle, title: "External Google move" }]);
+    await view.refresh();
+    expect(screen.getByTitle("External Google move")).toBeTruthy();
+  });
+
+  it("recognizes Google confirmation received before the save response", async () => {
+    const view = renderOptimisticCalendar();
+    const save = deferred<DailyActivity>();
+    mocks.updateActivity.mockReturnValueOnce(save.promise);
+    const { targetColumn } = await dropOnNextDate();
+    expectSingleCardIn(targetColumn);
+    const moved = movedActivity();
+    mocks.fetchEvents.mockResolvedValue([{ ...originalGoogle, start: moved.startTime!, end: moved.endTime! }]);
+    await view.refresh();
+    await act(async () => { save.resolve(moved); });
+    expectSingleCardIn(targetColumn);
+    mocks.fetchEvents.mockResolvedValue([{ ...originalGoogle, title: "External Google move" }]);
+    await view.refresh();
+    expect(screen.getByTitle("External Google move")).toBeTruthy();
+  });
+
+  it("restores one card at the original date when saving fails and removes the movement protection", async () => {
+    const errorLog = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const view = renderOptimisticCalendar();
+      const save = deferred<DailyActivity>();
+      mocks.updateActivity.mockReturnValueOnce(save.promise);
+      const { sourceColumn, targetColumn } = await dropOnNextDate();
+      expectSingleCardIn(targetColumn);
+      const moved = movedActivity();
+      await act(async () => { save.reject(new Error("Save failed")); });
+      expectSingleCardIn(sourceColumn);
+      mocks.fetchEvents.mockResolvedValue([{ ...originalGoogle, title: "External Google move", start: moved.startTime!, end: moved.endTime! }]);
+      await view.refresh();
+      expect(screen.getByTitle("External Google move")).toBeTruthy();
+    } finally {
+      errorLog.mockRestore();
+    }
+  });
+
+  it("keeps one card when Undo restores the original date while Google still has the moved date", async () => {
+    const view = renderOptimisticCalendar();
+    const { sourceColumn, targetColumn } = await dropOnNextDate();
+    const moved = movedActivity();
+    expectSingleCardIn(targetColumn);
+    mocks.fetchEvents.mockResolvedValue([{ ...originalGoogle, start: moved.startTime!, end: moved.endTime! }]);
+    await view.refresh();
+    const undo = deferred<DailyActivity>();
+    mocks.updateActivity.mockReturnValueOnce(undo.promise);
+    await act(async () => { fireEvent.keyDown(window, { key: "z", ctrlKey: true }); });
+    expectSingleCardIn(sourceColumn);
+    await view.refresh();
+    expectSingleCardIn(sourceColumn);
+    await act(async () => { undo.resolve(initial); });
+    await view.refresh();
+    expectSingleCardIn(sourceColumn);
+    mocks.fetchEvents.mockResolvedValue([originalGoogle]);
+    await view.refresh();
+    expectSingleCardIn(sourceColumn);
+  });
+
+  it("restores the previous movement protection if Undo fails before Google catches up", async () => {
+    const errorLog = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const view = renderOptimisticCalendar();
+      const { sourceColumn, targetColumn } = await dropOnNextDate();
+      expectSingleCardIn(targetColumn);
+      const undo = deferred<DailyActivity>();
+      mocks.updateActivity.mockReturnValueOnce(undo.promise);
+      await act(async () => { fireEvent.keyDown(window, { key: "z", ctrlKey: true }); });
+      expectSingleCardIn(sourceColumn);
+      await act(async () => { undo.reject(new Error("Undo failed")); });
+      expectSingleCardIn(targetColumn);
+      await view.refresh();
+      expectSingleCardIn(targetColumn);
+    } finally {
+      errorLog.mockRestore();
+    }
+  });
+
+  it("clears movement protection on account change and ignores late save and fetch responses", async () => {
+    const view = renderOptimisticCalendar();
+    const save = deferred<DailyActivity>();
+    mocks.updateActivity.mockReturnValueOnce(save.promise);
+    const { targetColumn } = await dropOnNextDate();
+    expectSingleCardIn(targetColumn);
+    const oldFetch = deferred<typeof originalGoogle[]>();
+    mocks.fetchEvents.mockReturnValueOnce(oldFetch.promise);
+    await view.refresh();
+    mocks.status = { connected: true, connectionId: "account-b" };
+    mocks.fetchEvents.mockResolvedValue([{ ...originalGoogle, title: "Account B card" }]);
+    await view.refresh();
+    expect(screen.getByTitle("Account B card")).toBeTruthy();
+    await act(async () => {
+      save.resolve(movedActivity());
+      oldFetch.resolve([originalGoogle]);
+    });
+    expect(screen.getByTitle("Account B card")).toBeTruthy();
+  });
+
+  it.each(["removed", "unlinked"])("releases the Google card when its moved activity is %s", async mode => {
+    const view = renderOptimisticCalendar();
+    const { targetColumn } = await dropOnNextDate();
+    expectSingleCardIn(targetColumn);
+    mocks.fetchEvents.mockResolvedValue([{ ...originalGoogle, title: "Remaining Google card" }]);
+    await view.refresh();
+    expect(screen.queryByTitle("Remaining Google card")).toBeNull();
+    await view.replaceActivities(mode === "removed" ? [] : [{ ...movedActivity(), googleEventId: null }]);
+    expect(screen.getByTitle("Remaining Google card")).toBeTruthy();
+  });
+});
+
+it("hydrates the visible range manually and displays the last sync in WIB", async () => {
+  mocks.status = { connected: true, syncedAt: "2026-09-29T03:00:00Z" };
+  render(<CalendarView {...props} activities={[]} />);
+  await act(async () => {});
+  fireEvent.click(screen.getByTitle("Sinkronkan sekarang dengan Google Calendar"));
+  expect(mocks.autoSync).toHaveBeenCalledWith(...mocks.setRange.mock.lastCall!, { hydrateRange: true });
+  const timestamp = screen.getByTitle("Sinkronisasi terakhir");
+  expect(timestamp.getAttribute("datetime")).toBe(mocks.status.syncedAt);
+  expect(timestamp.textContent).toContain("10.00 WIB");
+  await act(async () => { vi.advanceTimersByTime(90000); });
+  expect(mocks.autoSync).toHaveBeenCalledTimes(1);
 });
 
 it("clears Google cards immediately on account change and ignores an old range response", async () => {

@@ -19,6 +19,10 @@ export interface CalendarSyncResult {
   syncedAt: string | null;
 }
 
+export interface CalendarSyncOptions {
+  hydrateRange?: boolean;
+}
+
 export const calendarApi = {
   getLayout: (from: string, to: string) =>
     api.get<{ data: CalendarLayoutPreference[] }>(
@@ -68,11 +72,12 @@ export const calendarApi = {
   ) =>
     api.post<{ data: { importedCount: number } }>('/calendar/google/import', { events }).then((r) => r.data.data),
 
-  autoSync: (startDate?: string, endDate?: string) =>
+  autoSync: (startDate?: string, endDate?: string, options: CalendarSyncOptions = {}) =>
     api
       .post<{ data: CalendarSyncResult }>('/calendar/google/auto-sync', {
         startDate,
         endDate,
+        hydrateRange: options.hydrateRange ?? false,
       })
       .then((r) => r.data.data),
 
@@ -100,4 +105,3 @@ export const calendarApi = {
   deleteEvent: (eventId: string) =>
     api.delete<{ data: { id: string } }>(`/calendar/google/events/${eventId}`).then((r) => r.data.data),
 };
-

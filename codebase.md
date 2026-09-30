@@ -180,7 +180,8 @@ Frontend menggunakan pendekatan state management yang modular:
 - Halaman aktivitas harian (`DailyPage.tsx`) mengelola state kalender tanggal terpilih, daftar checklist, mode input waktu, dan alih tampilan antara tabel database 'Semua Kegiatan' dan 'Kalender' Notion-style.
 - Kalender aktivitas harian (`CalendarView.tsx`) mengelola mode tampilan ('week' dan 'day'), penataan layout kegiatan bertumpuk (`computeTimedItemsLayout`), garis horizontal penunjuk waktu sekarang ala Notion Calendar, interaksi drag & drop kartu kalender, penargetan koordinat jam presisi (`HOUR_HEIGHT`), serta pintasan keyboard (`Delete`/`Backspace` untuk hapus, `Ctrl+Z`/`Cmd+Z` untuk stack undo riwayat pembatalan, dan `0`/`w` serta `1`/`d` untuk beralih mode minggu/hari).
 - Menu samping penjadwalan (`CalendarSidebar.tsx`) mengelola daftar item personal dan tugas tim yang belum terjadwal di kalender dengan pencarian instan, kuota scroll, dan payload draggable.
-- Pengaturan kartu kalender terpadu (`CalendarCardSettings.tsx`) menyediakan modal popover terpadu untuk kartu Purrific (`DailyActivity`) maupun kartu Google Calendar (`GoogleCalendarEvent`), menyamakan pengaturan waktu, judul, deskripsi, sub-checklist, tautan Google Calendar, serta aksi hapus dan buka detail.
+- Pengaturan kartu kalender terpadu (`CalendarCardSettings.tsx`) menyediakan modal popover terpadu untuk kartu Purrific (`DailyActivity`) maupun kartu Google Calendar (`GoogleCalendarEvent`), menyamakan pengaturan waktu, judul, deskripsi, sub-checklist, pengulangan (`Repeat`), tautan Google Calendar, serta aksi hapus dan buka detail.
+- `CalendarSyncProvider` memeriksa perubahan Google setiap 30 detik selama aplikasi terlihat, online, dan akun terhubung, termasuk saat berpindah dari halaman Daily. Koneksi baru dan pemulihan tab/jaringan memicu sinkronisasi segera. Pembukaan kalender, perubahan rentang, dan tombol sinkronisasi meminta impor rentang dengan `hydrateRange: true`; rentang yang diminta saat proses berjalan tetap diantrekan. Provider mencoba kembali kegagalan dengan jeda bertahap dan menyiarkan revisi untuk memperbarui aktivitas serta kartu tanpa reload. Kalender menampilkan status proses, perubahan tertunda, dan waktu sinkronisasi terakhir dalam WIB.
 - Grid tabel basis data (`TableGrid.tsx` dan `useTableData.ts`) mengelola struktur kolom, baris data, dan auto-save ke backend.
 
 ## Lapisan komunikasi jaringan (API layer)
@@ -199,6 +200,8 @@ Aplikasi memadukan pustaka `@dnd-kit` untuk komponen berbasis modul serta HTML5 
 3. Tabel data personal (`SortableRow.tsx` dan `SortableTh.tsx`): Baris dan kolom tabel dapat diatur ulang urutannya dengan drag and drop.
 4. Blok dasbor personal (`SortableBlock.tsx`): Pengguna dapat menyusun ulang urutan kartu widget pada halaman dasbor.
 5. Kalender timeline dan sidebar penjadwalan (`CalendarView.tsx` dan `CalendarSidebar.tsx`): Memanfaatkan HTML5 Drag and Drop native untuk memindahkan kartu kalender antar slot jam dan tanggal dengan pelestarian durasi otomatis serta penataan kegiatan berdampingan (side-by-side) ala Notion Calendar, sekaligus mendukung penarikan item tertunda dari sidebar ke kisi kalender secara presisi berdasarkan posisi vertikal (`HOUR_HEIGHT` 60px/jam) yang dilengkapi dukungan stack undo (`Ctrl+Z`).
+
+Perubahan, pemindahan (drag & drop), dan penghapusan pada kartu berulang membuka `RecurrenceScopeModal` ala Notion Calendar dengan tiga pilihan cakupan: `Event ini` (`THIS_EVENT`), `Event ini dan ... seterusnya` (`THIS_AND_FOLLOWING`), serta `Semua event` (`ALL_EVENTS`), lengkap dengan dukungan riwayat pembatalan (`Ctrl+Z`).
 
 ## Tata gaya dan sistem desain
 

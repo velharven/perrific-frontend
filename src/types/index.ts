@@ -196,6 +196,7 @@ export interface RecurrenceConfig {
   freq: RecurrenceFrequency;
   interval: number;
   byDays?: number[]; // 0=Minggu .. 6=Sabtu
+  weekStartsOn?: number; // Fase minggu dari aturan Google Calendar
   byMonthDay?: number; // 1..31
   byWeekOfMonth?: {
     week: number; // 1..4 atau -1 (terakhir)

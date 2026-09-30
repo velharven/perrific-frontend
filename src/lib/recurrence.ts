@@ -182,6 +182,7 @@ export function isSameRecurrence(
 
   if (a.freq === 'WEEKLY') {
     if (normalizeDays(a.byDays) !== normalizeDays(b.byDays)) return false;
+    if ((a.weekStartsOn ?? 0) !== (b.weekStartsOn ?? 0)) return false;
   }
 
   if (a.freq === 'MONTHLY') {
@@ -275,6 +276,12 @@ function matchesRecurrencePattern(
     case 'WEEKLY': {
       const startWeek = startOfSundayWeek(startDate);
       const candWeek = startOfSundayWeek(candidate);
+      if (recurrence.weekStartsOn !== undefined) {
+        startWeek.setTime(startDate.getTime());
+        startWeek.setDate(startDate.getDate() - (startDate.getDay() - recurrence.weekStartsOn + 7) % 7);
+        candWeek.setTime(candidate.getTime());
+        candWeek.setDate(candidate.getDate() - (candidate.getDay() - recurrence.weekStartsOn + 7) % 7);
+      }
       const diffWeeks = Math.round((candWeek.getTime() - startWeek.getTime()) / (7 * 86400000));
       if (diffWeeks < 0 || diffWeeks % interval !== 0) return false;
       const activeDays =

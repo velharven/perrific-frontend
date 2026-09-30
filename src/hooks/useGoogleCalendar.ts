@@ -34,7 +34,6 @@ export function useGoogleCalendar() {
         if (!code) throw new Error("Kode otorisasi Google tidak diterima.");
         const updated = await calendarApi.connect({ code });
         setStatus(updated);
-        void autoSync();
         showToast("Google Calendar berhasil terhubung!");
       } catch (err) {
         const msg =
