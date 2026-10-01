@@ -62,15 +62,11 @@ import {
   Star,
   MoreHorizontal,
   Building2,
-  Users,
   Link2,
   Pencil,
-  Check,
   Settings,
   Trash2,
   LogOut,
-  GripVertical,
-  ArrowLeft,
   ArrowUp,
   ArrowDown,
   AlignLeft,
@@ -84,6 +80,8 @@ import {
   Bell,
 } from 'lucide-react';
 import NotificationPanel from '@/components/notification/NotificationPanel';
+import ArchivePanel from './ArchivePanel';
+import EditSidebarPanel from './EditSidebarPanel';
 import { notificationApi } from '@/api/notifications';
 import Avatar from '@/components/ui/Avatar';
 import ConfirmModal from '@/components/ui/ConfirmModal';
@@ -146,12 +144,62 @@ function DropLine() {
   return <DropIndicator />;
 }
 
+export function sectionLabel(s: string): string {
+  if (s === 'privat') return 'PRIVAT';
+  if (s === 'teams') return 'TIM SAYA';
+  if (s === 'organisasi') return 'ORGANISASI';
+  if (s === 'favorit') return 'FAVORIT';
+  if (s === 'shortcut') return 'SHORTCUT';
+  return s.toUpperCase();
+}
+
+export function renderTeamBadgeHelper(
+  team: Team,
+  teamIcons?: Record<string, string>,
+  draftName?: string,
+) {
+  if (teamIcons && teamIcons[team.id]) {
+    return (
+      <span
+        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-perrific-violet/20 bg-perrific-violet/10 text-perrific-violet"
+        aria-hidden="true"
+      >
+        <ActivityIcon name={teamIcons[team.id]} className="h-3.5 w-3.5" />
+      </span>
+    );
+  }
+  if (team.avatarUrl) {
+    return (
+      <img
+        src={team.avatarUrl}
+        alt=""
+        aria-hidden="true"
+        className="h-6 w-6 shrink-0 rounded-md object-cover"
+      />
+    );
+  }
+  const ch = ((draftName ?? team.name).trim().slice(0, 2) || '?').toUpperCase();
+  return (
+    <span
+      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-perrific-violet/20 bg-perrific-violet/10 font-givonic text-[10px] font-bold text-perrific-violet"
+      aria-hidden="true"
+    >
+      {ch}
+    </span>
+  );
+}
+export { renderTeamBadgeHelper as renderTeamBadge };
+
+
+
 function SidebarContent({
   collapsed,
   onRequestExpand,
   onToggleCollapse,
   onClose,
   onOpenNotifications,
+  onOpenArchive,
+  onOpenEdit,
   unreadCount = 0,
 }: {
   collapsed: boolean;
@@ -159,6 +207,8 @@ function SidebarContent({
   onToggleCollapse?: () => void;
   onClose?: () => void;
   onOpenNotifications?: () => void;
+  onOpenArchive?: () => void;
+  onOpenEdit?: () => void;
   unreadCount?: number;
 }) {
   const { user, logout } = useAuth();
@@ -222,18 +272,17 @@ function SidebarContent({
   const { labels: navLabels, setLabel: setNavLabel } = useNavLabels(user?.id);
   const { map: navIcons, setEntry: setNavIcon } = useSyncedMap('purrific:navIcons', user?.id);
   const { map: teamIcons, setEntry: setTeamIcon } = useSyncedMap('purrific:teamIcons', user?.id);
-  const { hidden: hiddenNav, hide: hideNav, show: showNav, showAll: showAllNav } = useHiddenNav(user?.id);
-  const { hidden: hiddenTeams, hide: hideTeam, show: showTeam, showAll: showAllTeams } = useHiddenTeams(user?.id);
+  const { hidden: hiddenNav, hide: hideNav, show: showNav } = useHiddenNav(user?.id);
+  const { hidden: hiddenTeams, hide: hideTeam, show: showTeam } = useHiddenTeams(user?.id);
   const { isOpen: isSectionOpen, toggle: toggleSection } = useCollapsedSections(user?.id);
   const { sortItems, move, reorder } = useTabOrder(user?.id);
   const { order: sectionOrder, reorder: reorderSections } = useSectionOrder(user?.id);
-  const { active: presetSections, add: addPreset, remove: removePreset } = usePresetSections(user?.id);
+  const { active: presetSections } = usePresetSections(user?.id);
   const { starred, toggle: toggleStar } = useFavorites(user?.id);
   const { items: trashItems, trash: trashTab, restore: restoreTrash } = useTrash(user?.id);
   const { items: shortcuts, add: addShortcut, remove: removeShortcut } = useShortcuts(user?.id);
   const [shortcutPickerOpen, setShortcutPickerOpen] = useState(false);
   const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
-  const [editView, setEditView] = useState<'main' | 'preset'>('main');
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -246,22 +295,8 @@ function SidebarContent({
   const favoritOpen = isSectionOpen('favorit');
   const shortcutOpen = isSectionOpen('shortcut');
 
-  function sectionLabel(s: string): string {
-    if (s === 'privat') return 'PRIVAT';
-    if (s === 'teams') return 'TIM SAYA';
-    if (s === 'organisasi') return 'ORGANISASI';
-    if (s === 'favorit') return 'FAVORIT';
-    if (s === 'shortcut') return 'SHORTCUT';
-    return s.toUpperCase();
-  }
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [createOrgOpen, setCreateOrgOpen] = useState(false);
-  const [archiveOpen, setArchiveOpen] = useState(false);
-  const archiveBtnRef = useRef<HTMLButtonElement>(null);
-  const archivePanelRef = useRef<HTMLDivElement>(null);
-  const archiveBtnMobileRef = useRef<HTMLButtonElement>(null);
-  const [editOpen, setEditOpen] = useState(false);
-  const editBtnRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -339,8 +374,6 @@ function SidebarContent({
   useEffect(() => {
     setMenuOpen(false);
     setCtxMenu(null);
-    setArchiveOpen(false);
-    setEditOpen(false);
     setTemplatePickerOpen(false);
     setTrashOpen(false);
   }, [location.pathname]);
@@ -412,56 +445,10 @@ function SidebarContent({
 
   useEffect(() => {
     if (collapsed) {
-      setArchiveOpen(false);
-      setEditOpen(false);
       setTemplatePickerOpen(false);
     }
   }, [collapsed]);
 
-  function toggleEdit() {
-    setEditOpen((v) => {
-      if (!v) {
-        setArchiveOpen(false);
-        setCtxMenu(null);
-        setMenuOpen(false);
-      } else {
-        setEditView('main');
-      }
-      return !v;
-    });
-  }
-
-  function toggleArchive() {
-    setArchiveOpen((v) => {
-      if (!v) setEditOpen(false);
-      return !v;
-    });
-  }
-
-  useEffect(() => {
-    if (!archiveOpen && !editOpen) return;
-    function onPointerDown(e: PointerEvent) {
-      const target = e.target as Node;
-      const inView = archivePanelRef.current?.contains(target);
-      const inDesktopBtn = archiveBtnRef.current?.contains(target);
-      const inMobileBtn = archiveBtnMobileRef.current?.contains(target);
-      if (!inView && !inDesktopBtn && !inMobileBtn) {
-        setArchiveOpen(false);
-      }
-    }
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') {
-        setArchiveOpen(false);
-        setEditOpen(false);
-      }
-    }
-    document.addEventListener('pointerdown', onPointerDown);
-    document.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown);
-      document.removeEventListener('keydown', onKeyDown);
-    };
-  }, [archiveOpen, editOpen]);
 
   function handleLogout() {
     logout();
@@ -1015,18 +1002,6 @@ function SidebarContent({
   );
   // Arsip privat tanpa yang sudah masuk Sampah. Path polos lawas
   // (/notes, /dashboard, /daily) bukan tab lagi jadi disembunyikan dari arsip.
-  const archivedNav = useMemo(
-    () =>
-      hiddenNav.filter(
-        (to) =>
-          to !== '/notes' &&
-          to !== '/dashboard' &&
-          to !== '/daily' &&
-          !trashedKeys.has(to) &&
-          findNoteByPath(notes, to) !== undefined,
-      ),
-    [hiddenNav, trashedKeys, notes],
-  );
   // Label shortcut live dari target; target hilang -> "Tidak tersedia".
   const shortcutRows = useMemo(
     () =>
@@ -1110,14 +1085,10 @@ function SidebarContent({
     [sortItems, shortcutRows],
   );
   const shortcutKeys = orderedShortcutRows.map((r) => r.id);
-  const sectionIds = sectionOrder.map((s) => `section:${s}`);
   // Drag dimatikan saat rail collapse atau section dilipat.
   const privatDragDisabled = collapsed || !privatOpen;
   const teamsDragDisabled = collapsed || !teamsOpen;
   const orgDragDisabled = collapsed || !organisasiOpen;
-  // Section yang sedang diseret, diturunkan langsung dari activeDragId.
-  const draggingSection =
-    activeDragId && activeDragId.startsWith('section:') ? activeDragId.slice('section:'.length) : null;
 
   // Garis indikator oranye: 'before' = di atas target, 'after' = di bawah target.
   // Section: bandingkan urutan di sectionOrder. Item: bandingkan index dalam
@@ -1190,16 +1161,6 @@ function SidebarContent({
     }
     return null;
   }, [activeDragId, notes, teams, organizations, shortcutRows, navIcons]);
-  const sectionDropTarget =
-    draggingSection && overId && overId.startsWith('section:') && sectionOrder.includes(overId.slice(8) as SidebarSection)
-      ? (overId.slice(8) as SidebarSection)
-      : null;
-  const sectionDropHint: DropHint =
-    draggingSection && sectionDropTarget && sectionDropTarget !== draggingSection
-      ? sectionOrder.indexOf(draggingSection as SidebarSection) < sectionOrder.indexOf(sectionDropTarget)
-        ? 'after'
-        : 'before'
-      : null;
   function itemDropHint(list: string, key: string): DropHint {
     if (!activeDragId || !overId || draggingItemList !== list) return null;
     if (overId !== key || activeDragId === key) return null;
@@ -1504,37 +1465,9 @@ function SidebarContent({
           );
         };
 
-  const renderTeamBadge = (team: Team, draftName?: string) => {
-    if (teamIcons[team.id]) {
-      return (
-        <span
-          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-perrific-violet/20 bg-perrific-violet/10 text-perrific-violet"
-          aria-hidden="true"
-        >
-          <ActivityIcon name={teamIcons[team.id]} className="h-3.5 w-3.5" />
-        </span>
-      );
-    }
-    if (team.avatarUrl) {
-      return (
-        <img
-          src={team.avatarUrl}
-          alt=""
-          aria-hidden="true"
-          className="h-6 w-6 shrink-0 rounded-md object-cover"
-        />
-      );
-    }
-    const ch = ((draftName ?? team.name).trim().slice(0, 2) || '?').toUpperCase();
-    return (
-      <span
-        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-perrific-violet/20 bg-perrific-violet/10 font-givonic text-[10px] font-bold text-perrific-violet"
-        aria-hidden="true"
-      >
-        {ch}
-      </span>
-    );
-  };
+  const renderTeamBadge = (team: Team, draftName?: string) =>
+    renderTeamBadgeHelper(team, teamIcons, draftName);
+
 
   // Baris tim.
   const renderTeamRow = (team: Team) => {
@@ -1791,22 +1724,17 @@ function SidebarContent({
       {onClose && (
         <div className="relative flex shrink-0 items-center justify-between px-3 pt-3 lg:hidden">
           <div className="flex items-center gap-1">
-            <button
-              ref={archiveBtnMobileRef}
-              type="button"
-              onClick={toggleArchive}
-              title={archiveOpen ? 'Tutup arsip' : 'Arsip'}
-              aria-label={archiveOpen ? 'Tutup arsip' : 'Arsip'}
-              aria-expanded={archiveOpen}
-              aria-haspopup="dialog"
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-perrific-graphite/60 transition hover:bg-gray-100 hover:text-perrific-graphite"
-            >
-              {archiveOpen ? (
-                <X size={15} strokeWidth={1.6} aria-hidden="true" />
-              ) : (
+            {onOpenArchive && (
+              <button
+                type="button"
+                onClick={onOpenArchive}
+                title="Arsip"
+                aria-label="Arsip"
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-perrific-graphite/60 transition hover:bg-gray-100 hover:text-perrific-graphite"
+              >
                 <Archive size={16} strokeWidth={1.6} aria-hidden="true" />
-              )}
-            </button>
+              </button>
+            )}
             {onOpenNotifications && (
               <button
                 type="button"
@@ -1859,23 +1787,18 @@ function SidebarContent({
                 collapsed ? 'max-w-0 opacity-0' : 'max-w-[64px] opacity-100'
               }`}
             >
-              <button
-                ref={archiveBtnRef}
-                type="button"
-                onClick={toggleArchive}
-                title={archiveOpen ? 'Tutup arsip' : 'Arsip'}
-                aria-label={archiveOpen ? 'Tutup arsip' : 'Arsip'}
-                aria-expanded={archiveOpen}
-                aria-haspopup="dialog"
-                tabIndex={collapsed ? -1 : 0}
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-gray-500 transition-colors duration-200 hover:bg-gray-100 hover:text-perrific-graphite"
-              >
-                {archiveOpen ? (
-                  <X size={14} strokeWidth={1.6} aria-hidden="true" />
-                ) : (
+              {onOpenArchive && (
+                <button
+                  type="button"
+                  onClick={onOpenArchive}
+                  title="Arsip"
+                  aria-label="Arsip"
+                  tabIndex={collapsed ? -1 : 0}
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-gray-500 transition-colors duration-200 hover:bg-gray-100 hover:text-perrific-graphite"
+                >
                   <Archive size={16} strokeWidth={1.6} aria-hidden="true" />
-                )}
-              </button>
+                </button>
+              )}
               {onOpenNotifications && (
                 <button
                   type="button"
@@ -2004,7 +1927,7 @@ function SidebarContent({
               ) : (
                 <button
                   type="button"
-                  onClick={() => setArchiveOpen(true)}
+                  onClick={onOpenArchive}
                   className="mt-1 inline-flex items-center justify-center font-givonic text-xs font-semibold text-perrific-violet hover:underline"
                 >
                   Lihat arsip
@@ -2463,26 +2386,16 @@ function SidebarContent({
       </div>
 
       <div ref={menuRef} className="relative z-20 shrink-0 border-t border-gray-200 bg-white p-3">
-        {!collapsed && (
+        {!collapsed && onOpenEdit && (
           <button
-            ref={editBtnRef}
             type="button"
-            onClick={toggleEdit}
-            title={editOpen ? 'Selesai mengedit sidebar' : 'Edit sidebar'}
-            aria-label={editOpen ? 'Selesai mengedit sidebar' : 'Edit sidebar'}
-            aria-expanded={editOpen}
-            className={`mb-1 flex w-full items-center gap-2.5 rounded-lg px-3 py-2 font-givonic text-sm font-medium transition-colors duration-200 ${
-              editOpen
-                ? 'bg-perrific-violet/10 text-perrific-red'
-                : 'text-gray-600 hover:bg-gray-100 hover:text-perrific-graphite'
-            }`}
+            onClick={onOpenEdit}
+            title="Edit sidebar"
+            aria-label="Edit sidebar"
+            className="mb-1 flex w-full items-center gap-2.5 rounded-lg px-3 py-2 font-givonic text-sm font-medium text-gray-600 transition-colors duration-200 hover:bg-gray-100 hover:text-perrific-graphite"
           >
-            {editOpen ? (
-              <Check size={16} strokeWidth={1.6} />
-            ) : (
-              <Pencil size={16} strokeWidth={1.6} />
-            )}
-            {editOpen ? 'Selesai' : 'Edit sidebar'}
+            <Pencil size={16} strokeWidth={1.6} />
+            <span>Edit sidebar</span>
           </button>
         )}
         {menuOpen && (
@@ -2570,344 +2483,7 @@ function SidebarContent({
           />
         </button>
       </div>
-      {/* Arsip — mengisi seluruh sidebar (bukan popup), background putih menutup konten */}
-      <div
-        ref={archivePanelRef}
-        role="dialog"
-        aria-label="Arsip"
-        className={`absolute inset-x-0 bottom-0 top-11 z-10 flex-col bg-white transition-all duration-200 ease-in-out ${
-          archiveOpen && !collapsed
-            ? 'visible flex translate-x-0 opacity-100'
-            : 'invisible flex -translate-x-3 opacity-0'
-        }`}
-      >
-        <div className="flex shrink-0 items-center justify-between border-b border-gray-100 px-4 py-3">
-          <p className="font-mono text-[11px] tracking-widest text-perrific-wood">ARSIP</p>
-          {archivedNav.length === 0 && archivedTeams.length === 0 && (
-            <span className="font-mono text-[11px] text-perrific-graphite/40">Kosong</span>
-          )}
-        </div>
-        <div className="nice-scroll min-h-0 flex-1 overflow-y-auto p-3">
-          {archivedNav.length === 0 && archivedTeams.length === 0 ? (
-            <p className="px-2 py-8 text-center font-givonic text-xs leading-relaxed text-perrific-graphite/50">
-              Tidak ada arsip.<br />
-              Arsipkan tab atau tim via menu ⋮ atau klik kanan.
-            </p>
-          ) : (
-            <div className="space-y-4">
-            {archivedNav.length > 0 && (
-            <div>
-            <p className="px-2 pb-1 font-mono text-[10px] tracking-widest text-perrific-wood">PRIVAT</p>
-            <ul className="space-y-1" onClickCapture={suppressPostDragClick}>
-              {archivedNav.map((to) => {
-                const note = findNoteByPath(notes, to);
-                if (!note) return null;
-                const displayLabel = note.title || 'Tanpa judul';
-                const customIcon = navIcons[to];
-    if (!editFromShortcut && !editFromFavorit && editingNoteId === note.id) {
-                  return (
-                    <li key={to}>
-                      <div className={navRowClass(false)}>
-                        {customIcon ? (
-                          <ActivityIcon name={customIcon} className="h-4 w-4 shrink-0 text-gray-400" />
-                        ) : (
-                          <span className="shrink-0 text-gray-400">{defaultNoteIcon}</span>
-                        )}
-                        <input
-                          autoFocus
-                          value={noteDraft}
-                          onChange={(e) => setNoteDraft(e.target.value)}
-                          onBlur={() => commitNoteEdit(note)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') commitNoteEdit(note);
-                            if (e.key === 'Escape') {
-                              setEditingNoteId(null);
-                              setNoteDraft('');
-                            }
-                          }}
-                          maxLength={120}
-                          aria-label={`Ubah nama tab ${note.title}`}
-                          className="ml-2.5 min-w-0 flex-1 rounded-md border border-perrific-violet/40 bg-white px-1.5 py-0.5 text-sm focus:outline-none"
-                        />
-                      </div>
-                    </li>
-                  );
-                }
-                return (
-                  <li key={to} className="group relative">
-                    <NavLink
-                      to={to}
-                      className={({ isActive }) => `${navRowClass(isActive)} pr-8`}
-                      onDoubleClick={() => startNoteEdit(note)}
-                      onContextMenu={(e) => openCtxMenu(e, { kind: 'nav', to, label: displayLabel })}
-                      title="Klik kanan untuk opsi"
-                    >
-                      {customIcon ? (
-                        <ActivityIcon name={customIcon} className="h-4 w-4 shrink-0" />
-                      ) : (
-                        <span className="shrink-0">{defaultNoteIcon}</span>
-                      )}
-                      <span className="ml-2.5 min-w-0 flex-1 truncate font-givonic text-sm">
-                        {displayLabel}
-                      </span>
-                      {starred.includes(to) && (
-                        <Star size={12} className="shrink-0 fill-amber-400 text-amber-400" />
-                      )}
-                    </NavLink>
-                    <button
-                      type="button"
-                      aria-label={`Opsi untuk ${displayLabel}`}
-                      aria-haspopup="menu"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openCtxMenu(e, { kind: 'nav', to, label: displayLabel });
-                      }}
-                      className="absolute right-1 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md bg-white/80 text-gray-400 opacity-0 shadow-sm backdrop-blur transition hover:bg-gray-100 hover:text-perrific-graphite focus:opacity-100 focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100"
-                    >
-                      <MoreHorizontal size={14} strokeWidth={1.6} />
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-            </div>
-            )}
-            {archivedTeams.length > 0 && (
-            <div>
-            <p className="px-2 pb-1 font-mono text-[10px] tracking-widest text-perrific-graphite/40">TIM</p>
-            <ul className="space-y-1" onClickCapture={suppressPostDragClick}>
-              {archivedTeams.map((team) => {
-    if (!editFromShortcut && !editFromFavorit && editingTeam === team.id) {
-                  return (
-                    <li key={team.id}>
-                      <div className={navRowClass(false)}>
-                        {renderTeamBadge(team, teamDraft)}
-                        <input
-                          autoFocus
-                          value={teamDraft}
-                          onChange={(e) => setTeamDraft(e.target.value)}
-                          onBlur={() => commitTeamEdit(team)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') commitTeamEdit(team);
-                            if (e.key === 'Escape') {
-                              setEditingTeam(null);
-                              setTeamDraft('');
-                            }
-                          }}
-                          maxLength={60}
-                          aria-label={`Ubah nama tim ${team.name}`}
-                          className="ml-2.5 min-w-0 flex-1 rounded-md border border-perrific-violet/40 bg-white px-1.5 py-0.5 text-sm focus:outline-none"
-                        />
-                      </div>
-                    </li>
-                  );
-                }
-                return (
-                  <li key={team.id} className="group relative">
-                    <NavLink
-                      to={`/team/${team.id}`}
-                      className={({ isActive }) => `${navRowClass(isActive)} pr-8`}
-                      onDoubleClick={() => startTeamEdit(team)}
-                      onContextMenu={(e) => openCtxMenu(e, { kind: 'team', team })}
-                      title="Klik kanan untuk opsi"
-                    >
-                      {renderTeamBadge(team)}
-                      <span className="ml-2.5 min-w-0 flex-1 truncate font-givonic text-sm">
-                        {team.name}
-                      </span>
-                      {starred.includes(team.id) && (
-                        <Star size={12} className="shrink-0 fill-amber-400 text-amber-400" />
-                      )}
-                    </NavLink>
-                    <button
-                      type="button"
-                      aria-label={`Opsi untuk ${team.name}`}
-                      aria-haspopup="menu"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openCtxMenu(e, { kind: 'team', team });
-                      }}
-                      className="absolute right-1 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md bg-white/80 text-gray-400 opacity-0 shadow-sm backdrop-blur transition hover:bg-gray-100 hover:text-perrific-graphite focus:opacity-100 focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100"
-                    >
-                      <MoreHorizontal size={14} strokeWidth={1.6} />
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-            </div>
-            )}
-            </div>
-          )}
-        </div>
-        {(archivedNav.length > 0 || archivedTeams.length > 0) && (
-          <div className="shrink-0 border-t border-gray-100 p-3">
-            <button
-              type="button"
-              onClick={() => {
-                showAllNav();
-                showAllTeams();
-              }}
-              className="w-full rounded-lg bg-gray-900 px-3 py-2 font-givonic text-xs font-semibold text-white hover:bg-black transition"
-            >
-              Keluarkan semua
-            </button>
-          </div>
-        )}
-      </div>
-      {/* Edit sidebar — background menutup seluruh tab, berisi aksi tambah bagian */}
-      <div
-        role="dialog"
-        aria-label="Edit sidebar"
-        className={`absolute inset-x-0 bottom-0 top-11 z-10 flex-col bg-white transition-all duration-200 ease-in-out ${
-          editOpen && !collapsed
-            ? 'visible flex translate-x-0 opacity-100'
-            : 'invisible flex -translate-x-3 opacity-0'
-        }`}
-      >
-        <div className="flex shrink-0 items-center justify-between border-b border-gray-100 px-4 py-3">
-          {editView === 'preset' ? (
-            <button
-              type="button"
-              onClick={() => setEditView('main')}
-              aria-label="Kembali ke edit sidebar"
-              className="flex items-center gap-2 font-givonic text-xs font-semibold text-perrific-graphite/60 transition hover:text-perrific-graphite"
-            >
-              <ArrowLeft size={12} strokeWidth={1.6} />
-              Kembali
-            </button>
-          ) : (
-            <p className="font-mono text-[11px] tracking-widest text-perrific-wood">EDIT SIDEBAR</p>
-          )}
-        </div>
-        <div className="nice-scroll min-h-0 flex-1 overflow-y-auto p-3">
-          {editView === 'preset' ? (
-            <div className="space-y-1" aria-label="Pilih bagian baru">
-              {(
-                [
-                  {
-                    id: 'privat',
-                    name: 'Privat',
-                    desc: 'Tab pribadi: harian, note',
-                    icon: <FileText size={15} strokeWidth={1.6} />,
-                    iconClass: 'bg-perrific-violet/10 text-perrific-violet',
-                  },
-                  {
-                    id: 'teams',
-                    name: 'Tim Saya',
-                    desc: 'Tim dan proyekmu',
-                    icon: <Users size={15} strokeWidth={1.6} />,
-                    iconClass: 'bg-green-600/10 text-green-700',
-                  },
-                  {
-                    id: 'organisasi',
-                    name: 'Organisasi',
-                    desc: 'Kolaborasi dan delegasi antar-tim',
-                    icon: <Building2 size={15} strokeWidth={1.6} />,
-                    iconClass: 'bg-blue-600/10 text-blue-600',
-                  },
-                  {
-                    id: 'favorit',
-                    name: 'Favorit',
-                    desc: 'Tab berbintang pilihanmu',
-                    icon: <Star size={15} className="fill-amber-500 text-amber-500" strokeWidth={1.6} />,
-                    iconClass: 'bg-amber-100 text-amber-500',
-                  },
-                  {
-                    id: 'shortcut',
-                    name: 'Shortcut',
-                    desc: 'Pintas ke halaman',
-                    icon: <Link2 size={15} strokeWidth={1.6} />,
-                    iconClass: 'bg-sky-100 text-sky-600',
-                  },
-                ] as const
-              ).map((p) => (
-                <div key={p.id} className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5">
-                  <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${p.iconClass}`}>
-                    {p.icon}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block font-givonic text-sm font-semibold text-perrific-graphite">
-                      {p.name}
-                    </span>
-                    <span className="block truncate font-givonic text-xs text-perrific-graphite/50">
-                      {p.desc}
-                    </span>
-                  </span>
-                  {presetSections.includes(p.id) ? (
-                    <button
-                      type="button"
-                      onClick={() => removePreset(p.id)}
-                      aria-label={`Hapus bagian ${p.name}`}
-                      className="shrink-0 rounded-full border border-red-200 px-3 py-1 font-givonic text-xs font-semibold text-red-600 transition hover:bg-red-50"
-                    >
-                      Hapus
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => addPreset(p.id)}
-                      aria-label={`Tambah bagian ${p.name}`}
-                      className="shrink-0 rounded-full bg-perrific-violet px-3 py-1 font-givonic text-xs font-semibold text-white transition hover:bg-perrific-red"
-                    >
-                      Tambah
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <>
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragStart={handleSidebarDragStart}
-            onDragOver={handleSidebarDragOver}
-            onDragEnd={handleSidebarDragEnd}
-            onDragCancel={handleSidebarDragCancel}
-          >
-            <SortableContext items={sectionIds} strategy={verticalListSortingStrategy}>
-              <div className="space-y-1" aria-label="Urutan bagian sidebar">
-                {sectionOrder.map((s) => {
-                  const hint = sectionDropTarget === s ? sectionDropHint : null;
-                  return (
-                    <Fragment key={`section:${s}`}>
-                      {hint === 'before' && <DropLine />}
-                      <SortableTabRow
-                        id={`section:${s}`}
-                        className="flex cursor-grab items-center gap-2 rounded-lg px-3 py-2 transition-colors duration-200 hover:bg-gray-100 active:cursor-grabbing"
-                      >
-                        <span
-                          aria-hidden="true"
-                          className="flex h-6 w-6 shrink-0 items-center justify-center text-perrific-graphite/30"
-                        >
-                          <GripVertical size={14} strokeWidth={1.6} />
-                        </span>
-                        <span className="font-mono text-[11px] tracking-widest text-perrific-wood">
-                          {sectionLabel(s)}
-                        </span>
-                      </SortableTabRow>
-                      {hint === 'after' && <DropLine />}
-                    </Fragment>
-                  );
-                })}
-              </div>
-            </SortableContext>
-          </DndContext>
-          <button
-            type="button"
-            onClick={() => setEditView('preset')}
-            title="Tambah bagian baru"
-            aria-label="Tambah bagian baru"
-            className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-gray-300 px-3 py-3 font-givonic text-sm font-semibold text-perrific-graphite/60 transition hover:border-perrific-violet hover:text-perrific-violet"
-          >
-            <Plus size={14} strokeWidth={1.6} />
-            Bagian baru
-          </button>
-            </>
-          )}
-        </div>
-      </div>
+
       {templatePickerOpen &&
         createPortal(
           <div
@@ -3614,6 +3190,7 @@ export function isAppSidebarCollapsed(): boolean {
 }
 
 export default function AppLayout() {
+  const { user } = useAuth();
   const { socket } = useSocket();
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => {
@@ -3624,7 +3201,21 @@ export default function AppLayout() {
     }
   });
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [archiveOpen, setArchiveOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
+
+  const { hidden: hiddenNav, show: showNav, showAll: showAllNav } = useHiddenNav(user?.id);
+  const { hidden: hiddenTeams, show: showTeam, showAll: showAllTeams } = useHiddenTeams(user?.id);
+  const { starred } = useFavorites(user?.id);
+  const { items: trashItems } = useTrash(user?.id);
+  const { map: navIcons } = useSyncedMap('purrific:navIcons', user?.id);
+  const { map: teamIcons } = useSyncedMap('purrific:teamIcons', user?.id);
+  const { order: sectionOrder, reorder: reorderSections } = useSectionOrder(user?.id);
+  const { active: presetSections, add: addPreset, remove: removePreset } = usePresetSections(user?.id);
 
   const refreshUnreadCount = useCallback(() => {
     notificationApi
@@ -3640,6 +3231,79 @@ export default function AppLayout() {
   }, [refreshUnreadCount]);
 
   useEffect(() => {
+    let cancelled = false;
+    const fetchTeams = () => {
+      teamApi
+        .listMyTeams()
+        .then((list) => {
+          if (!cancelled) setTeams(list);
+        })
+        .catch(() => {
+          if (!cancelled) setTeams([]);
+        });
+    };
+    const onStorage = (e: StorageEvent) => {
+      if (!e.key || e.key === TEAMS_CHANGED_EVENT) {
+        fetchTeams();
+      }
+    };
+    fetchTeams();
+    window.addEventListener(TEAMS_CHANGED_EVENT, fetchTeams);
+    window.addEventListener('storage', onStorage);
+    if (socket) {
+      socket.on('team:updated', fetchTeams);
+    }
+    return () => {
+      cancelled = true;
+      window.removeEventListener(TEAMS_CHANGED_EVENT, fetchTeams);
+      window.removeEventListener('storage', onStorage);
+      if (socket) {
+        socket.off('team:updated', fetchTeams);
+      }
+    };
+  }, [socket]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchNotes = () => {
+      noteApi
+        .listMine()
+        .then((list) => {
+          if (!cancelled) setNotes(list);
+        })
+        .catch(() => {
+          if (!cancelled) setNotes([]);
+        });
+    };
+    fetchNotes();
+    window.addEventListener(NOTES_CHANGED_EVENT, fetchNotes);
+    return () => {
+      cancelled = true;
+      window.removeEventListener(NOTES_CHANGED_EVENT, fetchNotes);
+    };
+  }, []);
+
+  const trashedKeys = useMemo(() => new Set(trashItems.map((t: TrashedItem) => t.id)), [trashItems]);
+
+  const archivedTeams = useMemo(
+    () => teams.filter((t) => hiddenTeams.includes(t.id) && !trashedKeys.has(t.id)),
+    [teams, hiddenTeams, trashedKeys],
+  );
+
+  const archivedNav = useMemo(
+    () =>
+      hiddenNav.filter(
+        (to) =>
+          to !== '/notes' &&
+          to !== '/dashboard' &&
+          to !== '/daily' &&
+          !trashedKeys.has(to) &&
+          findNoteByPath(notes, to) !== undefined,
+      ),
+    [hiddenNav, trashedKeys, notes],
+  );
+
+  useEffect(() => {
     if (!socket) return;
 
     const handleNew = (notif: any) => {
@@ -3651,6 +3315,8 @@ export default function AppLayout() {
         onAction: () => {
           setCollapsed(true);
           setOpen(false);
+          setArchiveOpen(false);
+          setEditOpen(false);
           setNotificationsOpen(true);
         },
       });
@@ -3681,11 +3347,46 @@ export default function AppLayout() {
   function handleOpenNotifications() {
     setCollapsed(true);
     setOpen(false);
+    setArchiveOpen(false);
+    setEditOpen(false);
     setNotificationsOpen(true);
   }
 
   function handleCloseNotifications() {
     setNotificationsOpen(false);
+    setCollapsed(false);
+  }
+
+  function handleOpenArchive() {
+    setCollapsed(true);
+    setOpen(false);
+    setNotificationsOpen(false);
+    setEditOpen(false);
+    setArchiveOpen(true);
+  }
+
+  function handleCloseArchive() {
+    setArchiveOpen(false);
+    setCollapsed(false);
+  }
+
+  function handleOpenEdit() {
+    setCollapsed(true);
+    setOpen(false);
+    setNotificationsOpen(false);
+    setArchiveOpen(false);
+    setEditOpen(true);
+  }
+
+  function handleCloseEdit() {
+    setEditOpen(false);
+    setCollapsed(false);
+  }
+
+  function handleCloseAnyPanel() {
+    setNotificationsOpen(false);
+    setArchiveOpen(false);
+    setEditOpen(false);
     setCollapsed(false);
   }
 
@@ -3695,6 +3396,8 @@ export default function AppLayout() {
 
   useEffect(() => {
     setOpen(false);
+    setArchiveOpen(false);
+    setEditOpen(false);
   }, [location.pathname]);
 
   function toggleCollapsed() {
@@ -3739,12 +3442,14 @@ export default function AppLayout() {
           onRequestExpand={() => setCollapsed(false)}
           onToggleCollapse={toggleCollapsed}
           onOpenNotifications={handleOpenNotifications}
+          onOpenArchive={handleOpenArchive}
+          onOpenEdit={handleOpenEdit}
           unreadCount={unreadCount}
         />
       </aside>
 
       {/* Tombol buka sidebar saat tertutup penuh */}
-      {collapsed && !notificationsOpen && (
+      {collapsed && !notificationsOpen && !archiveOpen && !editOpen && (
         <button
           type="button"
           onClick={toggleCollapsed}
@@ -3766,6 +3471,8 @@ export default function AppLayout() {
           collapsed={false}
           onClose={() => setOpen(false)}
           onOpenNotifications={handleOpenNotifications}
+          onOpenArchive={handleOpenArchive}
+          onOpenEdit={handleOpenEdit}
           unreadCount={unreadCount}
         />
       </aside>
@@ -3794,12 +3501,12 @@ export default function AppLayout() {
         </main>
       </div>
 
-      {/* Backdrop saat notifikasi terbuka */}
-      {notificationsOpen && (
+      {/* Backdrop saat notifikasi, arsip, atau edit sidebar terbuka */}
+      {(notificationsOpen || archiveOpen || editOpen) && (
         <button
           type="button"
-          aria-label="Tutup notifikasi"
-          onClick={handleCloseNotifications}
+          aria-label="Tutup panel"
+          onClick={handleCloseAnyPanel}
           className="fixed inset-0 z-40 bg-black/25 backdrop-blur-[1px] transition-opacity"
         />
       )}
@@ -3809,6 +3516,36 @@ export default function AppLayout() {
         open={notificationsOpen}
         onClose={handleCloseNotifications}
         onUnreadCountChange={setUnreadCount}
+      />
+
+      {/* Drawer panel arsip dengan tombol X di pojok kiri atas */}
+      <ArchivePanel
+        open={archiveOpen}
+        onClose={handleCloseArchive}
+        archivedNav={archivedNav}
+        archivedTeams={archivedTeams}
+        notes={notes}
+        navIcons={navIcons}
+        starred={starred}
+        onUnarchiveAll={() => {
+          showAllNav();
+          showAllTeams();
+        }}
+        onUnarchiveNav={showNav}
+        onUnarchiveTeam={showTeam}
+        renderTeamBadge={(team) => renderTeamBadgeHelper(team, teamIcons)}
+      />
+
+      {/* Drawer panel edit sidebar dengan tombol X di pojok kiri atas */}
+      <EditSidebarPanel
+        open={editOpen}
+        onClose={handleCloseEdit}
+        sectionOrder={sectionOrder}
+        presetSections={presetSections}
+        onReorderSections={reorderSections}
+        onAddPreset={addPreset}
+        onRemovePreset={removePreset}
+        sectionLabel={sectionLabel}
       />
 
       <UsernameModal />
