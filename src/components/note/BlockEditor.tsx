@@ -24,6 +24,7 @@ import {
 import DropIndicator from '@/components/layout/DropIndicator';
 import EmbeddedTable from '@/components/table/EmbeddedTable';
 import { TABLE_ADD_EVENT } from '@/components/table/TableGrid';
+import { Table, FileText, Plus, GripVertical, ChevronDown, ArrowUpRight, Maximize2, X, Check } from 'lucide-react';
 import type { BlockFocus, DropHint, NoteBlock, NoteBlockType } from './noteBlocks';
 import { getBlock, getDropHint } from './noteBlocks';
 
@@ -63,15 +64,9 @@ function autoGrow(el: HTMLTextAreaElement | null) {
 
 function PageIcon({ table, className }: { table: boolean; className?: string }) {
   return table ? (
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className ?? 'shrink-0 text-gray-400'}>
-      <rect x="2.5" y="3.5" width="11" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.4" />
-      <path d="M2.5 6.5h11M7 6.5v6" stroke="currentColor" strokeWidth="1.4" />
-    </svg>
+    <Table size={14} className={className ?? 'shrink-0 text-gray-400'} aria-hidden="true" />
   ) : (
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className ?? 'shrink-0 text-gray-400'}>
-      <path d="M4 2.5h5.5L12.5 5.5V13.5H4V2.5z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-      <path d="M9.5 2.5v3h3" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-    </svg>
+    <FileText size={14} className={className ?? 'shrink-0 text-gray-400'} aria-hidden="true" />
   );
 }
 
@@ -89,11 +84,9 @@ function HoverCluster({
         onClick={onPlus}
         title="Tambah blok teks di bawah"
         aria-label="Tambah blok teks di bawah"
-        className="flex h-6 w-6 items-center justify-center rounded-md text-gray-400 transition hover:bg-gray-100 hover:text-perrific-graphite"
+        className="flex h-6 w-6 items-center justify-center rounded-md text-gray-400 transition hover:bg-gray-100 hover:text-perrific-graphite cursor-pointer"
       >
-        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-          <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-        </svg>
+        <Plus size={13} strokeWidth={1.8} aria-hidden="true" />
       </button>
       <button
         type="button"
@@ -104,14 +97,7 @@ function HoverCluster({
         aria-label="Seret untuk memindahkan blok"
         className="flex h-6 w-6 cursor-grab items-center justify-center rounded-md text-gray-300 transition hover:bg-gray-100 hover:text-gray-500 active:cursor-grabbing"
       >
-        <svg width="10" height="14" viewBox="0 0 10 14" fill="none" aria-hidden="true">
-          <circle cx="3" cy="2.5" r="1.2" fill="currentColor" />
-          <circle cx="7" cy="2.5" r="1.2" fill="currentColor" />
-          <circle cx="3" cy="7" r="1.2" fill="currentColor" />
-          <circle cx="7" cy="7" r="1.2" fill="currentColor" />
-          <circle cx="3" cy="11.5" r="1.2" fill="currentColor" />
-          <circle cx="7" cy="11.5" r="1.2" fill="currentColor" />
-        </svg>
+        <GripVertical size={14} className="text-gray-400" aria-hidden="true" />
       </button>
     </span>
   );
@@ -162,18 +148,14 @@ function BlockRow({
               title={tableOpen ? 'Lipat tabel' : 'Buka tabel'}
               aria-label={tableOpen ? 'Lipat tabel' : 'Buka tabel'}
               aria-expanded={tableOpen}
-              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-gray-400 transition hover:bg-gray-100 hover:text-perrific-graphite"
+              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-gray-400 transition hover:bg-gray-100 hover:text-perrific-graphite cursor-pointer"
             >
-              <svg
-                width="10"
-                height="10"
-                viewBox="0 0 16 16"
-                fill="none"
+              <ChevronDown
+                size={14}
+                strokeWidth={1.8}
                 aria-hidden="true"
                 className={`transition-transform duration-150 ${tableOpen ? '' : '-rotate-90'}`}
-              >
-                <path d="M4.5 6.5L8 10l3.5-3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              />
             </button>
           ) : (
             <span className="w-6 shrink-0" aria-hidden="true" />
@@ -195,9 +177,7 @@ function BlockRow({
               <span className="min-w-0 truncate font-givonic text-[15px] text-perrific-graphite group-hover/link:underline">
                 {target.title}
               </span>
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true" className="shrink-0 text-perrific-violet opacity-0 transition group-hover:opacity-100 group-hover/link:opacity-100">
-                <path d="M4.5 11.5L11.5 4.5M7 4.5h4.5V9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <ArrowUpRight size={12} strokeWidth={1.8} aria-hidden="true" className="shrink-0 text-perrific-violet opacity-0 transition group-hover:opacity-100 group-hover/link:opacity-100" />
             </Link>
           ) : (
             <span className="flex min-w-0 flex-1 items-center gap-1.5 px-1 py-[3px]" title="Halaman tidak tersedia">
@@ -218,7 +198,7 @@ function BlockRow({
                     }),
                   )
                 }
-                className="shrink-0 rounded-lg bg-perrific-violet px-2.5 py-1 font-givonic text-[11px] font-semibold text-white transition hover:brightness-110"
+                className="shrink-0 rounded-lg bg-perrific-violet px-2.5 py-1 font-givonic text-[11px] font-semibold text-white transition hover:brightness-110 cursor-pointer"
               >
                 Baru
               </button>
@@ -228,9 +208,7 @@ function BlockRow({
                 aria-label="Buka penuh"
                 className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-gray-400 transition hover:bg-gray-100 hover:text-perrific-graphite"
               >
-                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                  <path d="M9.5 2.5h4v4M13.5 2.5L9 7M6.5 13.5h-4v-4M2.5 13.5L7 9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+                <Maximize2 size={13} strokeWidth={1.6} aria-hidden="true" />
               </Link>
             </>
           )}
@@ -239,11 +217,9 @@ function BlockRow({
             onClick={() => h.onRemovePointer(block.id)}
             title={target?.table ? 'Hapus tabel ke Sampah (bisa diurungkan)' : 'Lepas subhalaman dari sini (halamannya tetap ada)'}
             aria-label={target?.table ? 'Hapus tabel ke Sampah' : 'Lepas subhalaman dari sini'}
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-gray-300 opacity-0 transition hover:bg-gray-100 hover:text-red-500 focus:opacity-100 group-hover:opacity-100 max-sm:opacity-100"
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-gray-300 opacity-0 transition hover:bg-gray-100 hover:text-red-500 focus:opacity-100 group-hover:opacity-100 max-sm:opacity-100 cursor-pointer"
           >
-            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-            </svg>
+            <X size={11} strokeWidth={1.8} aria-hidden="true" />
           </button>
         </div>
         {target?.table && tableOpen && (
@@ -289,11 +265,9 @@ function BlockRow({
               onClick={() => h.onRemoveBlock(block.id)}
               title="Hapus pembatas"
               aria-label="Hapus pembatas"
-              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-gray-300 opacity-0 transition hover:bg-gray-100 hover:text-red-500 focus:opacity-100 group-hover:opacity-100 max-sm:opacity-100"
+              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-gray-300 opacity-0 transition hover:bg-gray-100 hover:text-red-500 focus:opacity-100 group-hover:opacity-100 max-sm:opacity-100 cursor-pointer"
             >
-              <svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-              </svg>
+              <X size={11} strokeWidth={1.8} aria-hidden="true" />
             </button>
           </div>
           {lineAfter}
@@ -320,18 +294,14 @@ function BlockRow({
               title={block.collapsed ? 'Buka' : 'Lipat'}
               aria-label={block.collapsed ? 'Buka blok' : 'Lipat blok'}
               aria-expanded={!block.collapsed}
-              className="flex h-6 w-6 items-center justify-center rounded-md text-gray-400 transition hover:bg-gray-100 hover:text-perrific-graphite"
+              className="flex h-6 w-6 items-center justify-center rounded-md text-gray-400 transition hover:bg-gray-100 hover:text-perrific-graphite cursor-pointer"
             >
-              <svg
-                width="10"
-                height="10"
-                viewBox="0 0 16 16"
-                fill="none"
+              <ChevronDown
+                size={14}
+                strokeWidth={1.8}
                 aria-hidden="true"
                 className={`transition-transform duration-150 ${block.collapsed ? '-rotate-90' : ''}`}
-              >
-                <path d="M4.5 6.5L8 10l3.5-3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              />
             </button>
           ) : block.type === 'todo' ? (
             <button
@@ -347,9 +317,7 @@ function BlockRow({
               }`}
             >
               {block.checked && (
-                <svg width="10" height="10" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                  <path d="M4 8l2.5 2.5L12 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+                <Check size={11} strokeWidth={2.4} aria-hidden="true" />
               )}
             </button>
           ) : block.type === 'bullet' ? (
@@ -464,9 +432,7 @@ function BlockRow({
           aria-label="Hapus blok"
           className="flex h-6 w-6 shrink-0 items-center justify-center self-start rounded-md text-gray-300 opacity-0 transition hover:bg-gray-100 hover:text-red-500 focus:opacity-100 group-hover:opacity-100 max-sm:opacity-100"
         >
-          <svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-          </svg>
+          <X size={11} strokeWidth={1.8} aria-hidden="true" />
         </button>
       </div>
       {lineAfter}

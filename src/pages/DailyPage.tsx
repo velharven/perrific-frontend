@@ -43,6 +43,19 @@ import TeamTaskView from '@/components/daily/TeamTaskView';
 import PersonalProjectKanbanView from '@/components/daily/PersonalProjectKanbanView';
 import RecurrenceScopeModal from '@/components/daily/RecurrenceScopeModal';
 import { UndoStackProvider, useUndo } from '@/hooks/useUndoStack';
+import {
+  GripVertical,
+  AlertTriangle,
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  Table as TableIcon,
+  Kanban,
+  FolderKanban,
+  Filter,
+  ArrowUpDown,
+  Search,
+} from 'lucide-react';
 import { useCalendarSync } from '@/store/calendarSync';
 import { doesActivityOccurOnDate, getDayBefore, projectActivityOntoDate } from '@/lib/recurrence';
 import type { DailyActivity, DailyColumn, DailyColumnType, RecurrenceConfig, RecurrenceEditScope } from '@/types';
@@ -174,14 +187,7 @@ function SortableRow({
             aria-label="Seret untuk memindahkan baris"
             className="absolute left-[-20px] top-1/2 -translate-y-1/2 cursor-grab touch-none px-0.5 text-gray-300 opacity-0 transition hover:text-gray-500 focus:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100 active:cursor-grabbing max-sm:opacity-100"
           >
-            <svg width="10" height="14" viewBox="0 0 10 14" fill="none" aria-hidden="true">
-              <circle cx="3" cy="2.5" r="1.3" fill="currentColor" />
-              <circle cx="7" cy="2.5" r="1.3" fill="currentColor" />
-              <circle cx="3" cy="7" r="1.3" fill="currentColor" />
-              <circle cx="7" cy="7" r="1.3" fill="currentColor" />
-              <circle cx="3" cy="11.5" r="1.3" fill="currentColor" />
-              <circle cx="7" cy="11.5" r="1.3" fill="currentColor" />
-            </svg>
+            <GripVertical size={14} className="text-gray-400" aria-hidden="true" />
           </span>
           <input
             type="checkbox"
@@ -2165,9 +2171,7 @@ function DailyPageInner() {
                 title="Belum ditambahkan ke kalender (jam mulai & selesai belum diisi)"
                 className="flex h-4 w-4 shrink-0 items-center justify-center text-amber-500"
               >
-                <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor">
-                  <path d="M7.938 2.016a.13.13 0 0 1 .125 0l6.857 11.856c.026.045.026.1 0 .145a.14.14 0 0 1-.125.073H1.205a.14.14 0 0 1-.125-.073.17.17 0 0 1 0-.145L7.938 2.016zm.854 4.484a.5.5 0 0 0-.992 0l-.3 3.5a.5.5 0 0 0 .992.08l.3-3.58zm-.496 5.5a.65.65 0 1 0 0 1.3.65.65 0 0 0 0-1.3z" />
-                </svg>
+                <AlertTriangle size={15} strokeWidth={1.8} />
               </span>
             ) : (
               <ActivityIcon name={a.icon} className="h-4 w-4 shrink-0 text-gray-400" />
@@ -2312,10 +2316,7 @@ function DailyPageInner() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="flex items-center gap-2 text-3xl font-bold tracking-tight text-gray-900">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true" className="text-gray-900">
-              <rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" strokeWidth="2" />
-              <path d="M3 10h18M8 3v4M16 3v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-            </svg>
+            <Calendar size={26} strokeWidth={1.8} className="text-gray-900" aria-hidden="true" />
             Jadwal Harian
           </h1>
           <div className="mt-1.5 flex flex-wrap items-center gap-2">
@@ -2333,9 +2334,7 @@ function DailyPageInner() {
                 aria-label="Hari sebelumnya"
                 className="rounded p-1 text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition"
               >
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                  <path d="M10 12L6 8l4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+                <ChevronLeft size={14} strokeWidth={1.8} />
               </button>
               <button
                 type="button"
@@ -2350,9 +2349,7 @@ function DailyPageInner() {
                 aria-label="Hari berikutnya"
                 className="rounded p-1 text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition"
               >
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                  <path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+                <ChevronRight size={14} strokeWidth={1.8} />
               </button>
             </div>
 
@@ -2385,10 +2382,7 @@ function DailyPageInner() {
                 : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
             }`}
           >
-            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <rect x="2" y="2.5" width="12" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
-              <path d="M2 6h12M6 6v7.5" stroke="currentColor" strokeWidth="1.5" />
-            </svg>
+            <TableIcon size={14} strokeWidth={1.6} aria-hidden="true" />
             Semua Kegiatan
           </button>
           <button
@@ -2402,10 +2396,7 @@ function DailyPageInner() {
                 : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
             }`}
           >
-            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <rect x="2" y="3" width="12" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
-              <path d="M2 6.5h12M5.5 1.5v3M10.5 1.5v3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
+            <Calendar size={14} strokeWidth={1.6} aria-hidden="true" />
             Kalender
           </button>
           <button
@@ -2419,10 +2410,7 @@ function DailyPageInner() {
                 : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
             }`}
           >
-            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <rect x="2" y="2" width="5" height="12" rx="1" stroke="currentColor" strokeWidth="1.4" />
-              <rect x="9" y="2" width="5" height="7" rx="1" stroke="currentColor" strokeWidth="1.4" />
-            </svg>
+            <Kanban size={14} strokeWidth={1.6} aria-hidden="true" />
             Task Team
           </button>
           <button
@@ -2436,10 +2424,7 @@ function DailyPageInner() {
                 : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
             }`}
           >
-            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.4" />
-              <path d="M5 6h6M5 9h4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-            </svg>
+            <FolderKanban size={14} strokeWidth={1.6} aria-hidden="true" />
             Project Pribadi
           </button>
         </div>
@@ -2452,9 +2437,7 @@ function DailyPageInner() {
             aria-label="Filter"
             className="cursor-not-allowed rounded-md p-2 text-gray-400"
           >
-            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <path d="M2.5 4h11L9.5 8.5V13l-3 1.5V8.5L2.5 4z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-            </svg>
+            <Filter size={15} strokeWidth={1.6} aria-hidden="true" />
           </button>
           <button
             type="button"
@@ -2463,9 +2446,7 @@ function DailyPageInner() {
             aria-label="Urutkan"
             className="cursor-not-allowed rounded-md p-2 text-gray-400"
           >
-            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <path d="M5.5 2.5v11M5.5 2.5L3 5M5.5 2.5L8 5M10.5 13.5v-11M10.5 13.5L8 11M10.5 13.5l2.5-2.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            <ArrowUpDown size={15} strokeWidth={1.6} aria-hidden="true" />
           </button>
           <button
             type="button"
@@ -2474,10 +2455,7 @@ function DailyPageInner() {
             aria-label="Cari"
             className="cursor-not-allowed rounded-md p-2 text-gray-400"
           >
-            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.4" />
-              <path d="M10.5 10.5L14 14" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-            </svg>
+            <Search size={15} strokeWidth={1.6} aria-hidden="true" />
           </button>
           <button
             onClick={() => void handleNewPage()}

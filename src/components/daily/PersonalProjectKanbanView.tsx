@@ -13,6 +13,7 @@ import { APP_SIDEBAR_EVENT, isAppSidebarCollapsed } from '@/components/layout/Ap
 import { ActivityIcon } from '@/components/icons';
 import { useAuth } from '@/store/auth';
 import { useUndo } from '@/hooks/useUndoStack';
+import { Kanban, ChevronDown, Filter, Search, X } from 'lucide-react';
 import type { BoardColumn, Project, Task } from '@/types';
 
 function compareTasks(a: Task, b: Task) {
@@ -581,10 +582,7 @@ export default function PersonalProjectKanbanView() {
         {/* Sisi Kiri: Info Project Pribadi */}
         <div className="flex min-w-0 items-center gap-2.5">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-orange-100 text-orange-700 shadow-2xs">
-            <svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.5" />
-              <path d="M5 6h6M5 9h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
+            <Kanban size={18} strokeWidth={1.6} />
           </div>
           <div className="min-w-0">
             <h1 className="truncate font-givonic text-lg font-bold text-gray-800">
@@ -616,7 +614,7 @@ export default function PersonalProjectKanbanView() {
       {/* Floating Cell Pill Search Bar (Identik dengan BoardPage.tsx + Dropup Project Switcher) */}
       <div
         className={`pointer-events-none fixed inset-x-0 bottom-4 z-30 flex justify-center transition-[left] duration-200 ${
-          sbCollapsed ? 'md:left-[68px]' : 'md:left-64'
+          sbCollapsed ? 'md:left-0' : 'md:left-64'
         }`}
       >
         <div className="pointer-events-auto flex max-w-full items-center gap-2 rounded-full border border-gray-300 bg-white/95 p-2 shadow-[0_8px_24px_rgba(26,26,30,0.14)] backdrop-blur">
@@ -639,21 +637,14 @@ export default function PersonalProjectKanbanView() {
                 : 'bg-orange-50 text-orange-700 hover:bg-orange-100'
             }`}
           >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true" className="shrink-0">
-              <rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.5" />
-              <path d="M5 6h6M5 9h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
+            <Kanban size={14} strokeWidth={1.6} className="shrink-0" />
             <span className="truncate">{project?.name ?? 'Project Pribadi'}</span>
-            <svg
-              width="12"
-              height="12"
-              viewBox="0 0 16 16"
-              fill="none"
+            <ChevronDown
+              size={12}
+              strokeWidth={1.8}
               aria-hidden="true"
               className={`shrink-0 transition-transform duration-150 ${projectMenuOpen ? 'rotate-180' : ''}`}
-            >
-              <path d="M4 10l4-4 4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            />
           </button>
 
           <div aria-hidden="true" className="h-5 w-px shrink-0 bg-gray-400" />
@@ -676,15 +667,7 @@ export default function PersonalProjectKanbanView() {
                 : 'text-gray-800 hover:bg-gray-200 hover:text-black'
             }`}
           >
-            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <path
-                d="M2.5 3.5h11l-4.2 4.8v3.4l-2.6 1.5V8.3L2.5 3.5z"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+            <Filter size={15} strokeWidth={1.6} />
             Filter
             {filterOptionCount > 0 && (
               <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-white px-1.5 font-givonic text-[11px] font-bold text-perrific-graphite">
@@ -694,17 +677,12 @@ export default function PersonalProjectKanbanView() {
           </button>
 
           <div className="relative w-48 min-w-0 sm:w-72">
-            <svg
-              width="15"
-              height="15"
-              viewBox="0 0 16 16"
-              fill="none"
+            <Search
+              size={15}
+              strokeWidth={1.6}
               aria-hidden="true"
               className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
-            >
-              <circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.5" />
-              <path d="M10.5 10.5L14 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
+            />
             <input
               value={filterSearch}
               onChange={(e) => setFilterSearch(e.target.value)}
@@ -756,17 +734,12 @@ export default function PersonalProjectKanbanView() {
 
             {/* Searchbar Project */}
             <div className="relative mt-2">
-              <svg
-                width="13"
-                height="13"
-                viewBox="0 0 16 16"
-                fill="none"
+              <Search
+                size={13}
+                strokeWidth={1.6}
                 aria-hidden="true"
                 className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400"
-              >
-                <circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.5" />
-                <path d="M10.5 10.5L14 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-              </svg>
+              />
               <input
                 value={projectSearch}
                 onChange={(e) => setProjectSearch(e.target.value)}
@@ -906,9 +879,7 @@ export default function PersonalProjectKanbanView() {
               aria-label="Tutup"
               className="absolute right-0 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-perrific-graphite"
             >
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-              </svg>
+              <X size={14} strokeWidth={1.6} />
             </button>
           </div>
           <form onSubmit={handleCreate} className="mt-3">
@@ -1090,9 +1061,7 @@ export default function PersonalProjectKanbanView() {
               aria-label="Tutup"
               className="absolute right-0 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-800"
             >
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-              </svg>
+              <X size={14} strokeWidth={1.6} />
             </button>
           </div>
 
@@ -1162,9 +1131,7 @@ export default function PersonalProjectKanbanView() {
               aria-label="Tutup"
               className="absolute right-0 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-800"
             >
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-              </svg>
+              <X size={14} strokeWidth={1.6} />
             </button>
           </div>
 

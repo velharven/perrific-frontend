@@ -9,6 +9,7 @@ import { notifyNotesChanged } from '@/pages/NotePage';
 import { notifyTeamsChanged, useTrash } from '@/hooks/useNavLabels';
 import { useAuth } from '@/store/auth';
 import { UndoStackProvider, useUndo } from '@/hooks/useUndoStack';
+import { MoreVertical } from 'lucide-react';
 
 function TablePageInner() {
   const { tableId } = useParams<{ tableId: string }>();
@@ -166,13 +167,9 @@ function TablePageInner() {
                 aria-expanded={menuOpen}
                 aria-haspopup="menu"
                 aria-label="Menu tabel"
-                className="flex h-8 w-8 items-center justify-center rounded-lg text-perrific-graphite/50 transition hover:bg-gray-100 hover:text-perrific-graphite"
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-perrific-graphite/50 transition hover:bg-gray-100 hover:text-perrific-graphite cursor-pointer"
               >
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                  <circle cx="8" cy="3.2" r="1.4" fill="currentColor" />
-                  <circle cx="8" cy="8" r="1.4" fill="currentColor" />
-                  <circle cx="8" cy="12.8" r="1.4" fill="currentColor" />
-                </svg>
+                <MoreVertical size={16} strokeWidth={1.6} aria-hidden="true" />
               </button>
               {menuOpen && (
                 <div

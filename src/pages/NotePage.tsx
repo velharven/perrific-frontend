@@ -4,6 +4,7 @@ import { noteApi } from '@/api/notes';
 import { notifyTeamsChanged, readTrashIds, useHiddenNav, useTrash } from '@/hooks/useNavLabels';
 import { UndoStackProvider, useUndo } from '@/hooks/useUndoStack';
 import { useAuth } from '@/store/auth';
+import { Image as ImageIcon, X, Upload, MoreVertical } from 'lucide-react';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import ModalShell from '@/components/ui/ModalShell';
 import CropEditorModal from '@/components/note/CropEditorModal';
@@ -635,11 +636,7 @@ function NotePageInner() {
               aria-haspopup="dialog"
               className="flex items-center gap-1.5 rounded-lg px-2 py-1 font-givonic text-xs font-medium text-perrific-graphite/45 transition hover:bg-gray-100 hover:text-perrific-graphite"
             >
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                <rect x="2.5" y="3.5" width="11" height="9.5" rx="1.5" stroke="currentColor" strokeWidth="1.4" />
-                <circle cx="5.8" cy="7" r="1.1" fill="currentColor" />
-                <path d="M3.5 11.5l3-3 2 2 2.5-2.5 1.5 1.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <ImageIcon size={14} strokeWidth={1.6} aria-hidden="true" />
               Tambahkan sampul
             </button>
           </div>
@@ -654,22 +651,17 @@ function NotePageInner() {
               onClick={() => setCoverOpen(false)}
               aria-label="Tutup"
               autoFocus
-              className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-perrific-graphite"
+              className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-perrific-graphite cursor-pointer"
             >
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-              </svg>
+              <X size={14} strokeWidth={1.6} aria-hidden="true" />
             </button>
           </div>
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
-            className="mb-2 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-gray-300 px-3 py-2.5 font-givonic text-sm font-semibold text-perrific-graphite/60 transition hover:border-perrific-violet hover:text-perrific-violet"
+            className="mb-2 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-gray-300 px-3 py-2.5 font-givonic text-sm font-semibold text-perrific-graphite/60 transition hover:border-perrific-violet hover:text-perrific-violet cursor-pointer"
           >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <path d="M8 10.5v-8M5 5.5L8 2.5l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M2.5 10.5v2a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-            </svg>
+            <Upload size={14} strokeWidth={1.6} aria-hidden="true" />
             Upload gambar
           </button>
           <input
@@ -751,11 +743,7 @@ function NotePageInner() {
             aria-label="Menu halaman"
             className="flex h-8 w-8 items-center justify-center rounded-lg text-perrific-graphite/50 transition hover:bg-gray-100 hover:text-perrific-graphite"
           >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <circle cx="8" cy="3.2" r="1.4" fill="currentColor" />
-              <circle cx="8" cy="8" r="1.4" fill="currentColor" />
-              <circle cx="8" cy="12.8" r="1.4" fill="currentColor" />
-            </svg>
+            <MoreVertical size={16} strokeWidth={1.6} aria-hidden="true" />
           </button>
           {pageMenuOpen && (
             <div

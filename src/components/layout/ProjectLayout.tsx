@@ -4,6 +4,7 @@ import { projectApi } from '@/api/projects';
 import { teamApi } from '@/api/teams';
 import { APPROVALS_CHANGED_EVENT } from '@/components/team/ApprovalLists';
 import { ActivityIcon } from '@/components/icons';
+import { PanelLeftOpen, ChevronRight, Home, Settings } from 'lucide-react';
 import { PROJECT_UPDATED_EVENT } from '@/pages/ProjectSettingsPage';
 import { useAuth } from '@/store/auth';
 import type { Project } from '@/types';
@@ -103,34 +104,32 @@ export default function ProjectLayout() {
   return (
     <div className="flex min-h-screen bg-perrific-paper">
       <aside
-        className={`hidden shrink-0 flex-col bg-perrific-graphite p-4 text-white md:sticky md:top-0 md:flex md:h-screen md:overflow-y-auto ${
-          collapsed ? 'w-[68px]' : 'w-56'
+        className={`hidden shrink-0 flex-col bg-perrific-graphite text-white transition-[width,padding] duration-200 ease-in-out md:sticky md:top-0 md:flex md:h-screen md:overflow-y-auto ${
+          collapsed ? 'w-0 p-0 overflow-hidden border-0' : 'w-56 p-4'
         }`}
       >
-        <div className="flex items-center justify-start">
-          <button
-            type="button"
-            onClick={() => {
-              setCollapsed((v) => {
-                const next = !v;
-                try {
-                  localStorage.setItem('purrific:project-sidebar-collapsed', next ? '1' : '0');
-                } catch {
-                  // abaikan
-                }
-                window.dispatchEvent(new Event(PROJECT_SIDEBAR_EVENT));
-                return next;
-              });
-            }}
-            title={collapsed ? 'Buka sidebar project' : 'Tutup sidebar project'}
-            aria-label={collapsed ? 'Buka sidebar project' : 'Tutup sidebar project'}
-            aria-expanded={!collapsed}
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-white/80 transition hover:bg-white/10 hover:text-white"
-          >
-            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <rect x="2.5" y="2.5" width="11" height="11" rx="2" stroke="currentColor" strokeWidth="1.5" />
-              <path d="M6.5 2.5v11" stroke="currentColor" strokeWidth="1.5" />
-            </svg>
+        <div className="flex h-full w-48 min-w-[12rem] flex-col">
+          <div className="flex items-center justify-start">
+            <button
+              type="button"
+              onClick={() => {
+                setCollapsed((v) => {
+                  const next = !v;
+                  try {
+                    localStorage.setItem('purrific:project-sidebar-collapsed', next ? '1' : '0');
+                  } catch {
+                    // abaikan
+                  }
+                  window.dispatchEvent(new Event(PROJECT_SIDEBAR_EVENT));
+                  return next;
+                });
+              }}
+              title="Tutup sidebar project"
+              aria-label="Tutup sidebar project"
+              aria-expanded={!collapsed}
+              className="flex h-9 w-9 items-center justify-center rounded-lg text-white/80 transition hover:bg-white/10 hover:text-white"
+            >
+            <PanelLeftOpen size={16} strokeWidth={1.6} aria-hidden="true" />
           </button>
         </div>
         <nav className="mt-4 space-y-1" aria-label="Navigasi project">
@@ -199,14 +198,33 @@ export default function ProjectLayout() {
               collapsed ? 'justify-center' : ''
             }`}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true" className="shrink-0">
-              <path d="M3 10.5 12 3l9 7.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M5 9.5V21h14V9.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            <Home size={16} strokeWidth={1.6} aria-hidden="true" className="shrink-0" />
             {!collapsed && 'Kembali'}
           </Link>
         </div>
+        </div>
       </aside>
+
+      {/* Tombol buka sidebar project saat tertutup penuh */}
+      {collapsed && (
+        <button
+          type="button"
+          onClick={() => {
+            setCollapsed(false);
+            try {
+              localStorage.setItem('purrific:project-sidebar-collapsed', '0');
+            } catch {
+              // abaikan
+            }
+            window.dispatchEvent(new Event(PROJECT_SIDEBAR_EVENT));
+          }}
+          title="Buka sidebar project"
+          aria-label="Buka sidebar project"
+          className="fixed left-3 top-3 z-30 hidden h-8 w-8 items-center justify-center rounded-lg bg-white text-perrific-graphite transition hover:bg-gray-100 md:flex"
+        >
+          <ChevronRight size={16} strokeWidth={1.6} aria-hidden="true" />
+        </button>
+      )}
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-20 border-b border-gray-200 bg-white/90 px-4 py-3 backdrop-blur md:hidden">
@@ -220,10 +238,7 @@ export default function ProjectLayout() {
                   aria-label="Settings"
                   className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-perrific-graphite"
                 >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                    <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.6" />
-                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
+                  <Settings size={15} strokeWidth={1.6} aria-hidden="true" />
                 </Link>
               )}
               {project && (

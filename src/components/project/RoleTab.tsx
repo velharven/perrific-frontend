@@ -5,6 +5,7 @@ import ConfirmModal from '@/components/ui/ConfirmModal';
 import ModalShell from '@/components/ui/ModalShell';
 import Avatar from '@/components/ui/Avatar';
 import { showToast } from '@/components/ui/Toast';
+import { ChevronDown } from 'lucide-react';
 import { PERMISSION_META, type ProjectMember, type ProjectRole } from '@/types';
 
 // Tab Role khusus admin: role custom per project (Approver, Front, Back,
@@ -161,11 +162,14 @@ export default function RoleTab({ projectId }: { projectId: string }) {
                   aria-expanded={open}
                   aria-label={`${open ? 'Tutup' : 'Buka'} permission ${r.name}`}
                   title={`${open ? 'Tutup' : 'Lihat'} permission`}
-                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-gray-500 transition hover:bg-gray-200 hover:text-perrific-graphite"
+                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-gray-500 transition hover:bg-gray-200 hover:text-perrific-graphite cursor-pointer"
                 >
-                  <svg width="10" height="10" viewBox="0 0 16 16" fill="none" aria-hidden="true" className={`transition-transform duration-200 ${open ? '' : '-rotate-90'}`}>
-                    <path d="M4.5 6.5L8 10l3.5-3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
+                  <ChevronDown
+                    size={14}
+                    strokeWidth={1.8}
+                    aria-hidden="true"
+                    className={`transition-transform duration-200 ${open ? '' : '-rotate-90'}`}
+                  />
                 </button>
                 <div className="min-w-0 flex-1">
                   {editingId === r.id ? (

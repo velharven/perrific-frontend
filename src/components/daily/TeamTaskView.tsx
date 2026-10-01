@@ -33,6 +33,20 @@ import ModalShell from '@/components/ui/ModalShell';
 import TaskDetailView from '@/components/task/TaskDetailView';
 import { showToast } from '@/components/ui/Toast';
 import { useUndoStack } from '@/hooks/useUndoStack';
+import {
+  Clock,
+  ChevronRight,
+  ChevronLeft,
+  Users,
+  Kanban,
+  ArrowUpRight,
+  Filter,
+  Search,
+  X,
+  ChevronsUpDown,
+  ChevronsDownUp,
+  Check,
+} from 'lucide-react';
 import type { Team, Project, BoardColumn, Task, AssignedTeamTask, TaskPriority } from '@/types';
 
 const PRIORITY_META: Record<TaskPriority, { label: string; badgeClass: string }> = {
@@ -158,10 +172,7 @@ function CardView({
               dueInfo.isOverdue ? 'bg-rose-100 text-rose-700' : 'bg-gray-100 text-gray-600'
             }`}
           >
-            <svg width="10" height="10" viewBox="0 0 16 16" fill="none">
-              <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.4" />
-              <path d="M8 4.5v3.8l2.5 1.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-            </svg>
+            <Clock size={10} strokeWidth={1.6} />
             {dueInfo.text}
           </span>
         )}
@@ -291,9 +302,7 @@ function Column({
             aria-expanded="false"
             className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-perrific-violet transition hover:bg-gray-300 cursor-pointer"
           >
-            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            <ChevronRight size={12} strokeWidth={1.8} />
           </button>
           <span aria-hidden="true" className="h-3 w-3 shrink-0 rounded-[3px]" style={{ backgroundColor: color }} />
           <span className="truncate font-givonic text-xs font-bold tracking-widest text-gray-500 [writing-mode:vertical-rl]">
@@ -320,9 +329,7 @@ function Column({
               aria-expanded="true"
               className="flex h-6 w-6 items-center justify-center rounded-md text-gray-400 transition hover:bg-gray-300 hover:text-gray-700 cursor-pointer"
             >
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                <path d="M10 4L6 8l4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <ChevronLeft size={12} strokeWidth={1.8} />
             </button>
           </div>
           <div className="kanban-scroll h-[400px] min-h-[400px] max-h-[400px] flex-1 space-y-2 overflow-y-auto pr-0.5">
@@ -1111,9 +1118,7 @@ export default function TeamTaskView({ onRefreshDaily: _onRefreshDaily }: TeamTa
       ) : displayedTeams.length === 0 ? (
         <div className="rounded-2xl border border-gray-200 bg-white py-16 text-center shadow-xs">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-50 text-orange-600">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-            </svg>
+            <Users size={28} strokeWidth={1.6} />
           </div>
           <h3 className="mt-4 font-givonic text-base font-semibold text-gray-800">
             {onlyWithTasks || filterSearch || filterPriority
@@ -1169,16 +1174,14 @@ export default function TeamTaskView({ onRefreshDaily: _onRefreshDaily }: TeamTa
                       aria-label={isTeamOpen ? `Ciutkan tim ${team.name}` : `Bentangkan tim ${team.name}`}
                       className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-200/80 hover:text-gray-900 transition cursor-pointer"
                     >
-                      <svg
-                        className={`h-4 w-4 transition-transform duration-200 ${
+                      <ChevronRight
+                        size={16}
+                        strokeWidth={1.8}
+                        className={`transition-transform duration-200 ${
                           isTeamOpen ? 'rotate-90 text-gray-800' : 'text-gray-400'
                         }`}
-                        viewBox="0 0 16 16"
-                        fill="none"
                         aria-hidden="true"
-                      >
-                        <path d="M6 3.5l5 4.5-5 4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
+                      />
                     </button>
 
                     {/* Avatar / Foto Tim */}
@@ -1266,24 +1269,19 @@ export default function TeamTaskView({ onRefreshDaily: _onRefreshDaily }: TeamTa
                                     aria-label={isProjOpen ? `Ciutkan board ${project.name}` : `Bentangkan board ${project.name}`}
                                     className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-gray-400 hover:bg-gray-200 hover:text-gray-700 transition cursor-pointer"
                                   >
-                                    <svg
-                                      className={`h-3.5 w-3.5 transition-transform duration-200 ${
+                                    <ChevronRight
+                                      size={14}
+                                      strokeWidth={1.8}
+                                      className={`transition-transform duration-200 ${
                                         isProjOpen ? 'rotate-90 text-gray-700' : 'text-gray-400'
                                       }`}
-                                      viewBox="0 0 16 16"
-                                      fill="none"
                                       aria-hidden="true"
-                                    >
-                                      <path d="M6 3.5l5 4.5-5 4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                                    </svg>
+                                    />
                                   </button>
 
                                   {/* Ikon Project */}
                                   <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-white text-gray-600 shadow-2xs border border-gray-200/80">
-                                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-                                      <rect x="2" y="2.5" width="12" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.4" />
-                                      <path d="M6 2.5v11M10 2.5v11" stroke="currentColor" strokeWidth="1.4" />
-                                    </svg>
+                                    <Kanban size={13} strokeWidth={1.6} />
                                   </span>
 
                                   <span className="truncate font-givonic text-xs font-semibold text-gray-800">
@@ -1310,7 +1308,7 @@ export default function TeamTaskView({ onRefreshDaily: _onRefreshDaily }: TeamTa
                                     className="hidden sm:flex items-center gap-1 rounded-md px-2 py-1 font-givonic text-[11px] font-medium text-gray-500 hover:bg-white hover:text-orange-700 hover:shadow-2xs transition"
                                   >
                                     <span>Board Tim</span>
-                                    <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 11L11 5M11 5H6M11 5V10" /></svg>
+                                    <ArrowUpRight size={11} strokeWidth={1.8} aria-hidden="true" />
                                   </Link>
                                 </div>
                               </div>
@@ -1364,7 +1362,7 @@ export default function TeamTaskView({ onRefreshDaily: _onRefreshDaily }: TeamTa
       {/* ========================================================================= */}
       <div
         className={`pointer-events-none fixed inset-x-0 bottom-4 z-30 flex justify-center transition-[left] duration-200 ${
-          sbCollapsed ? 'md:left-[68px]' : 'md:left-64'
+          sbCollapsed ? 'md:left-0' : 'md:left-64'
         }`}
       >
         <div className="pointer-events-auto flex max-w-full items-center gap-2 rounded-full border border-gray-300 bg-white/95 p-2 shadow-[0_8px_24px_rgba(26,26,30,0.14)] backdrop-blur">
@@ -1382,9 +1380,7 @@ export default function TeamTaskView({ onRefreshDaily: _onRefreshDaily }: TeamTa
                 : 'text-gray-800 hover:bg-gray-200 hover:text-black'
             }`}
           >
-            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <path d="M2.5 3.5h11l-4.2 4.8v3.4l-2.6 1.5V8.3L2.5 3.5z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            <Filter size={15} strokeWidth={1.6} aria-hidden="true" />
             Filter
             {filterOptionCount > 0 && (
               <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-white px-1.5 font-givonic text-[11px] font-bold text-perrific-graphite">
@@ -1395,17 +1391,7 @@ export default function TeamTaskView({ onRefreshDaily: _onRefreshDaily }: TeamTa
 
           {/* Input Pencarian Bulat */}
           <div className="relative w-48 min-w-0 sm:w-72">
-            <svg
-              width="15"
-              height="15"
-              viewBox="0 0 16 16"
-              fill="none"
-              aria-hidden="true"
-              className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
-            >
-              <circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.5" />
-              <path d="M10.5 10.5L14 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
+            <Search size={15} strokeWidth={1.6} aria-hidden="true" className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               value={filterSearch}
               onChange={(e) => setFilterSearch(e.target.value)}
@@ -1414,7 +1400,9 @@ export default function TeamTaskView({ onRefreshDaily: _onRefreshDaily }: TeamTa
               className="w-full rounded-full bg-gray-100 py-2.5 pl-10 pr-8 font-givonic text-sm text-gray-800 placeholder:text-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-perrific-violet/30"
             />
             {filterSearch && (
-              <button type="button" onClick={() => setFilterSearch('')} aria-label="Hapus pencarian" className="absolute right-3 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded-full text-gray-400 hover:bg-gray-200 hover:text-gray-700 cursor-pointer"><svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M2 2l8 8M10 2L2 10" /></svg></button>
+              <button type="button" onClick={() => setFilterSearch('')} aria-label="Hapus pencarian" className="absolute right-3 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded-full text-gray-400 hover:bg-gray-200 hover:text-gray-700 cursor-pointer">
+                <X size={10} strokeWidth={2} aria-hidden="true" />
+              </button>
             )}
           </div>
 
@@ -1426,13 +1414,11 @@ export default function TeamTaskView({ onRefreshDaily: _onRefreshDaily }: TeamTa
             aria-label={allExpanded ? 'Tutup semua hierarki' : 'Buka semua hierarki'}
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition cursor-pointer"
           >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              {allExpanded ? (
-                <path d="M4 6l4-4 4 4M4 10l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              ) : (
-                <path d="M4 2l4 4 4-4M4 14l4-4 4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              )}
-            </svg>
+            {allExpanded ? (
+              <ChevronsDownUp size={16} strokeWidth={1.5} aria-hidden="true" />
+            ) : (
+              <ChevronsUpDown size={16} strokeWidth={1.5} aria-hidden="true" />
+            )}
           </button>
         </div>
       </div>
@@ -1462,7 +1448,7 @@ export default function TeamTaskView({ onRefreshDaily: _onRefreshDaily }: TeamTa
                 }`}
               >
                 <span>{opt.label}</span>
-                {filterPriority === opt.v && <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3.5 8.5l3 3 6-6" /></svg>}
+                {filterPriority === opt.v && <Check size={12} strokeWidth={2.2} aria-hidden="true" />}
               </button>
             ))}
 
@@ -1479,7 +1465,7 @@ export default function TeamTaskView({ onRefreshDaily: _onRefreshDaily }: TeamTa
               }`}
             >
               <span>Hanya yang ada tugas saya</span>
-              {onlyWithTasks && <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3.5 8.5l3 3 6-6" /></svg>}
+              {onlyWithTasks && <Check size={12} strokeWidth={2.2} aria-hidden="true" />}
             </button>
 
             {filterOptionCount > 0 && (
@@ -1519,9 +1505,7 @@ export default function TeamTaskView({ onRefreshDaily: _onRefreshDaily }: TeamTa
               aria-label="Tutup"
               className="absolute right-0 top-0 flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700 cursor-pointer"
             >
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-              </svg>
+              <X size={14} strokeWidth={1.6} aria-hidden="true" />
             </button>
 
             <TaskDetailView

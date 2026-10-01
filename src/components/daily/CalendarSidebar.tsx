@@ -6,6 +6,7 @@ import { teamApi } from '@/api/teams';
 import { ActivityIcon } from '@/components/icons';
 import { useSocket } from '@/store/socket';
 import { useCalendarSync } from '@/store/calendarSync';
+import { AlertTriangle, Loader2, X } from 'lucide-react';
 
 interface CalendarSidebarProps {
   activities: DailyActivity[];
@@ -217,9 +218,7 @@ export default function CalendarSidebar({
       <div className="flex items-center justify-between border-b border-gray-200 p-3 bg-gray-50/80 rounded-t-2xl">
         <div className="flex items-center gap-2">
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
-            <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor">
-              <path d="M7.938 2.016a.13.13 0 0 1 .125 0l6.857 11.856c.026.045.026.1 0 .145a.14.14 0 0 1-.125.073H1.205a.14.14 0 0 1-.125-.073.17.17 0 0 1 0-.145L7.938 2.016zm.854 4.484a.5.5 0 0 0-.992 0l-.3 3.5a.5.5 0 0 0 .992.08l.3-3.58zm-.496 5.5a.65.65 0 1 0 0 1.3.65.65 0 0 0 0-1.3z" />
-            </svg>
+            <AlertTriangle size={15} strokeWidth={1.6} />
           </div>
 
           <div>
@@ -305,7 +304,7 @@ export default function CalendarSidebar({
               onClick={() => setSearch('')}
               className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
             >
-              ×
+              <X size={13} strokeWidth={1.6} />
             </button>
           )}
         </div>
@@ -347,9 +346,7 @@ export default function CalendarSidebar({
                   >
                     <div className="flex items-start gap-2">
                       <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center text-amber-500">
-                        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-                          <path d="M7.938 2.016a.13.13 0 0 1 .125 0l6.857 11.856c.026.045.026.1 0 .145a.14.14 0 0 1-.125.073H1.205a.14.14 0 0 1-.125-.073.17.17 0 0 1 0-.145L7.938 2.016zm.854 4.484a.5.5 0 0 0-.992 0l-.3 3.5a.5.5 0 0 0 .992.08l.3-3.58zm-.496 5.5a.65.65 0 1 0 0 1.3.65.65 0 0 0 0-1.3z" />
-                        </svg>
+                        <AlertTriangle size={14} strokeWidth={1.6} />
                       </span>
 
                       <div className="min-w-0 flex-1">
@@ -387,10 +384,7 @@ export default function CalendarSidebar({
           <>
             {loadingTasks && teamTasks.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-8 text-center text-xs text-gray-400">
-                <svg className="mb-2 h-5 w-5 animate-spin text-orange-500" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-                </svg>
+                <Loader2 size={20} className="mb-2 animate-spin text-orange-500" />
                 <p>Memuat tugas tim…</p>
               </div>
             ) : unscheduledTeamTasks.length === 0 ? (
@@ -466,10 +460,7 @@ export default function CalendarSidebar({
           <>
             {loadingPersonalTasks && personalTasks.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-8 text-center text-xs text-gray-400">
-                <svg className="mb-2 h-5 w-5 animate-spin text-amber-500" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-                </svg>
+                <Loader2 size={20} className="mb-2 animate-spin text-amber-500" />
                 <p>Memuat tugas project pribadi…</p>
               </div>
             ) : unscheduledPersonalTasks.length === 0 ? (
@@ -500,9 +491,7 @@ export default function CalendarSidebar({
                   >
                     <div className="flex items-start gap-2">
                       <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center text-amber-500" title="Belum diatur di kalender">
-                        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-                          <path d="M7.938 2.016a.13.13 0 0 1 .125 0l6.857 11.856c.026.045.026.1 0 .145a.14.14 0 0 1-.125.073H1.205a.14.14 0 0 1-.125-.073.17.17 0 0 1 0-.145L7.938 2.016zm.854 4.484a.5.5 0 0 0-.992 0l-.3 3.5a.5.5 0 0 0 .992.08l.3-3.58zm-.496 5.5a.65.65 0 1 0 0 1.3.65.65 0 0 0 0-1.3z" />
-                        </svg>
+                        <AlertTriangle size={14} strokeWidth={1.6} />
                       </span>
 
                       <div className="min-w-0 flex-1">

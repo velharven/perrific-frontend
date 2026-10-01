@@ -1,3 +1,5 @@
+import { ChevronRight } from 'lucide-react';
+
 export default function Footer() {
   return (
     <footer className="border-t border-perrific-line bg-white">
@@ -20,9 +22,7 @@ export default function Footer() {
                 className="inline-flex items-center gap-1.5 rounded-full bg-perrific-violet px-4 py-2 font-givonic text-xs font-semibold text-white hover:bg-[#E64D0A] transition"
               >
                 Coba Gratis
-                <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
-                  <path d="M5 3l5 5-5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+                <ChevronRight size={12} strokeWidth={1.8} />
               </a>
               <a
                 href="#fitur"

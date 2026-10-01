@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/store/auth';
 import { useUsernameAvailability } from '@/hooks/useUsernameAvailability';
@@ -449,11 +450,9 @@ export default function SettingsPage() {
           <button
             type="button"
             onClick={handleLogout}
-            className="inline-flex items-center gap-2 rounded-full border border-red-200 px-5 py-2.5 font-givonic text-sm font-semibold text-red-600 transition hover:bg-red-50"
+            className="inline-flex items-center gap-2 rounded-full border border-red-200 px-5 py-2.5 font-givonic text-sm font-semibold text-red-600 transition hover:bg-red-50 cursor-pointer"
           >
-            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <path d="M6 3H3.5v10H6M10.5 5.5L13 8l-2.5 2.5M13 8H6.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            <LogOut size={15} strokeWidth={1.6} aria-hidden="true" />
             Keluar
           </button>
         </div>

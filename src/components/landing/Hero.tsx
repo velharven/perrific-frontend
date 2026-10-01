@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { ChevronRight, PanelLeft, Archive, Calendar, FileText, Users, CheckCircle2, Lightbulb } from 'lucide-react';
 
 export default function Hero() {
   return (
@@ -37,16 +38,12 @@ export default function Hero() {
             className="group inline-flex items-center gap-2 rounded-full bg-perrific-violet px-7 py-3.5 font-givonic text-sm font-semibold text-white shadow-[0_4px_16px_rgba(255,80,11,0.25)] hover:bg-[#E64D0A] hover:shadow-[0_6px_20px_rgba(255,80,11,0.35)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-perrific-violet focus-visible:ring-offset-2 focus-visible:ring-offset-perrific-paper active:scale-[0.98] transition-all"
           >
             Mulai Gratis
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 16 16"
-              fill="none"
+            <ChevronRight
+              size={16}
+              strokeWidth={1.8}
               className="transition-transform group-hover:translate-x-0.5"
               aria-hidden="true"
-            >
-              <path d="M5 3l5 5-5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            />
           </Link>
           <a
             href="#cara-kerja"
@@ -91,21 +88,14 @@ export default function Hero() {
                   <div className="flex items-center justify-between pb-3 border-b border-gray-100/80">
                     <div className="flex items-center gap-2">
                       <div className="flex h-6 w-6 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-500 shadow-2xs">
-                        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                          <rect x="2.5" y="2.5" width="11" height="11" rx="2" stroke="currentColor" strokeWidth="1.5" />
-                          <path d="M6.5 2.5v11" stroke="currentColor" strokeWidth="1.5" />
-                        </svg>
+                        <PanelLeft size={13} strokeWidth={1.5} aria-hidden="true" />
                       </div>
                       <span className="font-givonic text-xs font-bold text-perrific-graphite">
                         Purrific Workspace
                       </span>
                     </div>
                     <span className="flex h-6 w-6 items-center justify-center rounded-md text-gray-400 hover:text-gray-600">
-                      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                        <path d="M2.5 3.5h11L11 6.5H5L2.5 3.5z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-                        <path d="M3.2 6.5v5.2a1 1 0 0 0 1 1h7.6a1 1 0 0 0 1-1V6.5" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-                        <path d="M6 10h4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                      </svg>
+                      <Archive size={13} strokeWidth={1.5} aria-hidden="true" />
                     </span>
                   </div>
 
@@ -119,17 +109,11 @@ export default function Hero() {
                     </div>
                     <div className="space-y-0.5">
                       <div className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 font-givonic text-xs font-medium text-gray-600 hover:bg-gray-100">
-                        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true" className="shrink-0 text-gray-400">
-                          <rect x="2" y="3" width="12" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
-                          <path d="M2 6.5h12M5 1.5v3M11 1.5v3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                        </svg>
+                        <Calendar size={13} strokeWidth={1.5} aria-hidden="true" className="shrink-0 text-gray-400" />
                         <span>Harian</span>
                       </div>
                       <div className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 font-givonic text-xs font-medium text-gray-600 hover:bg-gray-100">
-                        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true" className="shrink-0 text-gray-400">
-                          <path d="M4 2.5h5.5L12.5 5.5V13.5H4V2.5z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-                          <path d="M9.5 2.5v3h3" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-                        </svg>
+                        <FileText size={13} strokeWidth={1.5} aria-hidden="true" className="shrink-0 text-gray-400" />
                         <span>Catatan Sprint</span>
                       </div>
                     </div>
@@ -164,12 +148,7 @@ export default function Hero() {
                         </span>
                       </div>
                       <div className="ml-4 flex items-center gap-1.5 rounded-lg px-2.5 py-1 font-givonic text-[11px] text-gray-500 hover:bg-gray-100">
-                        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true" className="shrink-0 text-gray-400">
-                          <circle cx="6" cy="5.5" r="2.2" stroke="currentColor" strokeWidth="1.4" />
-                          <path d="M2 13.5c0-2.2 1.8-3.8 4-3.8s4 1.6 4 3.8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                          <circle cx="11.5" cy="6" r="1.7" stroke="currentColor" strokeWidth="1.3" />
-                          <path d="M11 9.9c1.7.2 3 1.5 3 3.1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-                        </svg>
+                        <Users size={12} strokeWidth={1.4} aria-hidden="true" className="shrink-0 text-gray-400" />
                         <span>4 Anggota</span>
                       </div>
                     </div>
@@ -276,9 +255,7 @@ export default function Hero() {
                           Harian Saya
                         </span>
                         <span className="text-[10px] font-semibold text-blue-600 flex items-center gap-1">
-                          <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor">
-                            <path d="M8 0a8 8 0 100 16A8 8 0 008 0zm3.4 6.3l-4 4a1 1 0 01-1.4 0l-2-2a1 1 0 011.4-1.4L7 8.3l3.3-3.3a1 1 0 011.4 1.4z" />
-                          </svg>
+                          <CheckCircle2 size={10} className="shrink-0" />
                           Sync G-Cal
                         </span>
                       </div>
@@ -327,9 +304,7 @@ export default function Hero() {
                 {/* Bottom Callout in Preview */}
                 <div className="mt-3.5 rounded-xl bg-gray-50 p-2.5 border border-gray-200 text-center">
                   <p className="flex items-center justify-center gap-1.5 font-givonic text-xs text-perrific-graphite/70">
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true" className="shrink-0 text-amber-500">
-                      <path d="M8 1.5a4.5 4.5 0 0 0-4.5 4.5c0 1.8 1.1 3.2 2 4.2V12a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1.8c.9-1 2-2.4 2-4.2A4.5 4.5 0 0 0 8 1.5zM6.5 14.5h3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
+                    <Lightbulb size={14} strokeWidth={1.5} aria-hidden="true" className="shrink-0 text-amber-500" />
                     <span>
                       <strong className="text-perrific-graphite">Otomatis &amp; Real-time:</strong> Begitu tugas ditugaskan di Kanban board tim, jadwal harian anggota langsung tertata rapi.
                     </span>

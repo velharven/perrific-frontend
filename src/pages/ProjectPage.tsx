@@ -410,7 +410,7 @@ export default function ProjectPage() {
       )}
       <div
         className={`pointer-events-none fixed inset-x-0 bottom-4 z-30 flex justify-center transition-[left] duration-200 ${
-          sbCollapsed ? 'md:left-[68px]' : 'md:left-56'
+          sbCollapsed ? 'md:left-0' : 'md:left-56'
         }`}
       >
         <div

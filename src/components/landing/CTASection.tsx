@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { ChevronRight, Check } from 'lucide-react';
 
 export default function CTASection() {
   return (
@@ -25,15 +26,11 @@ export default function CTASection() {
               className="group inline-flex items-center gap-2 rounded-full bg-perrific-violet px-8 py-3.5 font-givonic text-sm font-semibold text-white shadow-[0_4px_16px_rgba(255,80,11,0.25)] hover:bg-[#E64D0A] hover:shadow-[0_6px_20px_rgba(255,80,11,0.35)] active:scale-[0.98] transition-all"
             >
               Coba Gratis Sekarang
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 16 16"
-                fill="none"
+              <ChevronRight
+                size={16}
+                strokeWidth={1.8}
                 className="transition-transform group-hover:translate-x-0.5"
-              >
-                <path d="M5 3l5 5-5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              />
             </Link>
             <Link
               to="/login"
@@ -45,23 +42,17 @@ export default function CTASection() {
 
           <div className="mt-6 flex flex-wrap items-center justify-center gap-4 text-xs font-mono text-perrific-graphite/60">
             <span className="inline-flex items-center gap-1.5">
-              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" className="text-emerald-500">
-                <path d="M13.3 4.3L6 11.6 2.7 8.3" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <Check size={13} strokeWidth={2.2} className="text-emerald-500" />
               Tanpa kartu kredit
             </span>
             <span className="text-perrific-graphite/30">·</span>
             <span className="inline-flex items-center gap-1.5">
-              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" className="text-emerald-500">
-                <path d="M13.3 4.3L6 11.6 2.7 8.3" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <Check size={13} strokeWidth={2.2} className="text-emerald-500" />
               Siap dalam 2 menit
             </span>
             <span className="text-perrific-graphite/30">·</span>
             <span className="inline-flex items-center gap-1.5">
-              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" className="text-emerald-500">
-                <path d="M13.3 4.3L6 11.6 2.7 8.3" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <Check size={13} strokeWidth={2.2} className="text-emerald-500" />
               Batal kapan saja
             </span>
           </div>

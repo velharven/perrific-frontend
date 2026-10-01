@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { organizationApi } from '@/api/organizations';
 import ModalShell from '@/components/ui/ModalShell';
 import { showToast } from '@/components/ui/Toast';
+import { Briefcase, X } from 'lucide-react';
 import type { ProjectProposal } from '@/types';
 
 export default function ProposeProjectModal({
@@ -55,10 +56,7 @@ export default function ProposeProjectModal({
         <div className="flex items-center justify-between border-b border-gray-100 pb-3">
           <div className="flex items-center gap-2.5">
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
-                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
-              </svg>
+              <Briefcase size={18} strokeWidth={1.8} aria-hidden="true" />
             </span>
             <div>
               <h2 className="font-givonic text-base font-bold text-perrific-graphite">Usulkan Project Baru</h2>
@@ -69,11 +67,9 @@ export default function ProposeProjectModal({
             type="button"
             onClick={onClose}
             aria-label="Tutup"
-            className="flex h-7 w-7 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+            className="flex h-7 w-7 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-600 cursor-pointer"
           >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-              <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-            </svg>
+            <X size={14} strokeWidth={1.6} aria-hidden="true" />
           </button>
         </div>
 

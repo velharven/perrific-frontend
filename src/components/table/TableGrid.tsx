@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { Maximize2 } from 'lucide-react';
 import {
   DndContext,
   KeyboardSensor,
@@ -548,11 +549,9 @@ export default function TableGrid({
             onClick={onOpenFull}
             title="Buka penuh"
             aria-label="Buka penuh"
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-perrific-graphite"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-perrific-graphite cursor-pointer"
           >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <path d="M9.5 2.5h4v4M13.5 2.5L9 7M6.5 13.5h-4v-4M2.5 13.5L7 9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            <Maximize2 size={14} strokeWidth={1.6} aria-hidden="true" />
           </button>
         )}
         <button

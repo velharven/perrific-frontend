@@ -1,18 +1,25 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { organizationApi } from '@/api/organizations';
 import { teamApi } from '@/api/teams';
 import { useAuth } from '@/store/auth';
+import { useTrash } from '@/hooks/useNavLabels';
 import { showToast } from '@/components/ui/Toast';
 import Avatar from '@/components/ui/Avatar';
 import ProposeProjectModal from '@/components/organization/ProposeProjectModal';
 import SendTaskModal from '@/components/organization/SendTaskModal';
 import ModalShell from '@/components/ui/ModalShell';
+import { Building2, Plus, Briefcase, ChevronRight, CheckCircle2, X } from 'lucide-react';
 import type { Organization, Team } from '@/types';
 
 export default function OrganizationPage() {
   const { orgId } = useParams<{ orgId: string }>();
   const { user } = useAuth();
+  const { items: trashItems } = useTrash(user?.id);
+  const trashedTeamIds = useMemo(
+    () => new Set(trashItems.filter((t) => t.kind === 'team').map((t) => t.id)),
+    [trashItems],
+  );
   const navigate = useNavigate();
 
   const [org, setOrg] = useState<Organization | null>(null);
@@ -28,6 +35,7 @@ export default function OrganizationPage() {
 
   // Teams available to connect
   const [myTeams, setMyTeams] = useState<Team[]>([]);
+  const [loadingConnectTeams, setLoadingConnectTeams] = useState(false);
   const [connectingTeamId, setConnectingTeamId] = useState('');
 
   const reload = useCallback(async () => {
@@ -48,15 +56,23 @@ export default function OrganizationPage() {
 
   useEffect(() => {
     if (connectTeamOpen) {
+      setLoadingConnectTeams(true);
       teamApi
         .listMyTeams()
         .then((teams) => {
-          setMyTeams(teams);
-          if (teams.length > 0) setConnectingTeamId(teams[0].id);
+          const connectedIds = new Set((org?.connectedTeams ?? []).map((ct) => ct.teamId));
+          const available = teams.filter((t) => !trashedTeamIds.has(t.id) && !connectedIds.has(t.id));
+          setMyTeams(available);
+          if (available.length > 0) setConnectingTeamId(available[0].id);
+          else setConnectingTeamId('');
         })
-        .catch(() => setMyTeams([]));
+        .catch(() => {
+          setMyTeams([]);
+          setConnectingTeamId('');
+        })
+        .finally(() => setLoadingConnectTeams(false));
     }
-  }, [connectTeamOpen]);
+  }, [connectTeamOpen, org?.connectedTeams, trashedTeamIds]);
 
   if (loading) {
     return (
@@ -81,11 +97,20 @@ export default function OrganizationPage() {
   }
 
   const isOrgAdmin = org.createdById === user?.id || org.members?.some((m) => m.userId === user?.id && m.role === 'ADMIN');
-  const connectedTeamOptions = (org.connectedTeams ?? []).map((ct) => ({
-    id: ct.team.id,
-    name: ct.team.name,
-    projects: ct.team.projects ?? [],
-  }));
+  const visibleConnectedTeams = useMemo(
+    () => (org.connectedTeams ?? []).filter((ct) => !trashedTeamIds.has(ct.teamId)),
+    [org.connectedTeams, trashedTeamIds],
+  );
+
+  const connectedTeamOptions = useMemo(
+    () =>
+      visibleConnectedTeams.map((ct) => ({
+        id: ct.team.id,
+        name: ct.team.name,
+        projects: ct.team.projects ?? [],
+      })),
+    [visibleConnectedTeams],
+  );
 
   const pendingProposalsCount = (org.projectProposals ?? []).filter((p) => p.status === 'PENDING').length;
   const pendingTasksCount = (org.tasks ?? []).filter((t) => (t.approval ?? 'APPROVED') === 'PENDING').length;
@@ -152,9 +177,7 @@ export default function OrganizationPage() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
             <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-perrific-violet/10 text-perrific-violet shadow-inner">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3" />
-              </svg>
+              <Building2 size={28} strokeWidth={1.8} aria-hidden="true" />
             </span>
             <div>
               <div className="flex items-center gap-2">
@@ -170,20 +193,16 @@ export default function OrganizationPage() {
           <div className="flex flex-wrap items-center gap-2.5">
             <button
               onClick={() => setProposeOpen(true)}
-              className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 font-givonic text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700 active:scale-95"
+              className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 font-givonic text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700 active:scale-95 cursor-pointer"
             >
-              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8">
-                <path d="M8 3v10M3 8h10" strokeLinecap="round" />
-              </svg>
+              <Plus size={15} strokeWidth={1.8} aria-hidden="true" />
               <span>Usulkan Project</span>
             </button>
             <button
               onClick={() => setSendTaskOpen(true)}
-              className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 font-givonic text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700 active:scale-95"
+              className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 font-givonic text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700 active:scale-95 cursor-pointer"
             >
-              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8">
-                <path d="M8 3v10M3 8h10" strokeLinecap="round" />
-              </svg>
+              <Plus size={15} strokeWidth={1.8} aria-hidden="true" />
               <span>Kirim Task</span>
             </button>
           </div>
@@ -211,7 +230,7 @@ export default function OrganizationPage() {
           </div>
           <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-3">
             <p className="text-[11px] font-semibold text-gray-400">Tim Terhubung</p>
-            <p className="mt-1 text-xl font-bold text-perrific-graphite">{org.connectedTeams?.length ?? 0}</p>
+            <p className="mt-1 text-xl font-bold text-perrific-graphite">{visibleConnectedTeams.length}</p>
           </div>
           <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-3">
             <p className="text-[11px] font-semibold text-gray-400">Anggota Organisasi</p>
@@ -261,7 +280,7 @@ export default function OrganizationPage() {
                 : 'border-transparent text-gray-500 hover:text-perrific-graphite'
             }`}
           >
-            <span>Tim Terhubung ({org.connectedTeams?.length ?? 0})</span>
+            <span>Tim Terhubung ({visibleConnectedTeams.length})</span>
           </button>
           <button
             onClick={() => setActiveTab('members')}
@@ -295,10 +314,7 @@ export default function OrganizationPage() {
           {(org.projectProposals ?? []).length === 0 ? (
             <div className="rounded-xl border border-dashed border-gray-200 bg-white p-12 text-center">
               <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-500">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
-                  <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
-                </svg>
+                <Briefcase size={24} strokeWidth={1.8} aria-hidden="true" />
               </span>
               <p className="mt-3 text-sm font-semibold text-perrific-graphite">Belum ada usulan project</p>
               <p className="mt-1 text-xs text-gray-400">
@@ -356,12 +372,10 @@ export default function OrganizationPage() {
                     <div className="mt-4 border-t border-gray-100 pt-3">
                       <button
                         onClick={() => navigate(`/projects/${p.approvedProject!.id}`)}
-                        className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-gray-50 py-1.5 text-xs font-semibold text-perrific-violet hover:bg-gray-100"
+                        className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-gray-50 py-1.5 text-xs font-semibold text-perrific-violet hover:bg-gray-100 cursor-pointer"
                       >
                         <span>Buka Project</span>
-                        <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
-                          <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
+                        <ChevronRight size={14} strokeWidth={1.8} aria-hidden="true" />
                       </button>
                     </div>
                   )}
@@ -382,7 +396,7 @@ export default function OrganizationPage() {
             </div>
             <button
               onClick={() => setSendTaskOpen(true)}
-              className="rounded-lg bg-emerald-50 px-3 py-1.5 font-givonic text-xs font-semibold text-emerald-600 hover:bg-emerald-100"
+              className="rounded-lg bg-emerald-50 px-3 py-1.5 font-givonic text-xs font-semibold text-emerald-600 hover:bg-emerald-100 cursor-pointer"
             >
               + Kirim Task Baru
             </button>
@@ -391,10 +405,7 @@ export default function OrganizationPage() {
           {(org.tasks ?? []).length === 0 ? (
             <div className="rounded-xl border border-dashed border-gray-200 bg-white p-12 text-center">
               <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-50 text-emerald-500">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-                  <polyline points="22 4 12 14.01 9 11.01" />
-                </svg>
+                <CheckCircle2 size={24} strokeWidth={1.8} aria-hidden="true" />
               </span>
               <p className="mt-3 text-sm font-semibold text-perrific-graphite">Belum ada task terkirim</p>
               <p className="mt-1 text-xs text-gray-400">
@@ -490,13 +501,13 @@ export default function OrganizationPage() {
             )}
           </div>
 
-          {(org.connectedTeams ?? []).length === 0 ? (
+          {visibleConnectedTeams.length === 0 ? (
             <div className="rounded-xl border border-dashed border-gray-200 bg-white p-8 text-center text-xs text-gray-400">
               Belum ada tim yang terhubung. Hubungkan tim agar Anda dapat mengusulkan project dan mengirim task.
             </div>
           ) : (
             <div className="grid gap-3 sm:grid-cols-3">
-              {org.connectedTeams!.map((ct) => (
+              {visibleConnectedTeams.map((ct) => (
                 <div key={ct.teamId} className="flex items-center justify-between rounded-xl border border-gray-100 bg-white p-3.5 shadow-sm">
                   <div className="flex items-center gap-3 truncate">
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-perrific-violet/10 font-bold text-perrific-violet">
@@ -511,11 +522,9 @@ export default function OrganizationPage() {
                     <button
                       onClick={() => handleDisconnectTeam(ct.teamId, ct.team.name)}
                       title="Putuskan tim"
-                      className="ml-2 rounded p-1 text-gray-300 hover:bg-red-50 hover:text-red-500"
+                      className="ml-2 rounded p-1 text-gray-300 hover:bg-red-50 hover:text-red-500 cursor-pointer"
                     >
-                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                        <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                      </svg>
+                      <X size={14} strokeWidth={1.6} aria-hidden="true" />
                     </button>
                   )}
                 </div>
@@ -577,12 +586,10 @@ export default function OrganizationPage() {
                     {isOrgAdmin && m.userId !== org.createdById && (
                       <button
                         onClick={() => handleRemoveMember(m.userId, m.user?.name ?? 'Anggota')}
-                        className="rounded p-1 text-gray-300 hover:text-red-500"
+                        className="rounded p-1 text-gray-300 hover:text-red-500 cursor-pointer"
                         title="Keluarkan anggota"
                       >
-                        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                          <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                        </svg>
+                        <X size={14} strokeWidth={1.6} aria-hidden="true" />
                       </button>
                     )}
                   </div>
@@ -625,7 +632,9 @@ export default function OrganizationPage() {
           <form onSubmit={handleConnectTeam} className="w-full max-w-sm space-y-4">
             <h2 className="font-givonic text-base font-bold text-perrific-graphite">Hubungkan Tim ke Organisasi</h2>
             <p className="text-xs text-gray-400">Pilih tim yang akan menerima usulan project & task dari organisasi ini.</p>
-            {myTeams.length === 0 ? (
+            {loadingConnectTeams ? (
+              <p className="text-xs text-gray-400">Memuat tim...</p>
+            ) : myTeams.length === 0 ? (
               <p className="text-xs text-gray-400">Tidak ada tim yang tersedia untuk dihubungkan.</p>
             ) : (
               <select

@@ -1,27 +1,23 @@
+import { Check, Minus, X, Kanban, Calendar, RefreshCw, Clock, Zap, FileText } from 'lucide-react';
+
 function StatusBadge({ type }: { type: 'supported' | 'partial' | 'unsupported' }) {
   if (type === 'supported') {
     return (
       <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
-        <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
-          <path d="M13.3 4.3L6 11.6 2.7 8.3" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
+        <Check size={11} strokeWidth={2.5} />
       </div>
     );
   }
   if (type === 'partial') {
     return (
       <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-perrific-paper text-perrific-graphite/40">
-        <svg width="10" height="10" viewBox="0 0 16 16" fill="none">
-          <path d="M3.5 8h9" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-        </svg>
+        <Minus size={10} strokeWidth={2.5} />
       </div>
     );
   }
   return (
     <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-perrific-paper text-perrific-graphite/35">
-      <svg width="10" height="10" viewBox="0 0 16 16" fill="none">
-        <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      </svg>
+      <X size={10} strokeWidth={2.5} />
     </div>
   );
 }
@@ -29,12 +25,7 @@ function StatusBadge({ type }: { type: 'supported' | 'partial' | 'unsupported' }
 export default function ComparisonSection() {
   const rows = [
     {
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 16 16" fill="none" className="text-perrific-violet">
-          <rect x="2" y="2" width="5" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.6" />
-          <rect x="9" y="2" width="5" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.6" />
-        </svg>
-      ),
+      icon: <Kanban size={18} strokeWidth={1.6} className="text-perrific-violet" />,
       feature: 'Manajemen Kanban Tim',
       purrificText: 'Bawaan & Real-time',
       notion: {
@@ -47,12 +38,7 @@ export default function ComparisonSection() {
       },
     },
     {
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 16 16" fill="none" className="text-perrific-amber">
-          <rect x="2" y="3" width="12" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.6" />
-          <path d="M2 6.5h12M5 1.5v3M11 1.5v3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-        </svg>
-      ),
+      icon: <Calendar size={18} strokeWidth={1.6} className="text-perrific-amber" />,
       feature: 'Time-Blocking Harian Pribadi',
       purrificText: 'Terintegrasi Penuh',
       notion: {
@@ -65,12 +51,7 @@ export default function ComparisonSection() {
       },
     },
     {
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 16 16" fill="none" className="text-emerald-500">
-          <path d="M2.5 8a5.5 5.5 0 019.4-3.9M13.5 8a5.5 5.5 0 01-9.4 3.9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-          <path d="M12 2v2.5H9.5M4 14v-2.5h2.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      ),
+      icon: <RefreshCw size={18} strokeWidth={1.7} className="text-emerald-500" />,
       feature: 'Auto-Sync Tugas Tim ke Jadwal Harian',
       purrificText: 'Otomatis & Real-time',
       notion: {
@@ -83,12 +64,7 @@ export default function ComparisonSection() {
       },
     },
     {
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 16 16" fill="none" className="text-blue-500">
-          <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.6" />
-          <path d="M8 4.5v3.8l2.5 1.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-        </svg>
-      ),
+      icon: <Clock size={18} strokeWidth={1.6} className="text-blue-500" />,
       feature: 'Integrasi Google Calendar 2-Arah',
       purrificText: 'Tersedia Langsung',
       notion: {
@@ -101,11 +77,7 @@ export default function ComparisonSection() {
       },
     },
     {
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 16 16" fill="none" className="text-amber-500">
-          <path d="M9 2L3 9.5h5L7 14l6-7.5H8L9 2z" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      ),
+      icon: <Zap size={18} strokeWidth={1.6} className="text-amber-500" />,
       feature: 'Setup Cepat Tanpa Rumus (< 2 Menit)',
       purrificText: '< 2 Menit Siap Pakai',
       notion: {
@@ -118,12 +90,7 @@ export default function ComparisonSection() {
       },
     },
     {
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 16 16" fill="none" className="text-rose-500">
-          <rect x="3" y="2" width="10" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.6" />
-          <path d="M6 5.5h4M6 8.5h4M6 11.5h2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-        </svg>
-      ),
+      icon: <FileText size={18} strokeWidth={1.6} className="text-rose-500" />,
       feature: 'Catatan & Dokumen Terpadu',
       purrificText: 'Block Editor & Tabel',
       notion: {
@@ -187,15 +154,7 @@ export default function ComparisonSection() {
                       {row.purrificText}
                     </span>
                     <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white text-perrific-violet">
-                      <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-                        <path
-                          d="M13.3 4.3L6 11.6 2.7 8.3"
-                          stroke="currentColor"
-                          strokeWidth="2.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
+                      <Check size={13} strokeWidth={2.5} />
                     </div>
                   </div>
                 ))}

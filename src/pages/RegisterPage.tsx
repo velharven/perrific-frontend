@@ -4,6 +4,7 @@ import { useAuth } from '@/store/auth';
 import GoogleAuthButton from '@/components/auth/GoogleAuthButton';
 import { isGoogleConfigured } from '@/lib/google';
 import { useUsernameAvailability } from '@/hooks/useUsernameAvailability';
+import { Check, Eye, EyeOff, ChevronRight } from 'lucide-react';
 
 interface PasswordStrength {
   score: number;
@@ -90,9 +91,7 @@ export default function RegisterPage() {
             {['Kanban ringan untuk tim 3–6 orang', 'Otomatis jadi time-block di Harian', 'Tanpa setup 2 jam — langsung pakai'].map((t) => (
               <li key={t} className="flex gap-2.5 font-givonic text-sm leading-snug text-white/85">
                 <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white text-perrific-violet">
-                  <svg width="10" height="10" viewBox="0 0 16 16" fill="none">
-                    <path d="M4 8l2.5 2.5L12 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
+                  <Check size={10} strokeWidth={2.5} />
                 </span>
                 {t}
               </li>
@@ -226,19 +225,11 @@ export default function RegisterPage() {
                     aria-label={showPw ? 'Sembunyikan password' : 'Tampilkan password'}
                     className="absolute inset-y-0 right-0 flex items-center pr-3 text-perrific-graphite/50 hover:text-perrific-graphite"
                   >
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                      {showPw ? (
-                        <>
-                          <path d="M2 8s2.5-4 6-4 6 4 6 4-2.5 4-6 4-6-4-6-4z" stroke="currentColor" strokeWidth="1.3" />
-                          <circle cx="8" cy="8" r="1.8" stroke="currentColor" strokeWidth="1.3" />
-                        </>
-                      ) : (
-                        <>
-                          <path d="M2 8s2.5-4 6-4c1.2 0 2.3.5 3.3 1.2M14 8s-2.5 4-6 4c-1.2 0-2.3-.5-3.3-1.2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-                          <path d="M3 3l10 10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-                        </>
-                      )}
-                    </svg>
+                    {showPw ? (
+                      <Eye size={16} strokeWidth={1.6} aria-hidden="true" />
+                    ) : (
+                      <EyeOff size={16} strokeWidth={1.6} aria-hidden="true" />
+                    )}
                   </button>
                 </div>
                 <div id="password-strength" className="mt-2.5">
@@ -264,9 +255,7 @@ export default function RegisterPage() {
                             }`}
                           >
                             {rule.ok && (
-                              <svg width="9" height="9" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                                <path d="M4 8l2.5 2.5L12 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                              </svg>
+                              <Check size={9} strokeWidth={2.5} aria-hidden="true" />
                             )}
                           </span>
                           <span className={rule.ok ? 'text-perrific-graphite' : 'text-perrific-graphite/50'}>{rule.text}</span>
@@ -283,9 +272,7 @@ export default function RegisterPage() {
               >
                 {submitting ? 'Memuat…' : 'Daftar'}
                 {!submitting && (
-                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                    <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
+                  <ChevronRight size={14} strokeWidth={1.8} aria-hidden="true" />
                 )}
               </button>
             </form>

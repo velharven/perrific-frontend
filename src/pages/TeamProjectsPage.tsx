@@ -7,6 +7,7 @@ import CreateProjectModal from '@/components/project/CreateProjectModal';
 import { PROJECT_UPDATED_EVENT } from '@/pages/ProjectSettingsPage';
 import { useAuth } from '@/store/auth';
 import { showToast } from '@/components/ui/Toast';
+import { Briefcase, MoreVertical } from 'lucide-react';
 import type { Project, Team, ProjectProposal } from '@/types';
 
 export default function TeamProjectsPage() {
@@ -146,10 +147,7 @@ export default function TeamProjectsPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="flex h-6 w-6 items-center justify-center rounded-md bg-amber-100 text-amber-700">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
-                  <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
-                </svg>
+                <Briefcase size={14} strokeWidth={1.8} aria-hidden="true" />
               </span>
               <h2 className="font-givonic text-sm font-bold text-amber-950">
                 Usulan Project dari Organisasi
@@ -270,13 +268,9 @@ export default function TeamProjectsPage() {
                     aria-label={`Opsi ${p.name}`}
                     aria-haspopup="menu"
                     aria-expanded={menuOpen}
-                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-perrific-graphite"
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-perrific-graphite cursor-pointer"
                   >
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                      <circle cx="8" cy="3" r="1.3" fill="currentColor" />
-                      <circle cx="8" cy="8" r="1.3" fill="currentColor" />
-                      <circle cx="8" cy="13" r="1.3" fill="currentColor" />
-                    </svg>
+                    <MoreVertical size={14} strokeWidth={1.6} aria-hidden="true" />
                   </button>
                 )}
               </div>

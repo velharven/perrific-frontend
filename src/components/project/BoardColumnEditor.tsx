@@ -18,6 +18,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { projectApi } from '@/api/projects';
+import { GripVertical } from 'lucide-react';
 import { SettingsBlock } from '@/components/ui/SettingsShell';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import ModalShell from '@/components/ui/ModalShell';
@@ -51,14 +52,7 @@ function SortableColumnItem({ id, children }: { id: string; children: ReactNode 
         aria-label="Seret untuk menyusun ulang kolom"
         className="flex shrink-0 cursor-grab touch-none items-center px-1 py-2 text-gray-300 transition hover:text-gray-500 active:cursor-grabbing"
       >
-        <svg width="10" height="14" viewBox="0 0 10 14" fill="none" aria-hidden="true">
-          <circle cx="3" cy="2.5" r="1.3" fill="currentColor" />
-          <circle cx="7" cy="2.5" r="1.3" fill="currentColor" />
-          <circle cx="3" cy="7" r="1.3" fill="currentColor" />
-          <circle cx="7" cy="7" r="1.3" fill="currentColor" />
-          <circle cx="3" cy="11.5" r="1.3" fill="currentColor" />
-          <circle cx="7" cy="11.5" r="1.3" fill="currentColor" />
-        </svg>
+        <GripVertical size={14} className="text-gray-400" aria-hidden="true" />
       </span>
       {children}
     </li>

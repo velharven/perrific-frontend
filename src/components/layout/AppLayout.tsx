@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/store/auth';
@@ -51,6 +51,40 @@ import {
   ORGANIZATIONS_CHANGED_EVENT,
 } from '@/hooks/useNavLabels';
 import { TAB_ICONS, ActivityIcon } from '@/components/icons';
+import {
+  PanelLeftOpen,
+  ChevronRight,
+  ChevronDown,
+  FileText,
+  Plus,
+  X,
+  Archive,
+  Star,
+  MoreHorizontal,
+  Building2,
+  Users,
+  Link2,
+  Pencil,
+  Check,
+  Settings,
+  Trash2,
+  LogOut,
+  GripVertical,
+  ArrowLeft,
+  ArrowUp,
+  ArrowDown,
+  AlignLeft,
+  Image as ImageIcon,
+  Smile,
+  Eye,
+  KeyRound,
+  Calendar,
+  Menu,
+  Loader2,
+  Bell,
+} from 'lucide-react';
+import NotificationPanel from '@/components/notification/NotificationPanel';
+import { notificationApi } from '@/api/notifications';
 import Avatar from '@/components/ui/Avatar';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import ModalShell from '@/components/ui/ModalShell';
@@ -105,13 +139,7 @@ const ROUTE_SHORTCUTS = [
   { kind: 'route', ref: '/daily', label: 'Aktivitas Harian' },
 ] as const;
 
-const defaultNoteIcon = (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-    <path d="M4 2.5h5.5L12.5 5.5V13.5H4V2.5z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-    <path d="M9.5 2.5v3h3" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-    <path d="M6.5 8.5h3.5M6.5 10.8h3.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-  </svg>
-);
+const defaultNoteIcon = <FileText size={16} strokeWidth={1.6} aria-hidden="true" />;
 
 // Garis indikator oranye penanda posisi drop saat drag berlangsung.
 function DropLine() {
@@ -123,11 +151,15 @@ function SidebarContent({
   onRequestExpand,
   onToggleCollapse,
   onClose,
+  onOpenNotifications,
+  unreadCount = 0,
 }: {
   collapsed: boolean;
   onRequestExpand?: () => void;
   onToggleCollapse?: () => void;
   onClose?: () => void;
+  onOpenNotifications?: () => void;
+  unreadCount?: number;
 }) {
   const { user, logout } = useAuth();
   const { socket } = useSocket();
@@ -177,19 +209,6 @@ function SidebarContent({
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   // Id target drop yang sedang dilewati pointer (untuk indikator oranye).
   const [overId, setOverId] = useState<string | null>(null);
-  // Snap instan sesaat setelah drop section: matikan luncuran transform
-  // agar posisi bertukar seketika tanpa animasi.
-  const [dropFreeze, setDropFreeze] = useState(false);
-  const dropTimer = useRef<number | null>(null);
-
-  function clearDropTimer() {
-    if (dropTimer.current !== null) {
-      window.clearTimeout(dropTimer.current);
-      dropTimer.current = null;
-    }
-  }
-
-  useEffect(() => () => clearDropTimer(), []);
   const [ctxMenu, setCtxMenu] = useState<
     | { x: number; y: number; view: 'menu' | 'icons'; kind: 'nav'; to: string; label: string }
     | { x: number; y: number; view: 'menu' | 'icons'; kind: 'team'; team: Team }
@@ -1100,9 +1119,6 @@ function SidebarContent({
   const draggingSection =
     activeDragId && activeDragId.startsWith('section:') ? activeDragId.slice('section:'.length) : null;
 
-  // Judul section yang sedang diseret untuk pill melayang yang ringan
-  const draggingSectionTitle = draggingSection ? sectionLabel(draggingSection) : null;
-
   // Garis indikator oranye: 'before' = di atas target, 'after' = di bawah target.
   // Section: bandingkan urutan di sectionOrder. Item: bandingkan index dalam
   // daftarnya (hanya dalam list yang sama; antar-list tidak ada indikator).
@@ -1158,9 +1174,7 @@ function SidebarContent({
         title: org.name,
         icon: (
           <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-perrific-violet/20 bg-perrific-violet/10 text-perrific-violet">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3" />
-            </svg>
+            <Building2 size={14} strokeWidth={1.6} />
           </span>
         ),
       };
@@ -1170,10 +1184,7 @@ function SidebarContent({
       return {
         title: shortcut.label,
         icon: (
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true" className="shrink-0 text-gray-400">
-            <path d="M6.5 9.5a3.5 3.5 0 0 0 5 0l2-2a3.54 3.54 0 0 0-5-5l-1 1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-            <path d="M9.5 6.5a3.5 3.5 0 0 0-5 0l-2 2a3.54 3.54 0 0 0 5 5l1-1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-          </svg>
+          <Link2 size={14} strokeWidth={1.6} className="shrink-0 text-gray-400" />
         ),
       };
     }
@@ -1247,8 +1258,6 @@ function SidebarContent({
   };
 
   function handleSidebarDragStart(event: DragStartEvent) {
-    clearDropTimer();
-    setDropFreeze(false);
     setActiveDragId(String(event.active.id));
     setOverId(null);
   }
@@ -1262,9 +1271,6 @@ function SidebarContent({
     setActiveDragId(null);
     setOverId(null);
   }
-
-  // Bekukan luncuran transform sesaat agar posisi bertukar seketika.
-  const DROP_FREEZE_MS = 60;
 
   function handleSidebarDragEnd(event: DragEndEvent) {
     const { active, over } = event;
@@ -1291,13 +1297,6 @@ function SidebarContent({
       if (!to || !sectionOrder.includes(from as SidebarSection) || !sectionOrder.includes(to as SidebarSection)) return;
       if (to === from) return;
       reorderSections(from as SidebarSection, to as SidebarSection);
-      // Body sudah terlihat selama drag, jadi langsung tampil semua
-      // tanpa animasi buka. Bekukan transform sesaat agar snap instan.
-      clearDropTimer();
-      setDropFreeze(true);
-      dropTimer.current = window.setTimeout(() => {
-        setDropFreeze(false);
-      }, DROP_FREEZE_MS);
       return;
     }
     // Drop item: shortcut punya daftar sendiri; baris Favorit (alias `fav:`)
@@ -1482,9 +1481,7 @@ function SidebarContent({
             {note.title}
           </span>
           {!collapsed && starred.includes(to) && (
-            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" className="shrink-0 text-amber-400">
-              <path d="M8 2l2.1 4.3 4.7.7-3.4 3.3.8 4.7L8 12.9 3.8 15l.8-4.7L1.2 7l4.7-.7z" />
-            </svg>
+            <Star size={12} className="shrink-0 text-amber-400 fill-amber-400" aria-hidden="true" />
           )}
         </NavLink>
         {!collapsed && (
@@ -1498,11 +1495,7 @@ function SidebarContent({
             }}
             className="absolute right-1 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md bg-white/80 text-gray-400 opacity-0 shadow-sm backdrop-blur transition hover:bg-gray-100 hover:text-perrific-graphite focus:opacity-100 focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100"
           >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <circle cx="8" cy="3.2" r="1.4" fill="currentColor" />
-              <circle cx="8" cy="8" r="1.4" fill="currentColor" />
-              <circle cx="8" cy="12.8" r="1.4" fill="currentColor" />
-            </svg>
+            <MoreHorizontal size={14} strokeWidth={1.6} aria-hidden="true" />
           </button>
         )}
             </SortableTabRow>
@@ -1606,9 +1599,7 @@ function SidebarContent({
             {team.name}
           </span>
           {!collapsed && starred.includes(team.id) && (
-            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" className="shrink-0 text-amber-400">
-              <path d="M8 2l2.1 4.3 4.7.7-3.4 3.3.8 4.7L8 12.9 3.8 15l.8-4.7L1.2 7l4.7-.7z" />
-            </svg>
+            <Star size={12} className="shrink-0 text-amber-400 fill-amber-400" aria-hidden="true" />
           )}
         </NavLink>
         {!collapsed && (
@@ -1622,11 +1613,7 @@ function SidebarContent({
             }}
             className="absolute right-1 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md bg-white/80 text-gray-400 opacity-0 shadow-sm backdrop-blur transition hover:bg-gray-100 hover:text-perrific-graphite focus:opacity-100 focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100"
           >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <circle cx="8" cy="3.2" r="1.4" fill="currentColor" />
-              <circle cx="8" cy="8" r="1.4" fill="currentColor" />
-              <circle cx="8" cy="12.8" r="1.4" fill="currentColor" />
-            </svg>
+            <MoreHorizontal size={14} strokeWidth={1.6} aria-hidden="true" />
           </button>
         )}
       </SortableTabRow>
@@ -1656,9 +1643,7 @@ function SidebarContent({
               className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-perrific-violet/20 bg-perrific-violet/10 text-perrific-violet"
               aria-hidden="true"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3" />
-              </svg>
+              <Building2 size={14} strokeWidth={1.6} />
             </span>
             <span
               className={`min-w-0 flex-1 truncate transition-[max-width,opacity,margin] duration-200 ease-in-out ${
@@ -1778,9 +1763,7 @@ function SidebarContent({
             }}
             className="absolute right-8 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-amber-400 transition hover:bg-gray-100 hover:text-red-500"
           >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-              <path d="M8 2l2.1 4.3 4.7.7-3.4 3.3.8 4.7L8 12.9 3.8 15l.8-4.7L1.2 7l4.7-.7z" />
-            </svg>
+            <Star size={14} className="fill-amber-400 text-amber-400" aria-hidden="true" />
           </button>
         )}
         {!collapsed && (
@@ -1794,11 +1777,7 @@ function SidebarContent({
             }}
             className="absolute right-1 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md bg-white/80 text-gray-400 opacity-0 shadow-sm backdrop-blur transition hover:bg-gray-100 hover:text-perrific-graphite focus:opacity-100 focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100"
           >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <circle cx="8" cy="3.2" r="1.4" fill="currentColor" />
-              <circle cx="8" cy="8" r="1.4" fill="currentColor" />
-              <circle cx="8" cy="12.8" r="1.4" fill="currentColor" />
-            </svg>
+            <MoreHorizontal size={14} strokeWidth={1.6} aria-hidden="true" />
           </button>
         )}
       </SortableTabRow>
@@ -1808,31 +1787,41 @@ function SidebarContent({
   };
 
   return (
-    <div className="relative flex h-full flex-col bg-white">
+    <div className="relative flex h-full w-64 min-w-[16rem] flex-col bg-white">
       {onClose && (
         <div className="relative flex shrink-0 items-center justify-between px-3 pt-3 lg:hidden">
-          <button
-            ref={archiveBtnMobileRef}
-            type="button"
-            onClick={toggleArchive}
-            title={archiveOpen ? 'Tutup arsip' : 'Arsip'}
-            aria-label={archiveOpen ? 'Tutup arsip' : 'Arsip'}
-            aria-expanded={archiveOpen}
-            aria-haspopup="dialog"
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-perrific-graphite/60 transition hover:bg-gray-100 hover:text-perrific-graphite"
-          >
-            {archiveOpen ? (
-              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-              </svg>
-            ) : (
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                <path d="M2.5 3.5h11L11 6.5H5L2.5 3.5z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-                <path d="M3.2 6.5v5.2a1 1 0 0 0 1 1h7.6a1 1 0 0 0 1-1V6.5" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-                <path d="M6 10h4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-              </svg>
+          <div className="flex items-center gap-1">
+            <button
+              ref={archiveBtnMobileRef}
+              type="button"
+              onClick={toggleArchive}
+              title={archiveOpen ? 'Tutup arsip' : 'Arsip'}
+              aria-label={archiveOpen ? 'Tutup arsip' : 'Arsip'}
+              aria-expanded={archiveOpen}
+              aria-haspopup="dialog"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-perrific-graphite/60 transition hover:bg-gray-100 hover:text-perrific-graphite"
+            >
+              {archiveOpen ? (
+                <X size={15} strokeWidth={1.6} aria-hidden="true" />
+              ) : (
+                <Archive size={16} strokeWidth={1.6} aria-hidden="true" />
+              )}
+            </button>
+            {onOpenNotifications && (
+              <button
+                type="button"
+                onClick={onOpenNotifications}
+                title="Notifikasi"
+                aria-label="Notifikasi"
+                className="relative flex h-8 w-8 items-center justify-center rounded-lg text-perrific-graphite/60 transition hover:bg-gray-100 hover:text-perrific-graphite"
+              >
+                <Bell size={16} strokeWidth={1.6} aria-hidden="true" />
+                {unreadCount > 0 && (
+                  <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white" />
+                )}
+              </button>
             )}
-          </button>
+          </div>
 
           <button
             type="button"
@@ -1841,9 +1830,7 @@ function SidebarContent({
             aria-label="Tutup sidebar"
             className="flex h-8 w-8 items-center justify-center rounded-lg text-perrific-graphite/60 transition hover:bg-gray-100 hover:text-perrific-graphite"
           >
-            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-            </svg>
+            <X size={15} strokeWidth={1.6} aria-hidden="true" />
           </button>
 
         </div>
@@ -1854,15 +1841,12 @@ function SidebarContent({
             <button
               type="button"
               onClick={onToggleCollapse}
-              title={collapsed ? 'Buka sidebar' : 'Tutup sidebar'}
-              aria-label={collapsed ? 'Buka sidebar' : 'Tutup sidebar'}
+              title="Tutup sidebar"
+              aria-label="Tutup sidebar"
               aria-expanded={!collapsed}
               className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-gray-500 transition-colors duration-200 hover:bg-gray-100 hover:text-perrific-violet"
             >
-              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                <rect x="2.5" y="2.5" width="11" height="11" rx="2" stroke="currentColor" strokeWidth="1.5" />
-                <path d="M6.5 2.5v11" stroke="currentColor" strokeWidth="1.5" />
-              </svg>
+              <PanelLeftOpen size={16} strokeWidth={1.6} aria-hidden="true" />
             </button>
             <span
               aria-hidden="true"
@@ -1871,8 +1855,8 @@ function SidebarContent({
               }`}
             />
             <span
-              className={`flex shrink-0 items-center justify-center overflow-hidden transition-[max-width,opacity] duration-200 ease-in-out ${
-                collapsed ? 'max-w-0 opacity-0' : 'max-w-[28px] opacity-100'
+              className={`flex shrink-0 items-center justify-center gap-1 overflow-hidden transition-[max-width,opacity] duration-200 ease-in-out ${
+                collapsed ? 'max-w-0 opacity-0' : 'max-w-[64px] opacity-100'
               }`}
             >
               <button
@@ -1887,17 +1871,26 @@ function SidebarContent({
                 className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-gray-500 transition-colors duration-200 hover:bg-gray-100 hover:text-perrific-graphite"
               >
                 {archiveOpen ? (
-                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                    <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                  </svg>
+                  <X size={14} strokeWidth={1.6} aria-hidden="true" />
                 ) : (
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                    <path d="M2.5 3.5h11L11 6.5H5L2.5 3.5z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-                    <path d="M3.2 6.5v5.2a1 1 0 0 0 1 1h7.6a1 1 0 0 0 1-1V6.5" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-                    <path d="M6 10h4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                  </svg>
+                  <Archive size={16} strokeWidth={1.6} aria-hidden="true" />
                 )}
               </button>
+              {onOpenNotifications && (
+                <button
+                  type="button"
+                  onClick={onOpenNotifications}
+                  title="Notifikasi"
+                  aria-label="Notifikasi"
+                  tabIndex={collapsed ? -1 : 0}
+                  className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-gray-500 transition-colors duration-200 hover:bg-gray-100 hover:text-perrific-graphite"
+                >
+                  <Bell size={16} strokeWidth={1.6} aria-hidden="true" />
+                  {unreadCount > 0 && (
+                    <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white" />
+                  )}
+                </button>
+              )}
             </span>
           </div>
 
@@ -1912,7 +1905,7 @@ function SidebarContent({
               collapsed ? 'max-h-0 opacity-0' : 'max-h-8 opacity-100'
             }`}
           >
-            <span className="flex min-w-0 items-center">
+            <span className="flex min-w-0 items-center pl-3">
               <p className="whitespace-nowrap font-mono text-[11px] tracking-widest text-perrific-wood">PRIVAT</p>
               <button
                 type="button"
@@ -1922,9 +1915,7 @@ function SidebarContent({
                 aria-expanded={privatOpen}
                 className="ml-1 flex h-6 w-6 items-center justify-center rounded-md text-perrific-wood/70 transition hover:bg-gray-100 hover:text-perrific-violet"
               >
-                <svg width="10" height="10" viewBox="0 0 16 16" fill="none" aria-hidden="true" className={`transition-transform duration-200 ${privatOpen ? '' : '-rotate-90'}`}>
-                  <path d="M4.5 6.5L8 10l3.5-3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+                <ChevronDown size={10} strokeWidth={1.6} aria-hidden="true" className={`transition-transform duration-200 ${privatOpen ? '' : '-rotate-90'}`} />
               </button>
             </span>
         <button
@@ -1940,20 +1931,11 @@ function SidebarContent({
           aria-expanded={templatePickerOpen}
           className="flex h-6 w-6 items-center justify-center rounded-md text-perrific-graphite/40 transition hover:bg-gray-100 hover:text-perrific-violet disabled:opacity-50"
         >
-          <svg
-            width="13"
-            height="13"
-            viewBox="0 0 16 16"
-            fill="none"
-            aria-hidden="true"
-            className={creating ? 'animate-spin' : ''}
-          >
-            {creating ? (
-              <path d="M8 2a6 6 0 1 0 6 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-            ) : (
-              <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-            )}
-          </svg>
+          {creating ? (
+            <Loader2 size={13} className="animate-spin text-perrific-violet" aria-hidden="true" />
+          ) : (
+            <Plus size={13} strokeWidth={1.6} aria-hidden="true" />
+          )}
         </button>
       </div>
       {!collapsed && createError && (
@@ -1979,7 +1961,7 @@ function SidebarContent({
               collapsed ? 'max-h-0 opacity-0' : 'max-h-8 opacity-100'
             }`}
           >
-            <span className="flex min-w-0 items-center">
+            <span className="flex min-w-0 items-center pl-3">
               <p className="whitespace-nowrap font-mono text-[11px] tracking-widest text-perrific-wood">TIM SAYA</p>
               <button
                 type="button"
@@ -1989,9 +1971,7 @@ function SidebarContent({
                 aria-expanded={teamsOpen}
                 className="ml-1 flex h-6 w-6 items-center justify-center rounded-md text-perrific-wood/70 transition hover:bg-gray-100 hover:text-perrific-violet"
               >
-                <svg width="10" height="10" viewBox="0 0 16 16" fill="none" aria-hidden="true" className={`transition-transform duration-200 ${teamsOpen ? '' : '-rotate-90'}`}>
-                  <path d="M4.5 6.5L8 10l3.5-3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+                <ChevronDown size={10} strokeWidth={1.6} aria-hidden="true" className={`transition-transform duration-200 ${teamsOpen ? '' : '-rotate-90'}`} />
               </button>
             </span>
             <button
@@ -2002,15 +1982,7 @@ function SidebarContent({
               aria-haspopup="dialog"
               className="flex h-6 w-6 items-center justify-center rounded-md text-perrific-graphite/40 transition hover:bg-gray-100 hover:text-perrific-violet"
             >
-              <svg
-                width="13"
-                height="13"
-                viewBox="0 0 16 16"
-                fill="none"
-                aria-hidden="true"
-              >
-                <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-              </svg>
+              <Plus size={13} strokeWidth={1.6} aria-hidden="true" />
             </button>
         </div>
         <div className={`grid transition-[grid-template-rows] duration-200 ease-in-out ${teamsOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
@@ -2070,7 +2042,7 @@ function SidebarContent({
               collapsed ? 'max-h-0 opacity-0' : 'max-h-8 opacity-100'
             }`}
           >
-            <span className="flex min-w-0 items-center">
+            <span className="flex min-w-0 items-center pl-3">
               <p className="whitespace-nowrap font-mono text-[11px] tracking-widest text-perrific-wood">ORGANISASI</p>
               <button
                 type="button"
@@ -2080,9 +2052,7 @@ function SidebarContent({
                 aria-expanded={organisasiOpen}
                 className="ml-1 flex h-6 w-6 items-center justify-center rounded-md text-perrific-wood/70 transition hover:bg-gray-100 hover:text-perrific-violet"
               >
-                <svg width="10" height="10" viewBox="0 0 16 16" fill="none" aria-hidden="true" className={`transition-transform duration-200 ${organisasiOpen ? '' : '-rotate-90'}`}>
-                  <path d="M4.5 6.5L8 10l3.5-3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+                <ChevronDown size={10} strokeWidth={1.6} aria-hidden="true" className={`transition-transform duration-200 ${organisasiOpen ? '' : '-rotate-90'}`} />
               </button>
             </span>
             <button
@@ -2092,9 +2062,7 @@ function SidebarContent({
               aria-label="Organisasi baru"
               className="flex h-6 w-6 items-center justify-center rounded-md text-perrific-graphite/40 transition hover:bg-gray-100 hover:text-perrific-violet"
             >
-              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-              </svg>
+              <Plus size={13} strokeWidth={1.6} aria-hidden="true" />
             </button>
           </div>
           <div className={`grid transition-[grid-template-rows] duration-200 ease-in-out ${organisasiOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
@@ -2167,9 +2135,7 @@ function SidebarContent({
                   aria-label="Tutup"
                   className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-perrific-graphite"
                 >
-                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                    <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                  </svg>
+                  <X size={14} strokeWidth={1.6} aria-hidden="true" />
                 </button>
               </div>
               <p className="px-1 pb-2 font-givonic text-xs text-perrific-graphite/50">Pilih cara membuat atau gabung tim.</p>
@@ -2180,9 +2146,7 @@ function SidebarContent({
                   className="flex w-full items-center gap-3 rounded-xl border border-gray-200 px-3 py-2.5 text-left transition hover:border-perrific-violet hover:bg-perrific-violet/5"
                 >
                   <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-perrific-violet/10 text-perrific-violet">
-                    <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
-                      <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                    </svg>
+                    <Plus size={15} strokeWidth={1.6} aria-hidden="true" />
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block font-givonic text-sm font-semibold text-perrific-graphite">
@@ -2199,10 +2163,7 @@ function SidebarContent({
                   className="flex w-full items-center gap-3 rounded-xl border border-gray-200 px-3 py-2.5 text-left transition hover:border-perrific-violet hover:bg-perrific-violet/5"
                 >
                   <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-gray-600">
-                    <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
-                      <circle cx="5.8" cy="8" r="2.8" stroke="currentColor" strokeWidth="1.4" />
-                      <path d="M8.6 8H14M12 8v2.4M14 8v1.6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                    </svg>
+                    <KeyRound size={15} strokeWidth={1.6} aria-hidden="true" />
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block font-givonic text-sm font-semibold text-perrific-graphite">
@@ -2231,9 +2192,7 @@ function SidebarContent({
                   aria-label="Tutup"
                   className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-perrific-graphite"
                 >
-                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                    <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                  </svg>
+                  <X size={14} strokeWidth={1.6} aria-hidden="true" />
                 </button>
               </div>
               <p className="px-1 font-givonic text-sm font-bold text-perrific-graphite">Masuk tim</p>
@@ -2292,7 +2251,7 @@ function SidebarContent({
               collapsed ? 'max-h-0 opacity-0' : 'max-h-8 opacity-100'
             }`}
           >
-            <span className="flex min-w-0 items-center">
+            <span className="flex min-w-0 items-center pl-3">
               <p className="whitespace-nowrap font-mono text-[11px] tracking-widest text-perrific-wood">FAVORIT</p>
               <button
                 type="button"
@@ -2302,9 +2261,7 @@ function SidebarContent({
                 aria-expanded={favoritOpen}
                 className="ml-1 flex h-6 w-6 items-center justify-center rounded-md text-perrific-wood/70 transition hover:bg-gray-100 hover:text-perrific-violet"
               >
-                <svg width="10" height="10" viewBox="0 0 16 16" fill="none" aria-hidden="true" className={`transition-transform duration-200 ${favoritOpen ? '' : '-rotate-90'}`}>
-                  <path d="M4.5 6.5L8 10l3.5-3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+                <ChevronDown size={10} strokeWidth={1.6} aria-hidden="true" className={`transition-transform duration-200 ${favoritOpen ? '' : '-rotate-90'}`} />
               </button>
             </span>
           </div>
@@ -2338,7 +2295,7 @@ function SidebarContent({
               collapsed ? 'max-h-0 opacity-0' : 'max-h-8 opacity-100'
             }`}
           >
-            <span className="flex min-w-0 items-center">
+            <span className="flex min-w-0 items-center pl-3">
               <p className="whitespace-nowrap font-mono text-[11px] tracking-widest text-perrific-wood">SHORTCUT</p>
               <button
                 type="button"
@@ -2348,9 +2305,7 @@ function SidebarContent({
                 aria-expanded={shortcutOpen}
                 className="ml-1 flex h-6 w-6 items-center justify-center rounded-md text-perrific-wood/70 transition hover:bg-gray-100 hover:text-perrific-violet"
               >
-                <svg width="10" height="10" viewBox="0 0 16 16" fill="none" aria-hidden="true" className={`transition-transform duration-200 ${shortcutOpen ? '' : '-rotate-90'}`}>
-                  <path d="M4.5 6.5L8 10l3.5-3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+                <ChevronDown size={10} strokeWidth={1.6} aria-hidden="true" className={`transition-transform duration-200 ${shortcutOpen ? '' : '-rotate-90'}`} />
               </button>
             </span>
             {!collapsed && (
@@ -2361,9 +2316,7 @@ function SidebarContent({
                 aria-label="Tambah shortcut"
                 className="flex h-6 w-6 items-center justify-center rounded-md text-perrific-graphite/40 transition hover:bg-gray-100 hover:text-perrific-violet"
               >
-                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                  <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                </svg>
+                <Plus size={13} strokeWidth={1.6} aria-hidden="true" />
               </button>
             )}
           </div>
@@ -2415,10 +2368,7 @@ function SidebarContent({
                     </span>
                   ) : isEditing ? (
                     <div className={navRowClass(false)}>
-                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true" className="shrink-0 text-gray-400">
-                        <path d="M6.5 9.5a3.5 3.5 0 0 0 5 0l2-2a3.54 3.54 0 0 0-5-5l-1 1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                        <path d="M9.5 6.5a3.5 3.5 0 0 0-5 0l-2 2a3.54 3.54 0 0 0 5 5l1-1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                      </svg>
+                      <Link2 size={14} strokeWidth={1.6} className="shrink-0 text-gray-400" aria-hidden="true" />
                       <input
                         autoFocus
                         value={r.kind === 'team' ? teamDraft : r.kind === 'note' ? noteDraft : navDraft}
@@ -2455,10 +2405,7 @@ function SidebarContent({
                       onDoubleClick={startRowEdit}
                       onContextMenu={(e) => openCtxMenu(e, { kind: 'shortcut', shortcutId: r.id })}
                     >
-                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true" className="shrink-0 text-gray-400">
-                        <path d="M6.5 9.5a3.5 3.5 0 0 0 5 0l2-2a3.54 3.54 0 0 0-5-5l-1 1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                        <path d="M9.5 6.5a3.5 3.5 0 0 0-5 0l-2 2a3.54 3.54 0 0 0 5 5l1-1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                      </svg>
+                      <Link2 size={14} strokeWidth={1.6} className="shrink-0 text-gray-400" aria-hidden="true" />
                       <span
                         className={`min-w-0 flex-1 truncate transition-[max-width,opacity,margin] duration-200 ease-in-out ${
                           collapsed ? 'ml-0 max-w-0 opacity-0' : 'ml-2.5 max-w-[220px] opacity-100'
@@ -2479,11 +2426,7 @@ function SidebarContent({
                       }}
                       className="absolute right-1 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md bg-white/80 text-gray-400 opacity-0 shadow-sm backdrop-blur transition hover:bg-gray-100 hover:text-perrific-graphite focus:opacity-100 focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100"
                     >
-                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                        <circle cx="8" cy="3.2" r="1.4" fill="currentColor" />
-                        <circle cx="8" cy="8" r="1.4" fill="currentColor" />
-                        <circle cx="8" cy="12.8" r="1.4" fill="currentColor" />
-                      </svg>
+                      <MoreHorizontal size={14} strokeWidth={1.6} aria-hidden="true" />
                     </button>
                   )}
                 </SortableTabRow>
@@ -2535,13 +2478,9 @@ function SidebarContent({
             }`}
           >
             {editOpen ? (
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                <path d="M3 8.5l3.5 3.5L13 5.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <Check size={16} strokeWidth={1.6} />
             ) : (
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                <path d="M11.5 2.5l2 2L5 13l-2.8.8L3 11z" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <Pencil size={16} strokeWidth={1.6} />
             )}
             {editOpen ? 'Selesai' : 'Edit sidebar'}
           </button>
@@ -2569,11 +2508,7 @@ function SidebarContent({
               }}
               className="flex w-full items-center gap-2.5 px-3 py-2.5 font-givonic text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
             >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                <path d="M2.5 5.5h11M2.5 10.5h11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                <circle cx="6" cy="5.5" r="1.8" fill="white" stroke="currentColor" strokeWidth="1.4" />
-                <circle cx="10" cy="10.5" r="1.8" fill="white" stroke="currentColor" strokeWidth="1.4" />
-              </svg>
+              <Settings size={16} strokeWidth={1.6} />
               Pengaturan
             </button>
             <button
@@ -2585,9 +2520,7 @@ function SidebarContent({
               }}
               className="flex w-full items-center gap-2.5 px-3 py-2.5 font-givonic text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
             >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                <path d="M2.8 4.5h10.4M6.3 4.5V3.2a.7.7 0 0 1 .7-.7h2a.7.7 0 0 1 .7.7v1.3M4.3 4.5l.6 7.6a1 1 0 0 0 1 .9h3.9a1 1 0 0 0 1-.9l.6-7.6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <Trash2 size={16} strokeWidth={1.6} />
               <span className="min-w-0 flex-1 text-left">Sampah</span>
               {trashItems.length > 0 && (
                 <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 font-mono text-[11px] font-medium text-perrific-graphite/60">
@@ -2601,9 +2534,7 @@ function SidebarContent({
               onClick={handleLogout}
               className="flex w-full items-center gap-2.5 px-3 py-2.5 font-givonic text-sm font-medium text-red-600 transition hover:bg-red-50"
             >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                <path d="M6 3H3.5v10H6M10.5 5.5L13 8l-2.5 2.5M13 8H6.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <LogOut size={16} strokeWidth={1.6} />
               Keluar
             </button>
           </div>
@@ -2629,18 +2560,14 @@ function SidebarContent({
               {user?.email}
             </span>
           </span>
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 16 16"
-            fill="none"
+          <ChevronDown
+            size={14}
+            strokeWidth={1.6}
             aria-hidden="true"
             className={`shrink-0 overflow-hidden text-perrific-graphite/40 transition-[max-width,opacity,margin,transform] duration-200 ease-in-out ${
               collapsed ? 'ml-0 max-w-0 opacity-0' : 'ml-2 max-w-[20px] opacity-100'
             } ${menuOpen ? 'rotate-180' : ''}`}
-          >
-            <path d="M4.5 10.5L8 7l3.5 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+          />
         </button>
       </div>
       {/* Arsip — mengisi seluruh sidebar (bukan popup), background putih menutup konten */}
@@ -2724,9 +2651,7 @@ function SidebarContent({
                         {displayLabel}
                       </span>
                       {starred.includes(to) && (
-                        <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" className="shrink-0 text-amber-400">
-                          <path d="M8 2l2.1 4.3 4.7.7-3.4 3.3.8 4.7L8 12.9 3.8 15l.8-4.7L1.2 7l4.7-.7z" />
-                        </svg>
+                        <Star size={12} className="shrink-0 fill-amber-400 text-amber-400" />
                       )}
                     </NavLink>
                     <button
@@ -2739,11 +2664,7 @@ function SidebarContent({
                       }}
                       className="absolute right-1 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md bg-white/80 text-gray-400 opacity-0 shadow-sm backdrop-blur transition hover:bg-gray-100 hover:text-perrific-graphite focus:opacity-100 focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100"
                     >
-                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                        <circle cx="8" cy="3.2" r="1.4" fill="currentColor" />
-                        <circle cx="8" cy="8" r="1.4" fill="currentColor" />
-                        <circle cx="8" cy="12.8" r="1.4" fill="currentColor" />
-                      </svg>
+                      <MoreHorizontal size={14} strokeWidth={1.6} />
                     </button>
                   </li>
                 );
@@ -2795,9 +2716,7 @@ function SidebarContent({
                         {team.name}
                       </span>
                       {starred.includes(team.id) && (
-                        <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" className="shrink-0 text-amber-400">
-                          <path d="M8 2l2.1 4.3 4.7.7-3.4 3.3.8 4.7L8 12.9 3.8 15l.8-4.7L1.2 7l4.7-.7z" />
-                        </svg>
+                        <Star size={12} className="shrink-0 fill-amber-400 text-amber-400" />
                       )}
                     </NavLink>
                     <button
@@ -2810,11 +2729,7 @@ function SidebarContent({
                       }}
                       className="absolute right-1 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md bg-white/80 text-gray-400 opacity-0 shadow-sm backdrop-blur transition hover:bg-gray-100 hover:text-perrific-graphite focus:opacity-100 focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100"
                     >
-                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                        <circle cx="8" cy="3.2" r="1.4" fill="currentColor" />
-                        <circle cx="8" cy="8" r="1.4" fill="currentColor" />
-                        <circle cx="8" cy="12.8" r="1.4" fill="currentColor" />
-                      </svg>
+                      <MoreHorizontal size={14} strokeWidth={1.6} />
                     </button>
                   </li>
                 );
@@ -2858,9 +2773,7 @@ function SidebarContent({
               aria-label="Kembali ke edit sidebar"
               className="flex items-center gap-2 font-givonic text-xs font-semibold text-perrific-graphite/60 transition hover:text-perrific-graphite"
             >
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <ArrowLeft size={12} strokeWidth={1.6} />
               Kembali
             </button>
           ) : (
@@ -2876,60 +2789,35 @@ function SidebarContent({
                     id: 'privat',
                     name: 'Privat',
                     desc: 'Tab pribadi: harian, note',
-                    icon: (
-                      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                        <path d="M4 2.5h5.5L12.5 5.5V13.5H4V2.5z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-                        <path d="M9.5 2.5v3h3" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-                      </svg>
-                    ),
+                    icon: <FileText size={15} strokeWidth={1.6} />,
                     iconClass: 'bg-perrific-violet/10 text-perrific-violet',
                   },
                   {
                     id: 'teams',
                     name: 'Tim Saya',
                     desc: 'Tim dan proyekmu',
-                    icon: (
-                      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                        <circle cx="6" cy="5.5" r="2.2" stroke="currentColor" strokeWidth="1.4" />
-                        <path d="M2 13.5c0-2.2 1.8-3.8 4-3.8s4 1.6 4 3.8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                        <circle cx="11.5" cy="6" r="1.7" stroke="currentColor" strokeWidth="1.3" />
-                        <path d="M11 9.9c1.7.2 3 1.5 3 3.1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-                      </svg>
-                    ),
+                    icon: <Users size={15} strokeWidth={1.6} />,
                     iconClass: 'bg-green-600/10 text-green-700',
                   },
                   {
                     id: 'organisasi',
                     name: 'Organisasi',
                     desc: 'Kolaborasi dan delegasi antar-tim',
-                    icon: (
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                        <path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3" />
-                      </svg>
-                    ),
+                    icon: <Building2 size={15} strokeWidth={1.6} />,
                     iconClass: 'bg-blue-600/10 text-blue-600',
                   },
                   {
                     id: 'favorit',
                     name: 'Favorit',
                     desc: 'Tab berbintang pilihanmu',
-                    icon: (
-                      <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-                        <path d="M8 2l2.1 4.3 4.7.7-3.4 3.3.8 4.7L8 12.9 3.8 15l.8-4.7L1.2 7l4.7-.7z" />
-                      </svg>
-                    ),
+                    icon: <Star size={15} className="fill-amber-500 text-amber-500" strokeWidth={1.6} />,
                     iconClass: 'bg-amber-100 text-amber-500',
                   },
                   {
                     id: 'shortcut',
                     name: 'Shortcut',
                     desc: 'Pintas ke halaman',
-                    icon: (
-                      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                        <path d="M6.5 9.5a3.5 3.5 0 0 0 5 0l2-2a3.54 3.54 0 0 0-5-5l-1 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                        <path d="M9.5 6.5a3.5 3.5 0 0 0-5 0l-2 2a3.54 3.54 0 0 0 5 5l1-1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                      </svg>
-                    ),
+                    icon: <Link2 size={15} strokeWidth={1.6} />,
                     iconClass: 'bg-sky-100 text-sky-600',
                   },
                 ] as const
@@ -2993,14 +2881,7 @@ function SidebarContent({
                           aria-hidden="true"
                           className="flex h-6 w-6 shrink-0 items-center justify-center text-perrific-graphite/30"
                         >
-                          <svg width="10" height="14" viewBox="0 0 10 14" fill="none" aria-hidden="true">
-                            <circle cx="3" cy="2.5" r="1.2" fill="currentColor" />
-                            <circle cx="7" cy="2.5" r="1.2" fill="currentColor" />
-                            <circle cx="3" cy="7" r="1.2" fill="currentColor" />
-                            <circle cx="7" cy="7" r="1.2" fill="currentColor" />
-                            <circle cx="3" cy="11.5" r="1.2" fill="currentColor" />
-                            <circle cx="7" cy="11.5" r="1.2" fill="currentColor" />
-                          </svg>
+                          <GripVertical size={14} strokeWidth={1.6} />
                         </span>
                         <span className="font-mono text-[11px] tracking-widest text-perrific-wood">
                           {sectionLabel(s)}
@@ -3020,9 +2901,7 @@ function SidebarContent({
             aria-label="Tambah bagian baru"
             className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-gray-300 px-3 py-3 font-givonic text-sm font-semibold text-perrific-graphite/60 transition hover:border-perrific-violet hover:text-perrific-violet"
           >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-            </svg>
+            <Plus size={14} strokeWidth={1.6} />
             Bagian baru
           </button>
             </>
@@ -3052,9 +2931,7 @@ function SidebarContent({
                 aria-label="Tutup"
                 className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-perrific-graphite"
               >
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                  <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                </svg>
+                <X size={14} strokeWidth={1.6} />
               </button>
             </div>
             <p className="px-1 pb-2 font-givonic text-xs text-perrific-graphite/50">Pilih template untuk tab privat barumu.</p>
@@ -3066,10 +2943,7 @@ function SidebarContent({
                 className="flex w-full items-center gap-3 rounded-xl border border-gray-200 px-3 py-2.5 text-left transition hover:border-perrific-violet hover:bg-perrific-violet/5 disabled:opacity-50"
               >
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-gray-600">
-                  <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                    <path d="M4 2.5h5.5L12.5 5.5V13.5H4V2.5z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-                    <path d="M9.5 2.5v3h3" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-                  </svg>
+                  <FileText size={15} strokeWidth={1.6} />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block font-givonic text-sm font-semibold text-perrific-graphite">Note</span>
@@ -3083,10 +2957,7 @@ function SidebarContent({
                 className="flex w-full items-center gap-3 rounded-xl border border-gray-200 px-3 py-2.5 text-left transition hover:border-perrific-violet hover:bg-perrific-violet/5 disabled:opacity-50"
               >
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-green-50 text-green-600">
-                  <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                    <rect x="2.5" y="3.5" width="11" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.4" />
-                    <path d="M2.5 6.5h11M5.5 2v3M10.5 2v3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                  </svg>
+                  <Calendar size={15} strokeWidth={1.6} />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block font-givonic text-sm font-semibold text-perrific-graphite">Aktivitas harian</span>
@@ -3123,9 +2994,7 @@ function SidebarContent({
                 aria-label="Tutup"
                 className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-perrific-graphite"
               >
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                  <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                </svg>
+                <X size={14} strokeWidth={1.6} />
               </button>
             </div>
             {(
@@ -3162,9 +3031,7 @@ function SidebarContent({
                         }}
                         className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left font-givonic text-sm text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
                       >
-                        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true" className="shrink-0 text-gray-400">
-                          <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                        </svg>
+                        <Plus size={13} strokeWidth={1.6} className="shrink-0 text-gray-400" />
                         <span className="min-w-0 flex-1 truncate">{o.label}</span>
                       </button>
                     ))}
@@ -3252,9 +3119,7 @@ function SidebarContent({
                 }}
                 className="flex w-full items-center gap-2.5 px-3 py-2.5 font-givonic text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
               >
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                  <path d="M11.5 2.5l2 2L5 13l-2.8.8L3 11z" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+                <Pencil size={14} strokeWidth={1.6} />
                 Ubah nama
               </button>
                 );
@@ -3266,10 +3131,7 @@ function SidebarContent({
                 onClick={() => setCtxMenu({ ...ctxMenu, view: 'icons' })}
                 className="flex w-full items-center gap-2.5 px-3 py-2.5 font-givonic text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
               >
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                  <circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1.4" />
-                  <path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M12.6 3.4l-1.4 1.4M4.8 11.2l-1.4 1.4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                </svg>
+                <Smile size={14} strokeWidth={1.6} />
                 Ganti ikon
               </button>
               )}
@@ -3285,9 +3147,7 @@ function SidebarContent({
                     }}
                     className="flex w-full items-center gap-2.5 px-3 py-2.5 font-givonic text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
                   >
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                      <path d="M2.5 4h11M2.5 8h11M2.5 12h7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                    </svg>
+                    <AlignLeft size={14} strokeWidth={1.6} />
                     Edit deskripsi
                   </button>
                   <button
@@ -3300,11 +3160,7 @@ function SidebarContent({
                     }}
                     className="flex w-full items-center gap-2.5 px-3 py-2.5 font-givonic text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
                   >
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                      <rect x="2" y="2.5" width="12" height="11" rx="2" stroke="currentColor" strokeWidth="1.4" />
-                      <circle cx="5.5" cy="6" r="1.3" stroke="currentColor" strokeWidth="1.3" />
-                      <path d="M2.5 11.5l3.2-3.2a1 1 0 0 1 1.4 0L10 11l1.5-1.5a1 1 0 0 1 1.4 0l1.1 1.1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
+                    <ImageIcon size={14} strokeWidth={1.6} />
                     Ganti gambar
                   </button>
                   {(ctxMenu.team.avatarUrl || teamIcons[ctxMenu.team.id]) && (
@@ -3318,9 +3174,7 @@ function SidebarContent({
                       }}
                       className="flex w-full items-center gap-2.5 px-3 py-2.5 font-givonic text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
                     >
-                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                        <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                      </svg>
+                      <X size={14} strokeWidth={1.6} />
                       Hapus gambar
                     </button>
                   )}
@@ -3338,9 +3192,7 @@ function SidebarContent({
                 }}
                 className="flex w-full items-center gap-2.5 px-3 py-2.5 font-givonic text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-gray-600"
               >
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                  <path d="M8 13V3M4.5 6.5L8 3l3.5 3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+                <ArrowUp size={14} strokeWidth={1.6} />
                 Naik
               </button>
               <button
@@ -3355,9 +3207,7 @@ function SidebarContent({
                 }}
                 className="flex w-full items-center gap-2.5 px-3 py-2.5 font-givonic text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-gray-600"
               >
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                  <path d="M8 3v10M11.5 9.5L8 13l-3.5-3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+                <ArrowDown size={14} strokeWidth={1.6} />
                 Turun
               </button>
               {ctxMenu.kind === 'nav' ? (
@@ -3378,10 +3228,7 @@ function SidebarContent({
                       }}
                       className="flex w-full items-center gap-2.5 px-3 py-2.5 font-givonic text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
                     >
-                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                        <path d="M2 8s2.5-4.5 6-4.5S14 8 14 8s-2.5 4.5-6 4.5S2 8 2 8z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-                        <circle cx="8" cy="8" r="1.8" stroke="currentColor" strokeWidth="1.4" />
-                      </svg>
+                      <Eye size={14} strokeWidth={1.6} />
                       Keluarkan dari arsip
                     </button>
                   ) : (
@@ -3406,11 +3253,7 @@ function SidebarContent({
                       }}
                       className="flex w-full items-center gap-2.5 px-3 py-2.5 font-givonic text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
                     >
-                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                        <path d="M2.5 3.5h11L11 6.5H5L2.5 3.5z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-                        <path d="M3.2 6.5v5.2a1 1 0 0 0 1 1h7.6a1 1 0 0 0 1-1V6.5" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-                        <path d="M6 10h4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                      </svg>
+                      <Archive size={14} strokeWidth={1.6} />
                       Arsipkan
                     </button>
                   )}
@@ -3423,15 +3266,11 @@ function SidebarContent({
                     }}
                     className="flex w-full items-center gap-2.5 px-3 py-2.5 font-givonic text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
                   >
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                      <path
-                        d="M8 2l2.1 4.3 4.7.7-3.4 3.3.8 4.7L8 12.9 3.8 15l.8-4.7L1.2 7l4.7-.7z"
-                        stroke="currentColor"
-                        strokeWidth="1.4"
-                        strokeLinejoin="round"
-                        fill={starred.includes(ctxMenu.to) ? 'currentColor' : 'none'}
-                      />
-                    </svg>
+                    <Star
+                      size={14}
+                      strokeWidth={1.6}
+                      className={starred.includes(ctxMenu.to) ? 'fill-amber-400 text-amber-400' : ''}
+                    />
                     {starred.includes(ctxMenu.to) ? 'Hapus dari Favorit' : 'Favorit'}
                   </button>
                   {(() => {
@@ -3453,10 +3292,7 @@ function SidebarContent({
                         }}
                         className="flex w-full items-center gap-2.5 px-3 py-2.5 font-givonic text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
                       >
-                        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                          <path d="M6.5 9.5a3.5 3.5 0 0 0 5 0l2-2a3.54 3.54 0 0 0-5-5l-1 1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                          <path d="M9.5 6.5a3.5 3.5 0 0 0-5 0l-2 2a3.54 3.54 0 0 0 5 5l1-1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                        </svg>
+                        <Link2 size={14} strokeWidth={1.6} />
                         {pinned ? 'Hapus shortcut' : 'Tambahkan ke shortcut'}
                       </button>
                     );
@@ -3471,9 +3307,7 @@ function SidebarContent({
                         onClick={() => handleDeleteNote(note)}
                         className="flex w-full items-center gap-2.5 px-3 py-2.5 font-givonic text-sm font-medium text-red-600 transition hover:bg-red-50"
                       >
-                        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                          <path d="M2.8 4.5h10.4M6.3 4.5V3.2a.7.7 0 0 1 .7-.7h2a.7.7 0 0 1 .7.7v1.3M4.3 4.5l.6 7.6a1 1 0 0 0 1 .9h3.9a1 1 0 0 0 1-.9l.6-7.6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
+                        <Trash2 size={14} strokeWidth={1.6} />
                         Hapus Tab
                       </button>
                     );
@@ -3488,10 +3322,7 @@ function SidebarContent({
                       onClick={() => handleUnarchiveTeam(ctxMenu.team)}
                       className="flex w-full items-center gap-2.5 px-3 py-2.5 font-givonic text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
                     >
-                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                        <path d="M2 8s2.5-4.5 6-4.5S14 8 14 8s-2.5 4.5-6 4.5S2 8 2 8z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-                        <circle cx="8" cy="8" r="1.8" stroke="currentColor" strokeWidth="1.4" />
-                      </svg>
+                      <Eye size={14} strokeWidth={1.6} />
                       Keluarkan dari arsip
                     </button>
                   ) : (
@@ -3501,11 +3332,7 @@ function SidebarContent({
                       onClick={() => handleArchiveTeam(ctxMenu.team)}
                       className="flex w-full items-center gap-2.5 px-3 py-2.5 font-givonic text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
                     >
-                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                        <path d="M2.5 3.5h11L11 6.5H5L2.5 3.5z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-                        <path d="M3.2 6.5v5.2a1 1 0 0 0 1 1h7.6a1 1 0 0 0 1-1V6.5" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-                        <path d="M6 10h4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                      </svg>
+                      <Archive size={14} strokeWidth={1.6} />
                       Arsipkan
                     </button>
                   )}
@@ -3518,15 +3345,11 @@ function SidebarContent({
                     }}
                     className="flex w-full items-center gap-2.5 px-3 py-2.5 font-givonic text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
                   >
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                      <path
-                        d="M8 2l2.1 4.3 4.7.7-3.4 3.3.8 4.7L8 12.9 3.8 15l.8-4.7L1.2 7l4.7-.7z"
-                        stroke="currentColor"
-                        strokeWidth="1.4"
-                        strokeLinejoin="round"
-                        fill={starred.includes(ctxMenu.team.id) ? 'currentColor' : 'none'}
-                      />
-                    </svg>
+                    <Star
+                      size={14}
+                      strokeWidth={1.6}
+                      className={starred.includes(ctxMenu.team.id) ? 'fill-amber-400 text-amber-400' : ''}
+                    />
                     {starred.includes(ctxMenu.team.id) ? 'Hapus dari Favorit' : 'Favorit'}
                   </button>
                   <button
@@ -3539,10 +3362,7 @@ function SidebarContent({
                     }}
                     className="flex w-full items-center gap-2.5 px-3 py-2.5 font-givonic text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
                   >
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                      <path d="M6.5 9.5a3.5 3.5 0 0 0 5 0l2-2a3.54 3.54 0 0 0-5-5l-1 1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                      <path d="M9.5 6.5a3.5 3.5 0 0 0-5 0l-2 2a3.54 3.54 0 0 0 5 5l1-1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                    </svg>
+                    <Link2 size={14} strokeWidth={1.6} />
                     {isPinned('team', ctxMenu.team.id) ? 'Hapus shortcut' : 'Tambahkan ke shortcut'}
                   </button>
                   {isTeamAdmin(ctxMenu.team) && (
@@ -3552,9 +3372,7 @@ function SidebarContent({
                       onClick={() => handleDeleteTeam(ctxMenu.team)}
                       className="flex w-full items-center gap-2.5 px-3 py-2.5 font-givonic text-sm font-medium text-red-600 transition hover:bg-red-50"
                     >
-                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                        <path d="M2.8 4.5h10.4M6.3 4.5V3.2a.7.7 0 0 1 .7-.7h2a.7.7 0 0 1 .7.7v1.3M4.3 4.5l.6 7.6a1 1 0 0 0 1 .9h3.9a1 1 0 0 0 1-.9l.6-7.6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
+                      <Trash2 size={14} strokeWidth={1.6} />
                       Hapus tim
                     </button>
                   )}
@@ -3570,9 +3388,7 @@ function SidebarContent({
                     }}
                     className="flex w-full items-center gap-2.5 px-3 py-2.5 font-givonic text-sm font-medium text-red-600 transition hover:bg-red-50"
                   >
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                      <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                    </svg>
+                    <Trash2 size={14} strokeWidth={1.6} />
                     Hapus shortcut
                   </button>
                 </>
@@ -3609,9 +3425,7 @@ function SidebarContent({
                 autoFocus
                 className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-perrific-graphite"
               >
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                  <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                </svg>
+                <X size={14} strokeWidth={1.6} />
               </button>
             </div>
           </div>
@@ -3740,9 +3554,7 @@ function SidebarContent({
               aria-label="Tutup"
               className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-perrific-graphite"
             >
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-              </svg>
+              <X size={14} strokeWidth={1.6} />
             </button>
           </div>
           <form onSubmit={handleSaveTeamDesc} className="mt-3 space-y-3">
@@ -3802,6 +3614,7 @@ export function isAppSidebarCollapsed(): boolean {
 }
 
 export default function AppLayout() {
+  const { socket } = useSocket();
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => {
     try {
@@ -3810,6 +3623,72 @@ export default function AppLayout() {
       return false;
     }
   });
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const refreshUnreadCount = useCallback(() => {
+    notificationApi
+      .list()
+      .then((list) => {
+        setUnreadCount((list || []).filter((n) => !n.read).length);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    refreshUnreadCount();
+  }, [refreshUnreadCount]);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNew = (notif: any) => {
+      setUnreadCount((prev) => prev + 1);
+      const title = notif?.title || 'Notifikasi Baru';
+      const msg = notif?.message ? `${title}: ${notif.message}` : title;
+      showToast(msg, {
+        label: 'Lihat',
+        onAction: () => {
+          setCollapsed(true);
+          setOpen(false);
+          setNotificationsOpen(true);
+        },
+      });
+      window.dispatchEvent(new CustomEvent('purrific:notification-new', { detail: notif }));
+    };
+
+    const handleRead = (payload: { notificationId?: string }) => {
+      refreshUnreadCount();
+      window.dispatchEvent(new CustomEvent('purrific:notification-read', { detail: payload }));
+    };
+
+    const handleReadAll = () => {
+      setUnreadCount(0);
+      window.dispatchEvent(new CustomEvent('purrific:notification-read-all'));
+    };
+
+    socket.on('notification:new', handleNew);
+    socket.on('notification:read', handleRead);
+    socket.on('notification:read-all', handleReadAll);
+
+    return () => {
+      socket.off('notification:new', handleNew);
+      socket.off('notification:read', handleRead);
+      socket.off('notification:read-all', handleReadAll);
+    };
+  }, [socket, refreshUnreadCount]);
+
+  function handleOpenNotifications() {
+    setCollapsed(true);
+    setOpen(false);
+    setNotificationsOpen(true);
+  }
+
+  function handleCloseNotifications() {
+    setNotificationsOpen(false);
+    setCollapsed(false);
+  }
+
   // Semua gerakan dikoordinasi via transisi CSS 200ms yang sama (lebar aside,
   // padding baris, label fade) sehingga ikon meluncur halus, bukan melompat.
   const location = useLocation();
@@ -3852,15 +3731,30 @@ export default function AppLayout() {
       {/* Sidebar desktop */}
       <aside
         className={`hidden shrink-0 border-r border-gray-200 transition-[width] duration-200 ease-in-out lg:sticky lg:top-0 lg:block lg:h-screen ${
-          collapsed ? 'lg:w-[68px]' : 'lg:w-64'
+          collapsed ? 'lg:w-0 lg:border-r-0 overflow-hidden' : 'lg:w-64'
         }`}
       >
         <SidebarContent
           collapsed={collapsed}
           onRequestExpand={() => setCollapsed(false)}
           onToggleCollapse={toggleCollapsed}
+          onOpenNotifications={handleOpenNotifications}
+          unreadCount={unreadCount}
         />
       </aside>
+
+      {/* Tombol buka sidebar saat tertutup penuh */}
+      {collapsed && !notificationsOpen && (
+        <button
+          type="button"
+          onClick={toggleCollapsed}
+          title="Buka sidebar"
+          aria-label="Buka sidebar"
+          className="fixed left-3 top-3 z-30 hidden h-8 w-8 items-center justify-center rounded-lg bg-white text-perrific-graphite transition hover:bg-gray-100 lg:flex"
+        >
+          <ChevronRight size={16} strokeWidth={1.6} />
+        </button>
+      )}
 
       {/* Sidebar mobile (geser) */}
       <aside
@@ -3868,7 +3762,12 @@ export default function AppLayout() {
           open ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <SidebarContent collapsed={false} onClose={() => setOpen(false)} />
+        <SidebarContent
+          collapsed={false}
+          onClose={() => setOpen(false)}
+          onOpenNotifications={handleOpenNotifications}
+          unreadCount={unreadCount}
+        />
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
@@ -3880,9 +3779,7 @@ export default function AppLayout() {
             aria-label="Buka menu"
             className="flex h-9 w-9 items-center justify-center rounded-lg text-perrific-graphite hover:bg-gray-100"
           >
-            <svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <path d="M2 4.5h12M2 8h12M2 11.5h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
+            <Menu size={18} strokeWidth={1.6} />
           </button>
           <Link to="/notes" className="flex items-center gap-2">
             <img src="/Purrific.svg" alt="Purrific" width="24" height="24" className="h-6 w-6" />
@@ -3896,6 +3793,24 @@ export default function AppLayout() {
           <Outlet />
         </main>
       </div>
+
+      {/* Backdrop saat notifikasi terbuka */}
+      {notificationsOpen && (
+        <button
+          type="button"
+          aria-label="Tutup notifikasi"
+          onClick={handleCloseNotifications}
+          className="fixed inset-0 z-40 bg-black/25 backdrop-blur-[1px] transition-opacity"
+        />
+      )}
+
+      {/* Drawer panel notifikasi dengan tombol X di pojok kiri atas */}
+      <NotificationPanel
+        open={notificationsOpen}
+        onClose={handleCloseNotifications}
+        onUnreadCountChange={setUnreadCount}
+      />
+
       <UsernameModal />
       {/* Satu host untuk seluruh app (di luar SidebarContent yang mount ganda) */}
       <ToastHost />

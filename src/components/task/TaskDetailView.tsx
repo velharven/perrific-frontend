@@ -4,6 +4,7 @@ import { taskApi } from '@/api/tasks';
 import { projectApi } from '@/api/projects';
 import Avatar from '@/components/ui/Avatar';
 import { PencilIcon, TrashIcon } from '@/components/icons';
+import { Pencil, Trash2 } from 'lucide-react';
 import MenuPortal from '@/components/ui/MenuPortal';
 import { showToast } from '@/components/ui/Toast';
 import { decodeDataUrlText, fileExtLabel, previewKind } from '@/lib/preview';
@@ -1214,9 +1215,9 @@ export default function TaskDetailView({
                 onClick={() => setEditingTitle(true)}
                 title="Ubah judul"
                 aria-label="Ubah judul"
-                className="flex h-8 w-8 items-center justify-center rounded-md bg-orange-50 text-perrific-violet hover:bg-orange-100"
+                className="flex h-8 w-8 items-center justify-center rounded-md bg-orange-50 text-perrific-violet hover:bg-orange-100 cursor-pointer"
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 20h9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                <Pencil size={14} strokeWidth={1.8} aria-hidden="true" />
               </button>
               {isAdmin && (
                 <button
@@ -1224,9 +1225,9 @@ export default function TaskDetailView({
                   onClick={handleDelete}
                   title="Hapus task"
                   aria-label="Hapus task"
-                  className="flex h-8 w-8 items-center justify-center rounded-md bg-red-50 text-red-600 hover:bg-red-100"
+                  className="flex h-8 w-8 items-center justify-center rounded-md bg-red-50 text-red-600 hover:bg-red-100 cursor-pointer"
                 >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 6h18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                  <Trash2 size={14} strokeWidth={1.8} aria-hidden="true" />
                 </button>
               )}
               <button

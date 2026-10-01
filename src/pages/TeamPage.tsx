@@ -8,6 +8,7 @@ import { showToast } from '@/components/ui/Toast';
 import { APP_SIDEBAR_EVENT, isAppSidebarCollapsed } from '@/components/layout/AppLayout';
 import { TEAMS_CHANGED_EVENT } from '@/hooks/useNavLabels';
 import { useAuth } from '@/store/auth';
+import { Briefcase } from 'lucide-react';
 import type { Project, Task, Team } from '@/types';
 
 type TaskWithProject = Task & { projectName: string; projectId: string };
@@ -236,10 +237,7 @@ export default function TeamPage() {
         <div className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-xs text-amber-900">
           <div className="flex items-center gap-2.5">
             <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-amber-100 text-amber-700">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
-                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
-              </svg>
+              <Briefcase size={14} strokeWidth={1.8} aria-hidden="true" />
             </span>
             <p>
               Ada <strong>{pendingProposalCount} usulan project baru</strong> dari organisasi yang menunggu persetujuan Anda.
@@ -383,7 +381,7 @@ export default function TeamPage() {
 
       <div
         className={`pointer-events-none fixed inset-x-0 bottom-4 z-30 flex justify-center transition-[left] duration-200 ${
-          sbCollapsed ? 'md:left-[68px]' : 'md:left-64'
+          sbCollapsed ? 'md:left-0' : 'md:left-64'
         }`}
       >
         <div

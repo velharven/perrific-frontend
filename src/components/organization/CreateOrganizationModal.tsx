@@ -1,8 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { teamApi } from '@/api/teams';
 import { organizationApi } from '@/api/organizations';
+import { useAuth } from '@/store/auth';
+import { useTrash } from '@/hooks/useNavLabels';
 import ModalShell from '@/components/ui/ModalShell';
 import { showToast } from '@/components/ui/Toast';
+import { Building2, X } from 'lucide-react';
 import type { Organization, Team } from '@/types';
 
 export default function CreateOrganizationModal({
@@ -12,6 +15,13 @@ export default function CreateOrganizationModal({
   onClose: () => void;
   onCreated: (org: Organization) => void;
 }) {
+  const { user } = useAuth();
+  const { items: trashItems } = useTrash(user?.id);
+  const trashedTeamIds = useMemo(
+    () => new Set(trashItems.filter((t) => t.kind === 'team').map((t) => t.id)),
+    [trashItems],
+  );
+
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [teams, setTeams] = useState<Team[]>([]);
@@ -19,6 +29,11 @@ export default function CreateOrganizationModal({
   const [loadingTeams, setLoadingTeams] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const availableTeams = useMemo(
+    () => teams.filter((t) => !trashedTeamIds.has(t.id)),
+    [teams, trashedTeamIds],
+  );
 
   useEffect(() => {
     teamApi
@@ -42,11 +57,12 @@ export default function CreateOrganizationModal({
     }
     setSubmitting(true);
     setError(null);
+    const validTeamIds = selectedTeamIds.filter((id) => availableTeams.some((t) => t.id === id));
     try {
       const org = await organizationApi.create({
         name: name.trim(),
         description: description.trim() || undefined,
-        teamIds: selectedTeamIds.length > 0 ? selectedTeamIds : undefined,
+        teamIds: validTeamIds.length > 0 ? validTeamIds : undefined,
       });
       showToast(`Organisasi "${org.name}" berhasil dibuat!`);
       onCreated(org);
@@ -64,9 +80,7 @@ export default function CreateOrganizationModal({
         <div className="flex items-center justify-between border-b border-gray-100 pb-3">
           <div className="flex items-center gap-2.5">
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-perrific-violet/10 text-perrific-violet">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3" />
-              </svg>
+              <Building2 size={18} strokeWidth={1.8} aria-hidden="true" />
             </span>
             <div>
               <h2 className="font-givonic text-base font-bold text-perrific-graphite">Buat Organisasi Baru</h2>
@@ -77,11 +91,9 @@ export default function CreateOrganizationModal({
             type="button"
             onClick={onClose}
             aria-label="Tutup"
-            className="flex h-7 w-7 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+            className="flex h-7 w-7 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-600 cursor-pointer"
           >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-              <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-            </svg>
+            <X size={14} strokeWidth={1.6} aria-hidden="true" />
           </button>
         </div>
 
@@ -131,13 +143,13 @@ export default function CreateOrganizationModal({
 
           {loadingTeams ? (
             <p className="text-xs text-gray-400">Memuat tim...</p>
-          ) : teams.length === 0 ? (
+          ) : availableTeams.length === 0 ? (
             <p className="rounded-lg border border-dashed border-gray-200 p-2.5 text-xs text-gray-400">
               Belum ada tim yang tersedia. Anda dapat menghubungkan tim nanti.
             </p>
           ) : (
             <div className="max-h-36 space-y-1 overflow-y-auto rounded-lg border border-gray-200 p-2">
-              {teams.map((t) => (
+              {availableTeams.map((t) => (
                 <label
                   key={t.id}
                   className="flex cursor-pointer items-center justify-between rounded-md p-1.5 hover:bg-gray-50 text-sm"

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { AlertTriangle } from 'lucide-react';
 
 type ConfirmModalProps = {
   open: boolean;
@@ -59,16 +60,7 @@ export default function ConfirmModal({
             aria-hidden="true"
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-600"
           >
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-              <path
-                d="M10 2.5L18.5 16.5H1.5L10 2.5z"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                strokeLinejoin="round"
-              />
-              <path d="M10 7.5v4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-              <circle cx="10" cy="14" r="1" fill="currentColor" />
-            </svg>
+            <AlertTriangle size={20} strokeWidth={1.8} />
           </span>
           <div className="min-w-0">
             <h2

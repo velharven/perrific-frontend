@@ -24,6 +24,17 @@ import {
 import { CALENDAR_COLORS, getCalendarColorMeta } from '@/lib/calendarColors';
 import TimePickerInput from '@/components/ui/TimePickerInput';
 import { showToast } from '@/components/ui/Toast';
+import {
+  Sliders,
+  Check,
+  X,
+  Clock,
+  ChevronRight,
+  Repeat,
+  Globe,
+  Calendar,
+  Trash2,
+} from 'lucide-react';
 
 export type CombinedItem =
   | { type: 'activity'; id: string; act: DailyActivity; time?: string | null; instanceDate?: string }
@@ -1079,18 +1090,14 @@ export default function CalendarCardSettings({
               color: currentColorMeta.solidHex,
             }}
           >
-            <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor">
-              <path d="M11 2a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1V2zm-4 4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V6zm-4 4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-4z" />
-            </svg>
+            <Sliders size={13} strokeWidth={1.6} />
           </span>
           <span className="text-[11px] font-bold text-gray-700 tracking-wide uppercase">
             Pengaturan Kegiatan
           </span>
           {(!isAct || Boolean(act?.googleEventId)) && (
             <span title="Tersinkron ke Google Calendar" className="text-blue-500">
-              <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor">
-                <path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z" />
-              </svg>
+              <Check size={10} strokeWidth={2.5} />
             </span>
           )}
         </div>
@@ -1101,7 +1108,7 @@ export default function CalendarCardSettings({
           title="Tutup pengaturan"
           className="flex h-6 w-6 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition cursor-pointer"
         >
-          ✕
+          <X size={14} strokeWidth={1.6} />
         </button>
       </div>
 
@@ -1127,10 +1134,7 @@ export default function CalendarCardSettings({
         <div className="flex items-center gap-2 text-xs text-gray-700">
           {/* Ikon Jam */}
           <span className="text-gray-400 shrink-0">
-            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <circle cx="8" cy="8" r="6.5" />
-              <polyline points="8 4 8 8 10.5 9.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            <Clock size={15} strokeWidth={1.6} />
           </span>
 
           {!isAllDay ? (
@@ -1305,17 +1309,7 @@ export default function CalendarCardSettings({
             </span>
           </div>
 
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            className="shrink-0 text-gray-400"
-          >
-            <path d="M6 4l4 4-4 4" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+          <ChevronRight size={14} strokeWidth={1.6} className="shrink-0 text-gray-400" />
         </button>
       </div>
 
@@ -1340,49 +1334,21 @@ export default function CalendarCardSettings({
                 recurrence || repeatMenuOpen ? 'text-blue-600' : 'text-gray-400'
               }`}
             >
-              <svg
-                width="15"
-                height="15"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <polyline points="17 1 21 5 17 9" />
-                <path d="M3 11V9a4 4 0 0 1 4-4h14" />
-                <polyline points="7 23 3 19 7 15" />
-                <path d="M21 13v2a4 4 0 0 1-4 4H3" />
-              </svg>
+              <Repeat size={15} strokeWidth={1.6} />
             </span>
             <span className="truncate font-medium text-[11.5px]">
               {recurrenceSummaryLabel}
             </span>
           </div>
 
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            className="shrink-0 text-gray-400"
-          >
-            <path d="M6 4l4 4-4 4" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+          <ChevronRight size={14} strokeWidth={1.6} className="shrink-0 text-gray-400" />
         </button>
       </div>
 
       {/* Baris Zona Waktu */}
       <div className="flex items-center gap-2 py-0.5 px-1 text-xs text-gray-600">
         <span className="text-gray-400 shrink-0">
-          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <circle cx="8" cy="8" r="6.5" />
-            <line x1="1.5" y1="8" x2="14.5" y2="8" />
-            <path d="M8 1.5C9.5 3.5 10.5 5.5 10.5 8s-1 4.5-2.5 6.5C6.5 12.5 5.5 10.5 5.5 8s1-4.5 2.5-6.5z" />
-          </svg>
+          <Globe size={15} strokeWidth={1.6} />
         </span>
         <span className="font-medium text-[11px] text-gray-600">GMT+7 Jakarta (WIB)</span>
       </div>
@@ -1391,9 +1357,7 @@ export default function CalendarCardSettings({
       {isAct && act && (
         <div className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg bg-gray-50 border border-gray-100 text-xs">
           <div className="flex items-center gap-2 min-w-0">
-            <svg className="w-4 h-4 shrink-0 text-blue-500" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z" />
-            </svg>
+            <Calendar size={16} strokeWidth={1.6} className="shrink-0 text-blue-500" />
             <span className="truncate text-[11px] font-medium text-gray-700">
               {act.googleEventId ? 'Tersinkron ke Google Calendar' : 'Belum di Google Calendar'}
             </span>
@@ -1441,10 +1405,7 @@ export default function CalendarCardSettings({
           className="rounded-lg p-1 text-gray-400 hover:bg-red-50 hover:text-red-600 transition cursor-pointer disabled:opacity-50"
           title="Hapus kegiatan ini"
         >
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-            <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z" />
-            <path fillRule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z" />
-          </svg>
+          <Trash2 size={14} strokeWidth={1.6} />
         </button>
       </div>
 
@@ -1480,20 +1441,7 @@ export default function CalendarCardSettings({
                   }`}
                 >
                   <span className="flex h-4 w-4 shrink-0 items-center justify-center text-blue-600">
-                    {selected && (
-                      <svg
-                        width="14"
-                        height="14"
-                        viewBox="0 0 16 16"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2.2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <polyline points="3.5 8.5 6.5 11.5 12.5 4.5" />
-                      </svg>
-                    )}
+                    {selected && <Check size={14} strokeWidth={2.2} />}
                   </span>
                   <span className="leading-snug">{preset.label}</span>
                 </button>
@@ -1512,20 +1460,7 @@ export default function CalendarCardSettings({
               }`}
             >
               <span className="flex h-4 w-4 shrink-0 items-center justify-center text-blue-600">
-                {isCustomRecurrenceSelected && (
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 16 16"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <polyline points="3.5 8.5 6.5 11.5 12.5 4.5" />
-                  </svg>
-                )}
+                {isCustomRecurrenceSelected && <Check size={14} strokeWidth={2.2} />}
               </span>
               <span className="leading-snug">Kustom...</span>
             </button>
@@ -1791,18 +1726,7 @@ export default function CalendarCardSettings({
                       style={{ backgroundColor: opt.solidHex }}
                     >
                       {isSelected && (
-                        <svg
-                          width="11"
-                          height="11"
-                          viewBox="0 0 16 16"
-                          fill="none"
-                          stroke="white"
-                          strokeWidth="2.8"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <polyline points="3.5 8.5 6.5 11.5 12.5 4.5" />
-                        </svg>
+                        <Check size={11} strokeWidth={2.8} className="text-white" />
                       )}
                     </span>
                   </button>

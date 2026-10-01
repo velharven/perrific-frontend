@@ -19,6 +19,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import Avatar from '@/components/ui/Avatar';
+import { AlertTriangle, ChevronRight, ChevronLeft, Plus } from 'lucide-react';
 import type { BoardColumn, Task } from '@/types';
 
 export type BoardView = { collapsed: string[] };
@@ -110,9 +111,7 @@ function CardView({
             aria-label="Belum diatur di kalender"
             className="inline-flex shrink-0 items-center justify-center text-amber-500 hover:text-amber-600 transition"
           >
-            <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor">
-              <path d="M7.938 2.016a.13.13 0 0 1 .125 0l6.857 11.856c.026.045.026.1 0 .145a.14.14 0 0 1-.125.073H1.205a.14.14 0 0 1-.125-.073.17.17 0 0 1 0-.145L7.938 2.016zm.854 4.484a.5.5 0 0 0-.992 0l-.3 3.5a.5.5 0 0 0 .992.08l.3-3.58zm-.496 5.5a.65.65 0 1 0 0 1.3.65.65 0 0 0 0-1.3z" />
-            </svg>
+            <AlertTriangle size={14} strokeWidth={1.8} />
           </span>
         )}
       </div>
@@ -273,9 +272,7 @@ function Column({
             aria-expanded="false"
             className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-perrific-violet transition hover:bg-gray-300"
           >
-            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            <ChevronRight size={14} strokeWidth={1.8} aria-hidden="true" />
           </button>
           <span aria-hidden="true" className="h-3 w-3 shrink-0 rounded-[3px]" style={{ backgroundColor: color }} />
           <span className="truncate font-givonic text-xs font-bold tracking-widest text-gray-500 [writing-mode:vertical-rl]">
@@ -301,11 +298,9 @@ function Column({
                   onClick={onAdd}
                   title={`Tambah task di ${label}`}
                   aria-label={`Tambah task di ${label}`}
-                  className="flex h-6 w-6 items-center justify-center rounded-md text-gray-400 transition hover:bg-gray-300 hover:text-perrific-violet"
+                  className="flex h-6 w-6 items-center justify-center rounded-md text-gray-400 transition hover:bg-gray-300 hover:text-perrific-violet cursor-pointer"
                 >
-                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                    <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                  </svg>
+                  <Plus size={14} strokeWidth={1.8} aria-hidden="true" />
                 </button>
               )}
               <button
@@ -314,11 +309,9 @@ function Column({
                 title={`Ciutkan kolom ${label}`}
                 aria-label={`Ciutkan kolom ${label}`}
                 aria-expanded="true"
-                className="flex h-6 w-6 items-center justify-center rounded-md text-gray-400 transition hover:bg-gray-300 hover:text-gray-700"
+                className="flex h-6 w-6 items-center justify-center rounded-md text-gray-400 transition hover:bg-gray-300 hover:text-gray-700 cursor-pointer"
               >
-                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                  <path d="M10 4L6 8l4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+                <ChevronLeft size={14} strokeWidth={1.8} aria-hidden="true" />
               </button>
             </span>
           </div>

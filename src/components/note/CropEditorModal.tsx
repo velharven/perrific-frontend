@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { X } from 'lucide-react';
 import ModalShell from '@/components/ui/ModalShell';
 import { cropDataUrl } from './cover';
 
@@ -90,11 +91,9 @@ export default function CropEditorModal({
           type="button"
           onClick={onClose}
           aria-label="Tutup"
-          className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-perrific-graphite"
+          className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-perrific-graphite cursor-pointer"
         >
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-          </svg>
+          <X size={14} strokeWidth={1.6} aria-hidden="true" />
         </button>
       </div>
       <div ref={boxRef}>

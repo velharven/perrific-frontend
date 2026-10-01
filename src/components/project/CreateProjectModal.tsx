@@ -4,6 +4,7 @@ import { projectApi } from '@/api/projects';
 import ModalShell from '@/components/ui/ModalShell';
 import Avatar from '@/components/ui/Avatar';
 import { showToast } from '@/components/ui/Toast';
+import { X } from 'lucide-react';
 import type { Project } from '@/types';
 
 export interface MemberOption {
@@ -137,11 +138,9 @@ export default function CreateProjectModal({
           onClick={onClose}
           title="Tutup"
           aria-label="Tutup"
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-perrific-graphite/60 transition hover:bg-gray-100 hover:text-perrific-graphite"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-perrific-graphite/60 transition hover:bg-gray-100 hover:text-perrific-graphite cursor-pointer"
         >
-          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-          </svg>
+          <X size={15} strokeWidth={1.6} aria-hidden="true" />
         </button>
       </div>
 

@@ -4,6 +4,7 @@ import { fileToAvatarDataUrl } from '@/lib/avatar';
 import ModalShell from '@/components/ui/ModalShell';
 import Avatar from '@/components/ui/Avatar';
 import { showToast } from '@/components/ui/Toast';
+import { X, Camera } from 'lucide-react';
 import type { Team } from '@/types';
 
 interface CrossTeamMember {
@@ -188,11 +189,9 @@ export default function CreateTeamModal({
           onClick={() => !creating && onClose()}
           title="Tutup"
           aria-label="Tutup"
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-perrific-graphite/60 transition hover:bg-gray-100 hover:text-perrific-graphite"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-perrific-graphite/60 transition hover:bg-gray-100 hover:text-perrific-graphite cursor-pointer"
         >
-          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-          </svg>
+          <X size={15} strokeWidth={1.6} aria-hidden="true" />
         </button>
       </div>
 
@@ -236,19 +235,7 @@ export default function CreateTeamModal({
                       className="h-full w-full object-cover"
                     />
                     <span className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition group-hover:opacity-100">
-                      <svg
-                        width="14"
-                        height="14"
-                        viewBox="0 0 16 16"
-                        fill="none"
-                        stroke="white"
-                        strokeWidth="1.6"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M2.5 5.5A1.5 1.5 0 014 4h1.2l1-1.5h3.6l1 1.5H12a1.5 1.5 0 011.5 1.5v6A1.5 1.5 0 0112 13H4a1.5 1.5 0 01-1.5-1.5v-6z" />
-                        <circle cx="8" cy="8.5" r="2.2" />
-                      </svg>
+                      <Camera size={14} strokeWidth={1.6} className="text-white" />
                     </span>
                   </>
                 ) : trimmedInitial ? (
@@ -257,36 +244,12 @@ export default function CreateTeamModal({
                       {trimmedInitial}
                     </span>
                     <span className="absolute inset-0 flex items-center justify-center bg-perrific-violet/90 text-white opacity-0 transition group-hover:opacity-100">
-                      <svg
-                        width="14"
-                        height="14"
-                        viewBox="0 0 16 16"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.6"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M2.5 5.5A1.5 1.5 0 014 4h1.2l1-1.5h3.6l1 1.5H12a1.5 1.5 0 011.5 1.5v6A1.5 1.5 0 0112 13H4a1.5 1.5 0 01-1.5-1.5v-6z" />
-                        <circle cx="8" cy="8.5" r="2.2" />
-                      </svg>
+                      <Camera size={14} strokeWidth={1.6} />
                     </span>
                   </>
                 ) : (
                   <span className="flex flex-col items-center justify-center text-gray-400 transition group-hover:text-perrific-violet">
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 16 16"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.4"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M2.5 5.5A1.5 1.5 0 014 4h1.2l1-1.5h3.6l1 1.5H12a1.5 1.5 0 011.5 1.5v6A1.5 1.5 0 0112 13H4a1.5 1.5 0 01-1.5-1.5v-6z" />
-                      <circle cx="8" cy="8.5" r="2.2" />
-                    </svg>
+                    <Camera size={16} strokeWidth={1.5} />
                   </span>
                 )}
               </button>
@@ -298,9 +261,7 @@ export default function CreateTeamModal({
                   aria-label="Hapus foto tim"
                   className="absolute -right-1.5 -top-1.5 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-gray-800 text-white shadow-xs transition hover:bg-red-600 cursor-pointer"
                 >
-                  <svg width="8" height="8" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                    <path d="M2 2l8 8M10 2L2 10" />
-                  </svg>
+                  <X size={8} strokeWidth={2.2} />
                 </button>
               )}
             </div>

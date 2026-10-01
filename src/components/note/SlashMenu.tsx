@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { CheckSquare, ChevronRight, Minus, List, FileText, Table } from 'lucide-react';
 
 export type SlashCommandId =
   | 'text'
@@ -43,10 +44,7 @@ const GROUPS: { title: string; items: SlashItem[] }[] = [
         keywords: 'todo to-do checklist centang tugas task',
         icon: (
           <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200">
-            <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
-              <rect x="2.5" y="2.5" width="11" height="11" rx="2.5" stroke="currentColor" strokeWidth="1.4" className="text-gray-400" />
-              <path d="M5.5 8.2l2 2 3.2-3.6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400" />
-            </svg>
+            <CheckSquare size={16} strokeWidth={1.6} className="text-gray-400" />
           </span>
         ),
       },
@@ -57,9 +55,7 @@ const GROUPS: { title: string; items: SlashItem[] }[] = [
         keywords: 'toggle lipat buka tutup fold collapsible',
         icon: (
           <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-              <path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400" />
-            </svg>
+            <ChevronRight size={16} strokeWidth={1.6} className="text-gray-400" />
           </span>
         ),
       },
@@ -103,9 +99,7 @@ const GROUPS: { title: string; items: SlashItem[] }[] = [
         keywords: 'pembatas divider garis horizontal strip pemisah minus',
         icon: (
           <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200">
-            <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
-              <path d="M2.5 8h11" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="text-gray-400" />
-            </svg>
+            <Minus size={16} strokeWidth={1.8} className="text-gray-400" />
           </span>
         ),
       },
@@ -121,12 +115,7 @@ const GROUPS: { title: string; items: SlashItem[] }[] = [
         keywords: 'daftar bullet titik poin list minus strip',
         icon: (
           <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200">
-            <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
-              <circle cx="4" cy="4" r="1.3" fill="currentColor" className="text-gray-400" />
-              <path d="M7 4h6.5M7 8h6.5M7 12h6.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" className="text-gray-400" />
-              <circle cx="4" cy="8" r="1.3" fill="currentColor" className="text-gray-400" />
-              <circle cx="4" cy="12" r="1.3" fill="currentColor" className="text-gray-400" />
-            </svg>
+            <List size={16} strokeWidth={1.6} className="text-gray-400" />
           </span>
         ),
       },
@@ -153,10 +142,7 @@ const GROUPS: { title: string; items: SlashItem[] }[] = [
         keywords: 'note subhalaman halaman kosong page baru',
         icon: (
           <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200">
-            <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
-              <path d="M4 2.5h5.5L12.5 5.5V13.5H4V2.5z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" className="text-gray-400" />
-              <path d="M9.5 2.5v3h3" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" className="text-gray-400" />
-            </svg>
+            <FileText size={16} strokeWidth={1.6} className="text-gray-400" />
           </span>
         ),
       },
@@ -167,10 +153,7 @@ const GROUPS: { title: string; items: SlashItem[] }[] = [
         keywords: 'tabel table database spreadsheet data',
         icon: (
           <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200">
-            <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
-              <rect x="2.5" y="3.5" width="11" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.4" className="text-gray-400" />
-              <path d="M2.5 6.5h11M7 6.5v6" stroke="currentColor" strokeWidth="1.4" className="text-gray-400" />
-            </svg>
+            <Table size={16} strokeWidth={1.6} className="text-gray-400" />
           </span>
         ),
       },

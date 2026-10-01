@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/store/auth';
+import { ChevronRight, ArrowRight } from 'lucide-react';
 
 export default function Navbar() {
   const { user } = useAuth();
@@ -35,9 +36,7 @@ export default function Navbar() {
               className="inline-flex items-center gap-2 rounded-full bg-perrific-graphite px-5 py-2.5 font-givonic text-sm font-semibold text-white shadow-[0_2px_10px_rgba(26,26,30,0.18)] hover:bg-black transition-colors"
             >
               Buka Ruang Kerja
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="opacity-80">
-                <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <ChevronRight size={14} strokeWidth={1.8} className="opacity-80" />
             </Link>
           ) : (
             <>
@@ -52,9 +51,7 @@ export default function Navbar() {
                 className="inline-flex items-center gap-2 rounded-full bg-perrific-violet px-5 py-2.5 font-givonic text-sm font-semibold text-white hover:bg-[#E64D0A] transition-colors"
               >
                 Coba Gratis
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                  <path d="M4 8h8M8 4l4 4-4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+                <ArrowRight size={14} strokeWidth={1.8} />
               </Link>
             </>
           )}

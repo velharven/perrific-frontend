@@ -1,6 +1,7 @@
 import { forwardRef, type CSSProperties, type ReactNode } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { GripVertical } from 'lucide-react';
 
 /**
  * Baris tabel yang bisa diseret via handle titik-titik di gutter kiri (id `row:<id>`).
@@ -45,14 +46,7 @@ const SortableRow = forwardRef<
               aria-label="Seret untuk memindahkan baris"
               className="absolute left-[-20px] top-1/2 -translate-y-1/2 cursor-grab touch-none px-0.5 text-gray-300 opacity-0 transition hover:text-gray-500 focus:opacity-100 group-hover/row:opacity-100 group-focus-within/row:opacity-100 active:cursor-grabbing max-sm:opacity-100"
             >
-              <svg width="10" height="14" viewBox="0 0 10 14" fill="none" aria-hidden="true">
-                <circle cx="3" cy="2.5" r="1.3" fill="currentColor" />
-                <circle cx="7" cy="2.5" r="1.3" fill="currentColor" />
-                <circle cx="3" cy="7" r="1.3" fill="currentColor" />
-                <circle cx="7" cy="7" r="1.3" fill="currentColor" />
-                <circle cx="3" cy="11.5" r="1.3" fill="currentColor" />
-                <circle cx="7" cy="11.5" r="1.3" fill="currentColor" />
-              </svg>
+              <GripVertical size={14} className="text-gray-400" aria-hidden="true" />
             </span>
           )}
           {gutter}

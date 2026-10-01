@@ -13,6 +13,7 @@ import { PROJECT_UPDATED_EVENT } from '@/pages/ProjectSettingsPage';
 import Avatar from '@/components/ui/Avatar';
 import { useAuth } from '@/store/auth';
 import { UndoStackProvider, useUndo } from '@/hooks/useUndoStack';
+import { Filter, Search, X, ChevronDown, Check } from 'lucide-react';
 import type { BoardColumn, Project, Task, Team } from '@/types';
 
 export const BOARD_VIEW_EVENT = 'boardview-changed';
@@ -770,7 +771,7 @@ function BoardPageInner() {
 
       <div
         className={`pointer-events-none fixed inset-x-0 bottom-4 z-30 flex justify-center transition-[left] duration-200 ${
-          sbCollapsed ? 'md:left-[68px]' : location.pathname.startsWith('/board/') ? 'md:left-64' : 'md:left-56'
+          sbCollapsed ? 'md:left-0' : location.pathname.startsWith('/board/') ? 'md:left-64' : 'md:left-56'
         }`}
       >
         <div className="pointer-events-auto flex max-w-full items-center gap-2 rounded-full border border-gray-300 bg-white/95 p-2 shadow-[0_8px_24px_rgba(26,26,30,0.14)] backdrop-blur">
@@ -791,9 +792,7 @@ function BoardPageInner() {
                 : 'text-gray-800 hover:bg-gray-200 hover:text-black'
             }`}
           >
-            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <path d="M2.5 3.5h11l-4.2 4.8v3.4l-2.6 1.5V8.3L2.5 3.5z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            <Filter size={15} strokeWidth={1.6} aria-hidden="true" />
             Filter
             {filterOptionCount > 0 && (
               <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-white px-1.5 font-givonic text-[11px] font-bold text-perrific-graphite">
@@ -802,10 +801,7 @@ function BoardPageInner() {
             )}
           </button>
           <div className="relative w-48 min-w-0 sm:w-72">
-            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true" className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-              <circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.5" />
-              <path d="M10.5 10.5L14 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
+            <Search size={15} strokeWidth={1.6} aria-hidden="true" className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               value={filterSearch}
               onChange={(e) => setFilterSearch(e.target.value)}
@@ -825,11 +821,9 @@ function BoardPageInner() {
               type="button"
               onClick={() => setCreateOpen(false)}
               aria-label="Tutup"
-              className="absolute right-0 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-perrific-graphite"
+              className="absolute right-0 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-perrific-graphite cursor-pointer"
             >
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-              </svg>
+              <X size={14} strokeWidth={1.6} aria-hidden="true" />
             </button>
           </div>
           <form onSubmit={handleCreate} className="mt-3">
@@ -878,12 +872,15 @@ function BoardPageInner() {
                         aria-haspopup="menu"
                         aria-expanded={priorityMenuOpen}
                         aria-label="Prioritas"
-                        className="flex w-full items-center justify-between rounded-xl bg-gray-200 py-2.5 pl-3 pr-3 font-givonic text-xs font-bold tracking-widest text-perrific-graphite focus:outline-none"
+                        className="flex w-full items-center justify-between rounded-xl bg-gray-200 py-2.5 pl-3 pr-3 font-givonic text-xs font-bold tracking-widest text-perrific-graphite focus:outline-none cursor-pointer"
                       >
                         {priority}
-                        <svg width="10" height="10" viewBox="0 0 16 16" fill="none" aria-hidden="true" className={`text-perrific-graphite/60 transition-transform duration-200 ${priorityMenuOpen ? 'rotate-180' : ''}`}>
-                          <path d="M4.5 6.5L8 10l3.5-3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
+                        <ChevronDown
+                          size={14}
+                          strokeWidth={1.8}
+                          aria-hidden="true"
+                          className={`text-perrific-graphite/60 transition-transform duration-200 ${priorityMenuOpen ? 'rotate-180' : ''}`}
+                        />
                       </button>
                       {priorityMenuOpen && (
                         <MenuPortal
@@ -909,12 +906,12 @@ function BoardPageInner() {
                                 setPriority(o.v);
                                 setPriorityMenuOpen(false);
                               }}
-                              className={`flex w-full items-center justify-between px-3 py-2 text-left font-givonic text-xs font-bold tracking-widest transition hover:bg-gray-100 ${
+                              className={`flex w-full items-center justify-between px-3 py-2 text-left font-givonic text-xs font-bold tracking-widest transition hover:bg-gray-100 cursor-pointer ${
                                 priority === o.v ? 'text-perrific-violet' : 'text-perrific-graphite'
                               }`}
                             >
                               {o.label}
-                              {priority === o.v && <span aria-hidden="true">✓</span>}
+                              {priority === o.v && <Check size={14} strokeWidth={2.2} aria-hidden="true" />}
                             </button>
                           ))}
                         </MenuPortal>
@@ -947,12 +944,15 @@ function BoardPageInner() {
                     aria-haspopup="menu"
                     aria-expanded={statusMenuOpen}
                     aria-label="Kolom awal"
-                    className="flex w-full items-center justify-between rounded-xl bg-gray-200 py-2.5 pl-3 pr-3 font-givonic text-xs font-bold tracking-widest text-perrific-graphite focus:outline-none"
+                    className="flex w-full items-center justify-between rounded-xl bg-gray-200 py-2.5 pl-3 pr-3 font-givonic text-xs font-bold tracking-widest text-perrific-graphite focus:outline-none cursor-pointer"
                   >
                     {(columns.find((c) => c.id === status)?.name ?? 'Pilih kolom').toUpperCase()}
-                    <svg width="10" height="10" viewBox="0 0 16 16" fill="none" aria-hidden="true" className={`text-perrific-graphite/60 transition-transform duration-200 ${statusMenuOpen ? 'rotate-180' : ''}`}>
-                      <path d="M4.5 6.5L8 10l3.5-3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
+                    <ChevronDown
+                      size={14}
+                      strokeWidth={1.8}
+                      aria-hidden="true"
+                      className={`text-perrific-graphite/60 transition-transform duration-200 ${statusMenuOpen ? 'rotate-180' : ''}`}
+                    />
                   </button>
                   {statusMenuOpen && (
                     <MenuPortal
