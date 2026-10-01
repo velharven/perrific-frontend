@@ -12,7 +12,8 @@ purrific-frontend/
 │   │   ├── activities.ts        # Permintaan data aktivitas harian dan checklist
 │   │   ├── calendar.ts          # Permintaan OAuth, event, dan sinkronisasi Google Calendar
 │   │   ├── notes.ts             # Permintaan data catatan dan tabel
-│   │   ├── notifications.ts     # Permintaan daftar dan status notifikasi
+│   │   ├── notifications.ts     # Permintaan daftar, status, dan penandaan notifikasi telah dibaca
+│   │   ├── organizations.ts     # Permintaan organisasi, tim terhubung, proposal, dan pengiriman task
 │   │   ├── projects.ts          # Permintaan proyek, kolom kanban, peran, dan anggota
 │   │   ├── tasks.ts             # Permintaan tugas, penugasan saya, komentar, dan lampiran
 │   │   └── teams.ts             # Permintaan tim, undangan, dan persetujuan gabung
@@ -42,7 +43,7 @@ purrific-frontend/
 │   │   │   ├── ProblemSection.tsx
 │   │   │   └── SolutionSection.tsx
 │   │   ├── layout/              # Rangka halaman utama dan navigasi
-│   │   │   ├── AppLayout.tsx    # Sidebar privat, daftar tim, navigasi utama
+│   │   │   ├── AppLayout.tsx    # Sidebar privat, daftar tim, navigasi utama, panel notifikasi, toast
 │   │   │   ├── DropIndicator.tsx
 │   │   │   ├── ProjectLayout.tsx# Sub-navigasi proyek (Overview, Kanban, Tugas Saya, dsb.)
 │   │   │   ├── ProtectedRoute.tsx# Penjaga rute terotentikasi
@@ -54,6 +55,12 @@ purrific-frontend/
 │   │   │   ├── HeadingOutline.tsx
 │   │   │   ├── SlashMenu.tsx
 │   │   │   └── cover.ts
+│   │   ├── notification/        # Komponen panel drawer notifikasi
+│   │   │   └── NotificationPanel.tsx # Drawer panel notifikasi dengan tombol X dan tombol baca semua
+│   │   ├── organization/        # Komponen modal manajemen organisasi
+│   │   │   ├── CreateOrganizationModal.tsx
+│   │   │   ├── ProposeProjectModal.tsx
+│   │   │   └── SendTaskModal.tsx
 │   │   ├── project/             # Editor pengaturan proyek
 │   │   │   ├── BoardColumnEditor.tsx
 │   │   │   ├── CreateProjectModal.tsx
@@ -71,7 +78,7 @@ purrific-frontend/
 │   │   ├── team/                # Komponen manajemen tim dan persetujuan
 │   │   │   └── ApprovalLists.tsx
 │   │   ├── ui/                  # Komponen antarmuka umum (Avatar, ModalShell, Toast, dll.)
-│   │   └── icons.tsx            # Komponen ikon SVG terpusat
+│   │   └── icons.tsx            # Pustaka icon aplikasi (berbasis Lucide Icons dan custom SVG)
 │   ├── fonts/                   # Berkas font kustom
 │   ├── hooks/                   # Custom hooks aplikasi
 │   │   ├── useGoogleCalendar.ts # Pengelolaan status koneksi, OAuth, dan sinkronisasi Google Calendar
@@ -98,6 +105,7 @@ purrific-frontend/
 │   │   ├── LoginPage.tsx        # Halaman masuk
 │   │   ├── NotFoundPage.tsx     # Halaman 404
 │   │   ├── NotePage.tsx         # Halaman editor catatan blok
+│   │   ├── OrganizationPage.tsx # Halaman dashboard organisasi (tim terhubung, usulan project & task)
 │   │   ├── PrivatRedirect.tsx   # Pengalih rute ke entri privat aktif pertama
 │   │   ├── ProjectApprovalPage.tsx # Halaman daftar usulan tugas yang perlu persetujuan
 │   │   ├── ProjectPage.tsx      # Halaman ringkasan/overview proyek
@@ -144,6 +152,7 @@ Setiap rute di bawah `ProtectedRoute` mewajibkan token login aktif. Jika token k
   - `/daily/:dailyId`: Tampilan aktivitas harian personal dengan kalender per tanggal.
   - `/notes/:noteId`: Halaman editor catatan blok personal ala Notion.
   - `/tables/:tableId`: Halaman tabel basis data personal.
+  - `/organizations/:organizationId`: Halaman dashboard organisasi binaan.
   - `/team/:teamId`: Halaman profil tim.
   - `/team/:teamId/projects`: Daftar proyek di dalam tim.
   - `/team/:teamId/settings`: Pengaturan tim, undangan anggota, dan antrean persetujuan.
@@ -175,7 +184,13 @@ Frontend menggunakan pendekatan state management yang modular:
 - Menyimpan nama kustom tab sidebar privat per pengguna pada `localStorage`.
 - Menggunakan CustomEvent browser `purrific:navlabels-changed` agar perubahan nama label langsung tersinkronisasi di sidebar desktop maupun drawer mobile tanpa reload.
 
-### 4. State lokal komponen dan custom hook
+### 4. State notifikasi real-time dan panel drawer (`AppLayout.tsx` & `NotificationPanel.tsx`)
+- Mendengarkan event WebSocket `notification:new`, `notification:read`, dan `notification:read-all` secara global pada root layout aplikasi.
+- Saat ada notifikasi baru, badge counter unread bertambah seketika dan pop-up *Toast* interaktif muncul dengan tombol "Lihat" untuk langsung membuka drawer notifikasi.
+- Sinkronisasi multi-tab & multi-device: ketika notifikasi dibaca atau tombol "Baca semua" ditekan, event socket menyelaraskan status kartu dan badge unread di seluruh tab yang aktif tanpa reload.
+- Komponen `NotificationPanel` otomatis menyisipkan kartu baru di urutan teratas secara real-time saat panel sedang terbuka.
+
+### 5. State lokal komponen dan custom hook
 - Halaman kanban (`BoardPage.tsx`) mengelola state lokal kartu tugas, kolom aktif, modal pembuatan tugas, dan filter pencarian.
 - Halaman aktivitas harian (`DailyPage.tsx`) mengelola state kalender tanggal terpilih, daftar checklist, mode input waktu, dan alih tampilan antara tabel database 'Semua Kegiatan' dan 'Kalender' Notion-style.
 - Kalender aktivitas harian (`CalendarView.tsx`) mengelola mode tampilan ('week' dan 'day'), penataan layout kegiatan bertumpuk (`computeTimedItemsLayout`), garis horizontal penunjuk waktu sekarang ala Notion Calendar, interaksi drag & drop kartu kalender, penargetan koordinat jam presisi (`HOUR_HEIGHT`), serta pintasan keyboard (`Delete`/`Backspace` untuk hapus, `Ctrl+Z`/`Cmd+Z` untuk stack undo riwayat pembatalan, dan `0`/`w` serta `1`/`d` untuk beralih mode minggu/hari).
@@ -190,7 +205,7 @@ Pemanggilan API backend dipusatkan melalui Axios di `src/lib/api.ts`:
 - Base URL diambil dari variabel lingkungan `VITE_API_URL` (default: `http://localhost:4000`).
 - Interceptor request secara otomatis menyisipkan header `Authorization: Bearer <token>` bila token ditemukan di penyimpanan lokal.
 - Interceptor response menangkap status HTTP `401 Unauthorized` untuk membersihkan sesi kedaluwarsa dan mengarahkan pengguna kembali ke halaman login.
-- File-file pemanggil API di `src/api/` membungkus endpoint sesuai domain (activities, calendar, notes, notifications, projects, tasks, teams) dan mengembalikan data terstruktur. Modul `calendar.ts` mendukung URL auth, callback OAuth, status koneksi, pengambilan event, sinkronisasi dua arah, dan sinkronisasi instan per-aktivitas (`syncActivity`).
+- File-file pemanggil API di `src/api/` membungkus endpoint sesuai domain (activities, calendar, notes, notifications, organizations, projects, tasks, teams) dan mengembalikan data terstruktur. Modul `calendar.ts` mendukung URL auth, callback OAuth, status koneksi, pengambilan event, sinkronisasi dua arah, dan sinkronisasi instan per-aktivitas (`syncActivity`).
 
 ## Interaksi drag and drop
 
@@ -209,3 +224,4 @@ Desain antarmuka dibangun menggunakan Tailwind CSS dengan font sans modern:
 - Desain responsif mendukung tampilan desktop layar lebar hingga layar ponsel pintar.
 - Shell aplikasi menyediakan bilah sisi (sidebar) yang dapat dilipat dan drawer khusus untuk perangkat bergerak.
 - Modal dan portal popover menggunakan koordinat fixed atau `MenuPortal.tsx` agar tidak terpotong oleh overflow kontainer induk.
+- **Ikonografi standar**: Seluruh ikon di dalam aplikasi distandarisasi menggunakan pustaka open-source [lucide-react](https://github.com/lucide-icons/lucide) untuk menjaga keselarasan bobot garis (*stroke width* 1.6 - 1.8), proporsi visual, dan tema modern yang konsisten.
