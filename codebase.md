@@ -43,7 +43,9 @@ purrific-frontend/
 │   │   │   ├── ProblemSection.tsx
 │   │   │   └── SolutionSection.tsx
 │   │   ├── layout/              # Rangka halaman utama dan navigasi
-│   │   │   ├── AppLayout.tsx    # Sidebar privat, daftar tim, navigasi utama, panel notifikasi, toast
+│   │   │   ├── AppLayout.tsx    # Sidebar privat, daftar tim, navigasi utama, drawer panel, toast
+│   │   │   ├── ArchivePanel.tsx # Drawer panel arsip dengan tombol X, quick unarchive, dan animasi meluncur
+│   │   │   ├── EditSidebarPanel.tsx # Drawer panel edit sidebar (susunan DnD & preset) dengan tombol X
 │   │   │   ├── DropIndicator.tsx
 │   │   │   ├── ProjectLayout.tsx# Sub-navigasi proyek (Overview, Kanban, Tugas Saya, dsb.)
 │   │   │   ├── ProtectedRoute.tsx# Penjaga rute terotentikasi
