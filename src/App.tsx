@@ -26,6 +26,7 @@ import NotFoundPage from '@/pages/NotFoundPage';
 import PrivatRedirect from '@/pages/PrivatRedirect';
 import DailyInstancePage from '@/pages/DailyInstancePage';
 import TablePage from '@/pages/TablePage';
+import OrganizationPage from '@/pages/OrganizationPage';
 
 export default function App() {
   const googleClientId = getGoogleClientId();
@@ -54,6 +55,7 @@ export default function App() {
                   <Route path="/daily/:dailyId" element={<DailyInstancePage />} />
                   <Route path="/notes/:noteId" element={<NotePage />} />
                   <Route path="/tables/:tableId" element={<TablePage />} />
+                  <Route path="/org/:orgId" element={<OrganizationPage />} />
                   <Route path="/team/:teamId/projects" element={<TeamProjectsPage />} />
                   <Route path="/team/:teamId/settings" element={<TeamSettingsPage />} />
                   <Route path="/team/:teamId" element={<TeamPage />} />

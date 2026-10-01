@@ -8,7 +8,6 @@ import { noteApi } from '@/api/notes';
 import { NOTES_CHANGED_EVENT, notifyNotesChanged } from '@/pages/NotePage';
 import UsernameModal from '@/components/auth/UsernameModal';
 import SortableTabRow from './SortableTabRow';
-import SortableSection from './SortableSection';
 import DropIndicator from './DropIndicator';
 import {
   DndContext,
@@ -48,15 +47,19 @@ import {
   migrateTabOrder,
   notifyTeamsChanged,
   TEAMS_CHANGED_EVENT,
+  notifyOrganizationsChanged,
+  ORGANIZATIONS_CHANGED_EVENT,
 } from '@/hooks/useNavLabels';
 import { TAB_ICONS, ActivityIcon } from '@/components/icons';
 import Avatar from '@/components/ui/Avatar';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import ModalShell from '@/components/ui/ModalShell';
 import CreateTeamModal from '@/components/team/CreateTeamModal';
+import CreateOrganizationModal from '@/components/organization/CreateOrganizationModal';
+import { organizationApi } from '@/api/organizations';
 import { fileToAvatarDataUrl } from '@/lib/avatar';
 import { ToastHost, showToast } from '@/components/ui/Toast';
-import type { Team, Note } from '@/types';
+import type { Team, Note, Organization } from '@/types';
 
 const notePath = (id: string) => `/notes/${id}`;
 const dailyPath = (id: string) => `/daily/${id}`;
@@ -220,16 +223,20 @@ function SidebarContent({
   );
   const privatOpen = isSectionOpen('privat');
   const teamsOpen = isSectionOpen('teams');
+  const organisasiOpen = isSectionOpen('organisasi');
   const favoritOpen = isSectionOpen('favorit');
   const shortcutOpen = isSectionOpen('shortcut');
 
   function sectionLabel(s: string): string {
     if (s === 'privat') return 'PRIVAT';
     if (s === 'teams') return 'TIM SAYA';
+    if (s === 'organisasi') return 'ORGANISASI';
     if (s === 'favorit') return 'FAVORIT';
     if (s === 'shortcut') return 'SHORTCUT';
     return s.toUpperCase();
   }
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [createOrgOpen, setCreateOrgOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const archiveBtnRef = useRef<HTMLButtonElement>(null);
   const archivePanelRef = useRef<HTMLDivElement>(null);
@@ -287,6 +294,26 @@ function SidebarContent({
     return () => {
       cancelled = true;
       window.removeEventListener(NOTES_CHANGED_EVENT, fetchNotes);
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchOrgs = () => {
+      organizationApi
+        .listMine()
+        .then((list) => {
+          if (!cancelled) setOrganizations(list);
+        })
+        .catch(() => {
+          if (!cancelled) setOrganizations([]);
+        });
+    };
+    fetchOrgs();
+    window.addEventListener(ORGANIZATIONS_CHANGED_EVENT, fetchOrgs);
+    return () => {
+      cancelled = true;
+      window.removeEventListener(ORGANIZATIONS_CHANGED_EVENT, fetchOrgs);
     };
   }, []);
 
@@ -653,14 +680,29 @@ function SidebarContent({
     const j = idx + dir;
     if (idx < 0 || j < 0 || j >= sibs.length) return;
     setCtxMenu(null);
+
+    const snapshot = notes;
+    const beforeId = dir === -1 ? sibs[j].id : (sibs[j + 1]?.id ?? null);
+
+    // Optimistik seketika (0ms)
+    setNotes((currentNotes) => {
+      const nextSibs = [...sibs];
+      const [moved] = nextSibs.splice(idx, 1);
+      nextSibs.splice(j, 0, moved);
+      const orderMap = new Map<string, number>();
+      nextSibs.forEach((item, o) => orderMap.set(item.id, o));
+      return currentNotes.map((n) => (orderMap.has(n.id) ? { ...n, order: orderMap.get(n.id)! } : n));
+    });
+
     try {
       await noteApi.move(note.id, {
         parentId: parent,
-        beforeId: dir === -1 ? sibs[j].id : (sibs[j + 1]?.id ?? null),
+        beforeId,
       });
       notifyNotesChanged();
     } catch {
-      // diam — daftar refresh berikutnya
+      setNotes(snapshot);
+      showToast('Gagal memindahkan tab.');
     }
   }
 
@@ -1029,6 +1071,11 @@ function SidebarContent({
 
   const privatKeys = privatEntries.map((e) => e.key);
   const teamKeys = visibleTeams.map((t) => t.id);
+  const orderedOrganizations = useMemo(
+    () => sortItems('organizations', organizations, (o) => o.id),
+    [sortItems, organizations],
+  );
+  const orgKeys = orderedOrganizations.map((o) => o.id);
   // Kunci alias baris Favorit, seurutan dengan render di bawah.
   const favKeys = useMemo(
     () => [
@@ -1048,35 +1095,13 @@ function SidebarContent({
   // Drag dimatikan saat rail collapse atau section dilipat.
   const privatDragDisabled = collapsed || !privatOpen;
   const teamsDragDisabled = collapsed || !teamsOpen;
-  const sectionDragDisabled = collapsed;
+  const orgDragDisabled = collapsed || !organisasiOpen;
   // Section yang sedang diseret, diturunkan langsung dari activeDragId.
   const draggingSection =
     activeDragId && activeDragId.startsWith('section:') ? activeDragId.slice('section:'.length) : null;
 
-  // Kloningan isi section untuk overlay drag: header + label tab (maks 8).
-  const dragClone =
-    draggingSection === 'privat'
-      ? {
-          title: 'PRIVAT',
-          rows: privatOpen ? privatEntries.map((e) => e.note.title) : [],
-        }
-      : draggingSection === 'teams'
-        ? { title: 'TIM SAYA', rows: teamsOpen ? visibleTeams.map((t) => t.name) : [] }
-      : draggingSection === 'favorit'
-        ? {
-            title: 'FAVORIT',
-            rows: favoritOpen
-              ? [
-                  ...favoritEntries.map((e) => e.note.title),
-                  ...favoritTeams.map((t) => t.name),
-                ]
-              : [],
-          }
-        : draggingSection === 'shortcut'
-            ? { title: 'SHORTCUT', rows: shortcutOpen ? shortcutRows.map((r) => r.label) : [] }
-            : null;
-  const dragCloneShown = dragClone ? dragClone.rows.slice(0, 8) :([]);
-  const dragCloneExtra = dragClone ? dragClone.rows.length - dragCloneShown.length : 0;
+  // Judul section yang sedang diseret untuk pill melayang yang ringan
+  const draggingSectionTitle = draggingSection ? sectionLabel(draggingSection) : null;
 
   // Garis indikator oranye: 'before' = di atas target, 'after' = di bawah target.
   // Section: bandingkan urutan di sectionOrder. Item: bandingkan index dalam
@@ -1085,17 +1110,75 @@ function SidebarContent({
   // sama juga terdaftar di home); baseKey mengembalikannya ke kunci asli.
   type DropHint = 'before' | 'after' | null;
   const baseKey = (id: string) => (id.startsWith('fav:') ? id.slice(4) : id);
-  const homeListOf = (base: string): 'privat' | 'teams' | null =>
-    privatKeys.includes(base) ? 'privat' : teamKeys.includes(base) ? 'teams' : null;
+  const homeListOf = (base: string): 'privat' | 'teams' | 'organizations' | null =>
+    privatKeys.includes(base)
+      ? 'privat'
+      : teamKeys.includes(base)
+        ? 'teams'
+        : orgKeys.includes(base)
+          ? 'organizations'
+          : null;
   const itemLists: Record<string, string[]> = {
     privat: privatKeys,
     teams: teamKeys,
+    organizations: orgKeys,
     shortcut: shortcutKeys,
   };
   const draggingItemList =
     activeDragId && !activeDragId.startsWith('section:')
       ? (homeListOf(baseKey(activeDragId)) ?? (shortcutKeys.includes(activeDragId) ? 'shortcut' : null))
       : null;
+
+  // Informasi tab yang sedang diseret untuk floating preview DragOverlay
+  const draggedTabInfo = useMemo(() => {
+    if (!activeDragId || activeDragId.startsWith('section:')) return null;
+    const b = baseKey(activeDragId);
+    const note = findNoteByPath(notes, b);
+    if (note) {
+      const customIcon = navIcons[b];
+      return {
+        title: note.title,
+        icon: customIcon ? (
+          <ActivityIcon name={customIcon} className="h-4 w-4 shrink-0 text-gray-400" />
+        ) : (
+          <span className="shrink-0 text-gray-400">{defaultNoteIcon}</span>
+        ),
+      };
+    }
+    const team = teams.find((t) => t.id === b);
+    if (team) {
+      return {
+        title: team.name,
+        icon: renderTeamBadge(team),
+      };
+    }
+    const org = organizations.find((o) => o.id === b);
+    if (org) {
+      return {
+        title: org.name,
+        icon: (
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-perrific-violet/20 bg-perrific-violet/10 text-perrific-violet">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3" />
+            </svg>
+          </span>
+        ),
+      };
+    }
+    const shortcut = shortcutRows.find((s) => s.id === activeDragId);
+    if (shortcut) {
+      return {
+        title: shortcut.label,
+        icon: (
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true" className="shrink-0 text-gray-400">
+            <path d="M6.5 9.5a3.5 3.5 0 0 0 5 0l2-2a3.54 3.54 0 0 0-5-5l-1 1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+            <path d="M9.5 6.5a3.5 3.5 0 0 0-5 0l-2 2a3.54 3.54 0 0 0 5 5l1-1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+          </svg>
+        ),
+      };
+    }
+    return null;
+  }, [activeDragId, notes, teams, organizations, shortcutRows, navIcons]);
   const sectionDropTarget =
     draggingSection && overId && overId.startsWith('section:') && sectionOrder.includes(overId.slice(8) as SidebarSection)
       ? (overId.slice(8) as SidebarSection)
@@ -1199,6 +1282,7 @@ function SidebarContent({
       const b = baseKey(id);
       if (privatKeys.includes(b)) return 'privat';
       if (teamKeys.includes(b)) return 'teams';
+      if (orgKeys.includes(b)) return 'organisasi';
       return null;
     };
     if (a.startsWith('section:')) {
@@ -1233,10 +1317,48 @@ function SidebarContent({
         const moving = findNoteByPath(notes, ab);
         const target = findNoteByPath(notes, ob);
         if (moving && target && moving.parentId === target.parentId) {
-          noteApi.move(moving.id, { parentId: moving.parentId, beforeId: target.id }).then(notifyNotesChanged).catch(() => undefined);
+          const parent = moving.parentId ?? null;
+          const sibs = notes
+            .filter((n) => (n.parentId ?? null) === parent)
+            .sort((a, b) => a.order - b.order);
+          const from = sibs.findIndex((n) => n.id === moving.id);
+          const to = sibs.findIndex((n) => n.id === target.id);
+          if (from === -1 || to === -1 || from === to) return;
+
+          const remaining = sibs.filter((n) => n.id !== moving.id);
+          // remaining[to] adalah note yang akan berada persis setelah posisi drop.
+          // Jika drop di paling akhir (to >= remaining.length), remaining[to] undefined -> beforeId = null (sisipkan di akhir)
+          const beforeId = remaining[to]?.id ?? null;
+
+          const snapshot = notes;
+
+          // Pembaruan optimistik seketika (0ms) di UI sidebar
+          setNotes((currentNotes) => {
+            const nextSibs = [...sibs];
+            const [movedItem] = nextSibs.splice(from, 1);
+            nextSibs.splice(to, 0, movedItem);
+
+            const orderMap = new Map<string, number>();
+            nextSibs.forEach((item, idx) => orderMap.set(item.id, idx));
+
+            return currentNotes.map((n) => (orderMap.has(n.id) ? { ...n, order: orderMap.get(n.id)! } : n));
+          });
+
+          noteApi
+            .move(moving.id, { parentId: moving.parentId, beforeId })
+            .then(() => {
+              notifyNotesChanged();
+            })
+            .catch((err) => {
+              console.error('[AppLayout] Gagal memindahkan tab privat:', err);
+              setNotes(snapshot);
+              showToast('Gagal memindahkan tab.');
+            });
         }
-      } else {
-        reorder(al, teamKeys, ab, ob);
+      } else if (al === 'teams') {
+        reorder('teams', teamKeys, ab, ob);
+      } else if (al === 'organizations') {
+        reorder('organizations', orgKeys, ab, ob);
       }
     }
   }
@@ -1513,6 +1635,45 @@ function SidebarContent({
     );
   };
 
+  const renderOrgRow = (org: Organization) => {
+    const to = `/org/${org.id}`;
+    const hint = itemDropHint('organizations', org.id);
+    return (
+      <Fragment key={org.id}>
+        {hint === 'before' && <DropLine />}
+        <SortableTabRow
+          id={org.id}
+          as="li"
+          disabled={orgDragDisabled}
+          className="group relative"
+        >
+          <NavLink
+            to={to}
+            className={({ isActive }) => `${navRowClass(isActive)} ${collapsed ? '' : 'pr-8'}`}
+            title={collapsed ? org.name : 'Seret untuk memindahkan'}
+          >
+            <span
+              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-perrific-violet/20 bg-perrific-violet/10 text-perrific-violet"
+              aria-hidden="true"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3" />
+              </svg>
+            </span>
+            <span
+              className={`min-w-0 flex-1 truncate transition-[max-width,opacity,margin] duration-200 ease-in-out ${
+                collapsed ? 'ml-0 max-w-0 opacity-0' : 'ml-2.5 max-w-[220px] opacity-100'
+              }`}
+            >
+              {org.name}
+            </span>
+          </NavLink>
+        </SortableTabRow>
+        {hint === 'after' && <DropLine />}
+      </Fragment>
+    );
+  };
+
   // Baris Favorit: sortable dengan id alias `fav:<key>` (unik, tidak bentrok
   // dengan baris home yang sama). Drop diterjemahkan ke urutan home.
   // Rename inline di sini seperti Shortcut (double-click atau menu Ubah nama).
@@ -1744,49 +1905,28 @@ function SidebarContent({
       )}
       <div className={`nice-scroll flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-clip pb-2 pt-2 ${collapsed ? 'no-bar' : ''}`}>
       <DndContext sensors={sensors} collisionDetection={sidebarCollision} onDragStart={handleSidebarDragStart} onDragOver={handleSidebarDragOver} onDragEnd={handleSidebarDragEnd} onDragCancel={handleSidebarDragCancel}>
-      <SortableContext items={sectionIds} strategy={verticalListSortingStrategy}>
       {presetSections.includes('privat') && (
-      <SortableSection id="section:privat" disabled={sectionDragDisabled} order={sectionOrder.indexOf('privat')} settle={!dropFreeze} dropHint={sectionDropTarget === 'privat' ? sectionDropHint : null}>
-        {(privatHandle) => (
-        <div className={sectionOrder[0] === 'privat' ? '' : 'mt-6'}>
-      <div
-        ref={privatHandle.setActivatorNodeRef}
-        {...privatHandle.attributes}
-        {...(sectionDragDisabled ? undefined : privatHandle.listeners)}
-        title="Seret untuk memindahkan bagian Privat"
-        aria-label="Seret untuk memindahkan bagian Privat"
-        className={`flex cursor-grab items-center justify-between overflow-hidden px-3 transition-[max-height,opacity] duration-200 ease-in-out active:cursor-grabbing ${
-          collapsed ? 'max-h-0 opacity-0' : 'max-h-8 opacity-100'
-        }`}
-      >
-        <span className="flex min-w-0 items-center">
-          <span
-            aria-hidden="true"
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-perrific-graphite/30"
+        <div style={{ order: sectionOrder.indexOf('privat') }} className={sectionOrder[0] === 'privat' ? '' : 'mt-6'}>
+          <div
+            className={`flex items-center justify-between overflow-hidden px-3 transition-[max-height,opacity] duration-200 ease-in-out ${
+              collapsed ? 'max-h-0 opacity-0' : 'max-h-8 opacity-100'
+            }`}
           >
-            <svg width="10" height="14" viewBox="0 0 10 14" fill="none" aria-hidden="true">
-              <circle cx="3" cy="2.5" r="1.2" fill="currentColor" />
-              <circle cx="7" cy="2.5" r="1.2" fill="currentColor" />
-              <circle cx="3" cy="7" r="1.2" fill="currentColor" />
-              <circle cx="7" cy="7" r="1.2" fill="currentColor" />
-              <circle cx="3" cy="11.5" r="1.2" fill="currentColor" />
-              <circle cx="7" cy="11.5" r="1.2" fill="currentColor" />
-            </svg>
-          </span>
-          <p className="whitespace-nowrap pl-3 font-mono text-[11px] tracking-widest text-perrific-wood">PRIVAT</p>
-          <button
-            type="button"
-            onClick={() => toggleSection('privat')}
-            title={privatOpen ? 'Tutup bagian Privat' : 'Buka bagian Privat'}
-            aria-label={privatOpen ? 'Tutup bagian Privat' : 'Buka bagian Privat'}
-            aria-expanded={privatOpen}
-            className="flex h-6 w-6 items-center justify-center rounded-md text-perrific-wood/70 transition hover:bg-gray-100 hover:text-perrific-violet"
-          >
-            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" aria-hidden="true" className={`transition-transform duration-200 ${privatOpen ? '' : '-rotate-90'}`}>
-              <path d="M4.5 6.5L8 10l3.5-3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-        </span>
+            <span className="flex min-w-0 items-center">
+              <p className="whitespace-nowrap font-mono text-[11px] tracking-widest text-perrific-wood">PRIVAT</p>
+              <button
+                type="button"
+                onClick={() => toggleSection('privat')}
+                title={privatOpen ? 'Tutup bagian Privat' : 'Buka bagian Privat'}
+                aria-label={privatOpen ? 'Tutup bagian Privat' : 'Buka bagian Privat'}
+                aria-expanded={privatOpen}
+                className="ml-1 flex h-6 w-6 items-center justify-center rounded-md text-perrific-wood/70 transition hover:bg-gray-100 hover:text-perrific-violet"
+              >
+                <svg width="10" height="10" viewBox="0 0 16 16" fill="none" aria-hidden="true" className={`transition-transform duration-200 ${privatOpen ? '' : '-rotate-90'}`}>
+                  <path d="M4.5 6.5L8 10l3.5-3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            </span>
         <button
           type="button"
           onClick={() => {
@@ -1830,52 +1970,30 @@ function SidebarContent({
       </SortableContext>
       </div>
       </div>
-        </div>
-        )}
-      </SortableSection>
+      </div>
       )}
       {presetSections.includes('teams') && (
-      <SortableSection id="section:teams" disabled={sectionDragDisabled} order={sectionOrder.indexOf('teams')} settle={!dropFreeze} dropHint={sectionDropTarget === 'teams' ? sectionDropHint : null}>
-        {(teamsHandle) => (
-        <div className={sectionOrder[0] === 'teams' ? '' : 'mt-6'}>
-        <div
-          ref={teamsHandle.setActivatorNodeRef}
-          {...teamsHandle.attributes}
-          {...(sectionDragDisabled ? undefined : teamsHandle.listeners)}
-          title="Seret untuk memindahkan bagian Tim Saya"
-          aria-label="Seret untuk memindahkan bagian Tim Saya"
-          className={`flex cursor-grab items-center justify-between overflow-hidden px-3 transition-[max-height,opacity] duration-200 ease-in-out active:cursor-grabbing ${
-            collapsed ? 'max-h-0 opacity-0' : 'max-h-8 opacity-100'
-          }`}
-        >
-          <span className="flex min-w-0 items-center">
-          <span
-            aria-hidden="true"
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-perrific-graphite/30"
+        <div style={{ order: sectionOrder.indexOf('teams') }} className={sectionOrder[0] === 'teams' ? '' : 'mt-6'}>
+          <div
+            className={`flex items-center justify-between overflow-hidden px-3 transition-[max-height,opacity] duration-200 ease-in-out ${
+              collapsed ? 'max-h-0 opacity-0' : 'max-h-8 opacity-100'
+            }`}
           >
-            <svg width="10" height="14" viewBox="0 0 10 14" fill="none" aria-hidden="true">
-              <circle cx="3" cy="2.5" r="1.2" fill="currentColor" />
-              <circle cx="7" cy="2.5" r="1.2" fill="currentColor" />
-              <circle cx="3" cy="7" r="1.2" fill="currentColor" />
-              <circle cx="7" cy="7" r="1.2" fill="currentColor" />
-              <circle cx="3" cy="11.5" r="1.2" fill="currentColor" />
-              <circle cx="7" cy="11.5" r="1.2" fill="currentColor" />
-            </svg>
-          </span>
-          <p className="whitespace-nowrap pl-3 font-mono text-[11px] tracking-widest text-perrific-wood">TIM SAYA</p>
-          <button
-            type="button"
-            onClick={() => toggleSection('teams')}
-            title={teamsOpen ? 'Tutup bagian Tim Saya' : 'Buka bagian Tim Saya'}
-            aria-label={teamsOpen ? 'Tutup bagian Tim Saya' : 'Buka bagian Tim Saya'}
-            aria-expanded={teamsOpen}
-            className="flex h-6 w-6 items-center justify-center rounded-md text-perrific-wood/70 transition hover:bg-gray-100 hover:text-perrific-violet"
-          >
-            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" aria-hidden="true" className={`transition-transform duration-200 ${teamsOpen ? '' : '-rotate-90'}`}>
-              <path d="M4.5 6.5L8 10l3.5-3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-          </span>
+            <span className="flex min-w-0 items-center">
+              <p className="whitespace-nowrap font-mono text-[11px] tracking-widest text-perrific-wood">TIM SAYA</p>
+              <button
+                type="button"
+                onClick={() => toggleSection('teams')}
+                title={teamsOpen ? 'Tutup bagian Tim Saya' : 'Buka bagian Tim Saya'}
+                aria-label={teamsOpen ? 'Tutup bagian Tim Saya' : 'Buka bagian Tim Saya'}
+                aria-expanded={teamsOpen}
+                className="ml-1 flex h-6 w-6 items-center justify-center rounded-md text-perrific-wood/70 transition hover:bg-gray-100 hover:text-perrific-violet"
+              >
+                <svg width="10" height="10" viewBox="0 0 16 16" fill="none" aria-hidden="true" className={`transition-transform duration-200 ${teamsOpen ? '' : '-rotate-90'}`}>
+                  <path d="M4.5 6.5L8 10l3.5-3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            </span>
             <button
               type="button"
               onClick={openTeamDialog}
@@ -1945,7 +2063,76 @@ function SidebarContent({
         </div>
         </div>
         )}
-      </SortableSection>
+      {presetSections.includes('organisasi') && (
+        <div style={{ order: sectionOrder.indexOf('organisasi') }} className={sectionOrder[0] === 'organisasi' ? '' : 'mt-6'}>
+          <div
+            className={`flex items-center justify-between overflow-hidden px-3 transition-[max-height,opacity] duration-200 ease-in-out ${
+              collapsed ? 'max-h-0 opacity-0' : 'max-h-8 opacity-100'
+            }`}
+          >
+            <span className="flex min-w-0 items-center">
+              <p className="whitespace-nowrap font-mono text-[11px] tracking-widest text-perrific-wood">ORGANISASI</p>
+              <button
+                type="button"
+                onClick={() => toggleSection('organisasi')}
+                title={organisasiOpen ? 'Tutup bagian Organisasi' : 'Buka bagian Organisasi'}
+                aria-label={organisasiOpen ? 'Tutup bagian Organisasi' : 'Buka bagian Organisasi'}
+                aria-expanded={organisasiOpen}
+                className="ml-1 flex h-6 w-6 items-center justify-center rounded-md text-perrific-wood/70 transition hover:bg-gray-100 hover:text-perrific-violet"
+              >
+                <svg width="10" height="10" viewBox="0 0 16 16" fill="none" aria-hidden="true" className={`transition-transform duration-200 ${organisasiOpen ? '' : '-rotate-90'}`}>
+                  <path d="M4.5 6.5L8 10l3.5-3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            </span>
+            <button
+              type="button"
+              onClick={() => setCreateOrgOpen(true)}
+              title="Organisasi baru"
+              aria-label="Organisasi baru"
+              className="flex h-6 w-6 items-center justify-center rounded-md text-perrific-graphite/40 transition hover:bg-gray-100 hover:text-perrific-violet"
+            >
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+              </svg>
+            </button>
+          </div>
+          <div className={`grid transition-[grid-template-rows] duration-200 ease-in-out ${organisasiOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+          <div className="overflow-hidden px-3">
+          {organizations.length === 0 ? (
+            !collapsed && (
+              <div className="mt-2 rounded-lg border border-dashed border-gray-300 px-3 py-4 text-center">
+                <p className="font-givonic text-xs text-perrific-graphite/50">Belum ada organisasi</p>
+                <button
+                  type="button"
+                  onClick={() => setCreateOrgOpen(true)}
+                  className="mt-1 inline-flex items-center justify-center font-givonic text-xs font-semibold text-perrific-violet hover:underline"
+                >
+                  + Buat organisasi
+                </button>
+              </div>
+            )
+          ) : (
+            <SortableContext items={orgKeys} strategy={verticalListSortingStrategy}>
+              <ul className="mt-2 space-y-0.5" onClickCapture={suppressPostDragClick}>
+                {orderedOrganizations.map((org) => renderOrgRow(org))}
+              </ul>
+            </SortableContext>
+          )}
+          </div>
+          </div>
+          </div>
+        )}
+      {createOrgOpen && (
+        <CreateOrganizationModal
+          onClose={() => setCreateOrgOpen(false)}
+          onCreated={(created) => {
+            setOrganizations((prev) => [...prev, created]);
+            notifyOrganizationsChanged();
+            setCreateOrgOpen(false);
+            navigate(`/org/${created.id}`);
+          }}
+        />
       )}
       {(teamDialog === 'buat' || teamDialog === 'buat-langsung') && (
         <CreateTeamModal
@@ -2099,263 +2286,218 @@ function SidebarContent({
         </ModalShell>
       )}
       {presetSections.includes('favorit') && (
-      <SortableSection id="section:favorit" disabled={sectionDragDisabled} order={sectionOrder.indexOf('favorit')} settle={!dropFreeze} dropHint={sectionDropTarget === 'favorit' ? sectionDropHint : null}>
-        {(favoritHandle) => (
-        <div className={sectionOrder[0] === 'favorit' ? '' : 'mt-6'}>
-        <div
-          ref={favoritHandle.setActivatorNodeRef}
-          {...favoritHandle.attributes}
-          {...(sectionDragDisabled ? undefined : favoritHandle.listeners)}
-          title="Seret untuk memindahkan bagian Favorit"
-          aria-label="Seret untuk memindahkan bagian Favorit"
-          className={`flex cursor-grab items-center justify-between overflow-hidden px-3 transition-[max-height,opacity] duration-200 ease-in-out active:cursor-grabbing ${
-            collapsed ? 'max-h-0 opacity-0' : 'max-h-8 opacity-100'
-          }`}
-        >
-          <span className="flex min-w-0 items-center">
-          <span
-            aria-hidden="true"
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-perrific-graphite/30"
+        <div style={{ order: sectionOrder.indexOf('favorit') }} className={sectionOrder[0] === 'favorit' ? '' : 'mt-6'}>
+          <div
+            className={`flex items-center justify-between overflow-hidden px-3 transition-[max-height,opacity] duration-200 ease-in-out ${
+              collapsed ? 'max-h-0 opacity-0' : 'max-h-8 opacity-100'
+            }`}
           >
-            <svg width="10" height="14" viewBox="0 0 10 14" fill="none" aria-hidden="true">
-              <circle cx="3" cy="2.5" r="1.2" fill="currentColor" />
-              <circle cx="7" cy="2.5" r="1.2" fill="currentColor" />
-              <circle cx="3" cy="7" r="1.2" fill="currentColor" />
-              <circle cx="7" cy="7" r="1.2" fill="currentColor" />
-              <circle cx="3" cy="11.5" r="1.2" fill="currentColor" />
-              <circle cx="7" cy="11.5" r="1.2" fill="currentColor" />
-            </svg>
-          </span>
-          <p className="whitespace-nowrap pl-3 font-mono text-[11px] tracking-widest text-perrific-wood">FAVORIT</p>
-          <button
-            type="button"
-            onClick={() => toggleSection('favorit')}
-            title={favoritOpen ? 'Tutup bagian Favorit' : 'Buka bagian Favorit'}
-            aria-label={favoritOpen ? 'Tutup bagian Favorit' : 'Buka bagian Favorit'}
-            aria-expanded={favoritOpen}
-            className="flex h-6 w-6 items-center justify-center rounded-md text-perrific-wood/70 transition hover:bg-gray-100 hover:text-perrific-violet"
-          >
-            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" aria-hidden="true" className={`transition-transform duration-200 ${favoritOpen ? '' : '-rotate-90'}`}>
-              <path d="M4.5 6.5L8 10l3.5-3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-          </span>
-        </div>
-        <div className={`grid transition-[grid-template-rows] duration-200 ease-in-out ${favoritOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
-        <div className="overflow-hidden px-3">
-        {favoritEntries.length === 0 && favoritTeams.length === 0 ? (
-          !collapsed && (
-          <div className="mt-2 rounded-lg border border-dashed border-gray-300 px-3 py-4 text-center">
-            <p className="font-givonic text-xs text-perrific-graphite/50">
-              Belum ada favorit.<br />
-              Tandai tab dengan bintang.
-            </p>
-          </div>
-          )
-        ) : (
-          <SortableContext items={favKeys} strategy={verticalListSortingStrategy}>
-          <div className="mt-2 space-y-1" onClickCapture={suppressPostDragClick}>
-            {favoritEntries.map((entry) => renderFavoritRow(entry))}
-            {favoritTeams.map((team) => renderFavoritRow({ kind: 'team', key: team.id, team }))}
-          </div>
-          </SortableContext>
-        )}
-        </div>
-        </div>
-        </div>
-        )}
-      </SortableSection>
-      )}
-{presetSections.includes('shortcut') && (
-      <SortableSection id="section:shortcut" disabled={sectionDragDisabled} order={sectionOrder.indexOf('shortcut')} settle={!dropFreeze} dropHint={sectionDropTarget === 'shortcut' ? sectionDropHint : null}>
-        {(shortcutHandle) => (
-        <div className={sectionOrder[0] === 'shortcut' ? '' : 'mt-6'}>
-        <div
-          ref={shortcutHandle.setActivatorNodeRef}
-          {...shortcutHandle.attributes}
-          {...(sectionDragDisabled ? undefined : shortcutHandle.listeners)}
-          title="Seret untuk memindahkan bagian Shortcut"
-          aria-label="Seret untuk memindahkan bagian Shortcut"
-          className={`flex cursor-grab items-center justify-between overflow-hidden px-3 transition-[max-height,opacity] duration-200 ease-in-out active:cursor-grabbing ${
-            collapsed ? 'max-h-0 opacity-0' : 'max-h-8 opacity-100'
-          }`}
-        >
-          <span className="flex min-w-0 items-center">
-          <span
-            aria-hidden="true"
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-perrific-graphite/30"
-          >
-            <svg width="10" height="14" viewBox="0 0 10 14" fill="none" aria-hidden="true">
-              <circle cx="3" cy="2.5" r="1.2" fill="currentColor" />
-              <circle cx="7" cy="2.5" r="1.2" fill="currentColor" />
-              <circle cx="3" cy="7" r="1.2" fill="currentColor" />
-              <circle cx="7" cy="7" r="1.2" fill="currentColor" />
-              <circle cx="3" cy="11.5" r="1.2" fill="currentColor" />
-              <circle cx="7" cy="11.5" r="1.2" fill="currentColor" />
-            </svg>
-          </span>
-          <p className="whitespace-nowrap pl-3 font-mono text-[11px] tracking-widest text-perrific-wood">SHORTCUT</p>
-          <button
-            type="button"
-            onClick={() => toggleSection('shortcut')}
-            title={shortcutOpen ? 'Tutup bagian Shortcut' : 'Buka bagian Shortcut'}
-            aria-label={shortcutOpen ? 'Tutup bagian Shortcut' : 'Buka bagian Shortcut'}
-            aria-expanded={shortcutOpen}
-            className="flex h-6 w-6 items-center justify-center rounded-md text-perrific-wood/70 transition hover:bg-gray-100 hover:text-perrific-violet"
-          >
-            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" aria-hidden="true" className={`transition-transform duration-200 ${shortcutOpen ? '' : '-rotate-90'}`}>
-              <path d="M4.5 6.5L8 10l3.5-3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-          </span>
-          {!collapsed && (
-            <button
-              type="button"
-              onClick={() => setShortcutPickerOpen(true)}
-              title="Tambah shortcut"
-              aria-label="Tambah shortcut"
-              className="flex h-6 w-6 items-center justify-center rounded-md text-perrific-graphite/40 transition hover:bg-gray-100 hover:text-perrific-violet"
-            >
-              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-              </svg>
-            </button>
-          )}
-        </div>
-        <div className={`grid transition-[grid-template-rows] duration-200 ease-in-out ${shortcutOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
-        <div className="overflow-hidden px-3">
-        {shortcutRows.length === 0 ? (
-          !collapsed && (
-          <div className="mt-2 rounded-lg border border-dashed border-gray-300 px-3 py-4 text-center">
-            <p className="font-givonic text-xs text-perrific-graphite/50">Belum ada shortcut.</p>
-          </div>
-          )
-        ) : (
-          <SortableContext items={shortcutKeys} strategy={verticalListSortingStrategy}>
-          <ul className="mt-2 space-y-0.5" onClickCapture={suppressPostDragClick}>
-            {orderedShortcutRows.map((r) => {
-              const hint = itemDropHint('shortcut', r.id);
-              const targetTeam = r.kind === 'team' ? teams.find((t) => t.id === r.ref) : undefined;
-              const targetNote = r.kind === 'note' ? notes.find((n) => n.id === r.ref) : undefined;
-              const isEditing =
-                ((r.kind === 'team' && editingTeam === r.ref && !!targetTeam) ||
-                  (r.kind === 'note' && editingNoteId === r.ref && !!targetNote) ||
-                  (r.kind === 'route' && editingNav === r.ref)) &&
-                editFromShortcut &&
-                !editFromFavorit;
-              const startRowEdit = () => beginShortcutRename(r);
-              const cancelRowEdit = () => {
-                setEditingTeam(null);
-                setTeamDraft('');
-                setEditingNoteId(null);
-                setNoteDraft('');
-                setEditingNav(null);
-                setNavDraft('');
-              };
-              return (
-              <Fragment key={r.id}>
-                {hint === 'before' && <DropLine />}
-              <SortableTabRow
-                id={r.id}
-                as="li"
-                disabled={r.missing || shortcutDragDisabled || isEditing}
-                className="group relative"
+            <span className="flex min-w-0 items-center">
+              <p className="whitespace-nowrap font-mono text-[11px] tracking-widest text-perrific-wood">FAVORIT</p>
+              <button
+                type="button"
+                onClick={() => toggleSection('favorit')}
+                title={favoritOpen ? 'Tutup bagian Favorit' : 'Buka bagian Favorit'}
+                aria-label={favoritOpen ? 'Tutup bagian Favorit' : 'Buka bagian Favorit'}
+                aria-expanded={favoritOpen}
+                className="ml-1 flex h-6 w-6 items-center justify-center rounded-md text-perrific-wood/70 transition hover:bg-gray-100 hover:text-perrific-violet"
               >
-                {r.missing ? (
-                  <span
-                    className="flex items-center rounded-lg px-3 py-2 font-givonic text-sm text-perrific-graphite/40"
-                    title="Target sudah tidak tersedia"
-                  >
-                    <span className="min-w-0 flex-1 truncate">{r.label}</span>
-                  </span>
-                ) : isEditing ? (
-                  <div className={navRowClass(false)}>
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true" className="shrink-0 text-gray-400">
-                      <path d="M6.5 9.5a3.5 3.5 0 0 0 5 0l2-2a3.54 3.54 0 0 0-5-5l-1 1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                      <path d="M9.5 6.5a3.5 3.5 0 0 0-5 0l-2 2a3.54 3.54 0 0 0 5 5l1-1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                    </svg>
-                    <input
-                      autoFocus
-                      value={r.kind === 'team' ? teamDraft : r.kind === 'note' ? noteDraft : navDraft}
-                      onChange={(e) =>
-                        r.kind === 'team'
-                          ? setTeamDraft(e.target.value)
-                          : r.kind === 'note'
-                            ? setNoteDraft(e.target.value)
-                            : setNavDraft(e.target.value)
-                      }
-                      onBlur={() => {
-                        if (r.kind === 'team' && targetTeam) commitTeamEdit(targetTeam);
-                        else if (r.kind === 'note' && targetNote) commitNoteEdit(targetNote);
-                        else if (r.kind === 'route') commitNavEdit();
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
+                <svg width="10" height="10" viewBox="0 0 16 16" fill="none" aria-hidden="true" className={`transition-transform duration-200 ${favoritOpen ? '' : '-rotate-90'}`}>
+                  <path d="M4.5 6.5L8 10l3.5-3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            </span>
+          </div>
+          <div className={`grid transition-[grid-template-rows] duration-200 ease-in-out ${favoritOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+          <div className="overflow-hidden px-3">
+          {favoritEntries.length === 0 && favoritTeams.length === 0 ? (
+            !collapsed && (
+            <div className="mt-2 rounded-lg border border-dashed border-gray-300 px-3 py-4 text-center">
+              <p className="font-givonic text-xs text-perrific-graphite/50">
+                Belum ada favorit.<br />
+                Tandai tab dengan bintang.
+              </p>
+            </div>
+            )
+          ) : (
+            <SortableContext items={favKeys} strategy={verticalListSortingStrategy}>
+            <div className="mt-2 space-y-1" onClickCapture={suppressPostDragClick}>
+              {favoritEntries.map((entry) => renderFavoritRow(entry))}
+              {favoritTeams.map((team) => renderFavoritRow({ kind: 'team', key: team.id, team }))}
+            </div>
+            </SortableContext>
+          )}
+          </div>
+          </div>
+        </div>
+      )}
+      {presetSections.includes('shortcut') && (
+        <div style={{ order: sectionOrder.indexOf('shortcut') }} className={sectionOrder[0] === 'shortcut' ? '' : 'mt-6'}>
+          <div
+            className={`flex items-center justify-between overflow-hidden px-3 transition-[max-height,opacity] duration-200 ease-in-out ${
+              collapsed ? 'max-h-0 opacity-0' : 'max-h-8 opacity-100'
+            }`}
+          >
+            <span className="flex min-w-0 items-center">
+              <p className="whitespace-nowrap font-mono text-[11px] tracking-widest text-perrific-wood">SHORTCUT</p>
+              <button
+                type="button"
+                onClick={() => toggleSection('shortcut')}
+                title={shortcutOpen ? 'Tutup bagian Shortcut' : 'Buka bagian Shortcut'}
+                aria-label={shortcutOpen ? 'Tutup bagian Shortcut' : 'Buka bagian Shortcut'}
+                aria-expanded={shortcutOpen}
+                className="ml-1 flex h-6 w-6 items-center justify-center rounded-md text-perrific-wood/70 transition hover:bg-gray-100 hover:text-perrific-violet"
+              >
+                <svg width="10" height="10" viewBox="0 0 16 16" fill="none" aria-hidden="true" className={`transition-transform duration-200 ${shortcutOpen ? '' : '-rotate-90'}`}>
+                  <path d="M4.5 6.5L8 10l3.5-3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            </span>
+            {!collapsed && (
+              <button
+                type="button"
+                onClick={() => setShortcutPickerOpen(true)}
+                title="Tambah shortcut"
+                aria-label="Tambah shortcut"
+                className="flex h-6 w-6 items-center justify-center rounded-md text-perrific-graphite/40 transition hover:bg-gray-100 hover:text-perrific-violet"
+              >
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                  <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                </svg>
+              </button>
+            )}
+          </div>
+          <div className={`grid transition-[grid-template-rows] duration-200 ease-in-out ${shortcutOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+          <div className="overflow-hidden px-3">
+          {shortcutRows.length === 0 ? (
+            !collapsed && (
+            <div className="mt-2 rounded-lg border border-dashed border-gray-300 px-3 py-4 text-center">
+              <p className="font-givonic text-xs text-perrific-graphite/50">Belum ada shortcut.</p>
+            </div>
+            )
+          ) : (
+            <SortableContext items={shortcutKeys} strategy={verticalListSortingStrategy}>
+            <ul className="mt-2 space-y-0.5" onClickCapture={suppressPostDragClick}>
+              {orderedShortcutRows.map((r) => {
+                const hint = itemDropHint('shortcut', r.id);
+                const targetTeam = r.kind === 'team' ? teams.find((t) => t.id === r.ref) : undefined;
+                const targetNote = r.kind === 'note' ? notes.find((n) => n.id === r.ref) : undefined;
+                const isEditing =
+                  ((r.kind === 'team' && editingTeam === r.ref && !!targetTeam) ||
+                    (r.kind === 'note' && editingNoteId === r.ref && !!targetNote) ||
+                    (r.kind === 'route' && editingNav === r.ref)) &&
+                  editFromShortcut &&
+                  !editFromFavorit;
+                const startRowEdit = () => beginShortcutRename(r);
+                const cancelRowEdit = () => {
+                  setEditingTeam(null);
+                  setTeamDraft('');
+                  setEditingNoteId(null);
+                  setNoteDraft('');
+                  setEditingNav(null);
+                  setNavDraft('');
+                };
+                return (
+                <Fragment key={r.id}>
+                  {hint === 'before' && <DropLine />}
+                <SortableTabRow
+                  id={r.id}
+                  as="li"
+                  disabled={r.missing || shortcutDragDisabled || isEditing}
+                  className="group relative"
+                >
+                  {r.missing ? (
+                    <span
+                      className="flex items-center rounded-lg px-3 py-2 font-givonic text-sm text-perrific-graphite/40"
+                      title="Target sudah tidak tersedia"
+                    >
+                      <span className="min-w-0 flex-1 truncate">{r.label}</span>
+                    </span>
+                  ) : isEditing ? (
+                    <div className={navRowClass(false)}>
+                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true" className="shrink-0 text-gray-400">
+                        <path d="M6.5 9.5a3.5 3.5 0 0 0 5 0l2-2a3.54 3.54 0 0 0-5-5l-1 1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                        <path d="M9.5 6.5a3.5 3.5 0 0 0-5 0l-2 2a3.54 3.54 0 0 0 5 5l1-1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                      </svg>
+                      <input
+                        autoFocus
+                        value={r.kind === 'team' ? teamDraft : r.kind === 'note' ? noteDraft : navDraft}
+                        onChange={(e) =>
+                          r.kind === 'team'
+                            ? setTeamDraft(e.target.value)
+                            : r.kind === 'note'
+                              ? setNoteDraft(e.target.value)
+                              : setNavDraft(e.target.value)
+                        }
+                        onBlur={() => {
                           if (r.kind === 'team' && targetTeam) commitTeamEdit(targetTeam);
                           else if (r.kind === 'note' && targetNote) commitNoteEdit(targetNote);
                           else if (r.kind === 'route') commitNavEdit();
-                        }
-                        if (e.key === 'Escape') cancelRowEdit();
-                      }}
-                      maxLength={r.kind === 'note' ? 120 : r.kind === 'team' ? 60 : 120}
-                      aria-label={`Ubah nama ${r.label}`}
-                      className="ml-2.5 min-w-0 flex-1 rounded-md border border-perrific-violet/40 bg-white px-1.5 py-0.5 text-sm focus:outline-none"
-                    />
-                  </div>
-                ) : (
-                  <NavLink
-                    to={r.to}
-                    className={({ isActive }) => `${navRowClass(isActive)} ${collapsed ? '' : 'pr-8'}`}
-                    title={r.label}
-                    onDoubleClick={startRowEdit}
-                    onContextMenu={(e) => openCtxMenu(e, { kind: 'shortcut', shortcutId: r.id })}
-                  >
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true" className="shrink-0 text-gray-400">
-                      <path d="M6.5 9.5a3.5 3.5 0 0 0 5 0l2-2a3.54 3.54 0 0 0-5-5l-1 1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                      <path d="M9.5 6.5a3.5 3.5 0 0 0-5 0l-2 2a3.54 3.54 0 0 0 5 5l1-1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                    </svg>
-                    <span
-                      className={`min-w-0 flex-1 truncate transition-[max-width,opacity,margin] duration-200 ease-in-out ${
-                        collapsed ? 'ml-0 max-w-0 opacity-0' : 'ml-2.5 max-w-[220px] opacity-100'
-                      }`}
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            if (r.kind === 'team' && targetTeam) commitTeamEdit(targetTeam);
+                            else if (r.kind === 'note' && targetNote) commitNoteEdit(targetNote);
+                            else if (r.kind === 'route') commitNavEdit();
+                          }
+                          if (e.key === 'Escape') cancelRowEdit();
+                        }}
+                        maxLength={r.kind === 'note' ? 120 : r.kind === 'team' ? 60 : 120}
+                        aria-label={`Ubah nama ${r.label}`}
+                        className="ml-2.5 min-w-0 flex-1 rounded-md border border-perrific-violet/40 bg-white px-1.5 py-0.5 text-sm focus:outline-none"
+                      />
+                    </div>
+                  ) : (
+                    <NavLink
+                      to={r.to}
+                      className={({ isActive }) => `${navRowClass(isActive)} ${collapsed ? '' : 'pr-8'}`}
+                      title={r.label}
+                      onDoubleClick={startRowEdit}
+                      onContextMenu={(e) => openCtxMenu(e, { kind: 'shortcut', shortcutId: r.id })}
                     >
-                      {r.label}
-                    </span>
-                  </NavLink>
-                )}
-                {!collapsed && !isEditing && (
-                  <button
-                    type="button"
-                    aria-label={`Opsi untuk ${r.label}`}
-                    aria-haspopup="menu"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openCtxMenu(e, { kind: 'shortcut', shortcutId: r.id });
-                    }}
-                    className="absolute right-1 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md bg-white/80 text-gray-400 opacity-0 shadow-sm backdrop-blur transition hover:bg-gray-100 hover:text-perrific-graphite focus:opacity-100 focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100"
-                  >
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                      <circle cx="8" cy="3.2" r="1.4" fill="currentColor" />
-                      <circle cx="8" cy="8" r="1.4" fill="currentColor" />
-                      <circle cx="8" cy="12.8" r="1.4" fill="currentColor" />
-                    </svg>
-                  </button>
-                )}
-              </SortableTabRow>
-                {hint === 'after' && <DropLine />}
-              </Fragment>
-              );
-            })}
-          </ul>
-          </SortableContext>
-        )}
+                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true" className="shrink-0 text-gray-400">
+                        <path d="M6.5 9.5a3.5 3.5 0 0 0 5 0l2-2a3.54 3.54 0 0 0-5-5l-1 1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                        <path d="M9.5 6.5a3.5 3.5 0 0 0-5 0l-2 2a3.54 3.54 0 0 0 5 5l1-1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                      </svg>
+                      <span
+                        className={`min-w-0 flex-1 truncate transition-[max-width,opacity,margin] duration-200 ease-in-out ${
+                          collapsed ? 'ml-0 max-w-0 opacity-0' : 'ml-2.5 max-w-[220px] opacity-100'
+                        }`}
+                      >
+                        {r.label}
+                      </span>
+                    </NavLink>
+                  )}
+                  {!collapsed && !isEditing && (
+                    <button
+                      type="button"
+                      aria-label={`Opsi untuk ${r.label}`}
+                      aria-haspopup="menu"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openCtxMenu(e, { kind: 'shortcut', shortcutId: r.id });
+                      }}
+                      className="absolute right-1 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md bg-white/80 text-gray-400 opacity-0 shadow-sm backdrop-blur transition hover:bg-gray-100 hover:text-perrific-graphite focus:opacity-100 focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                        <circle cx="8" cy="3.2" r="1.4" fill="currentColor" />
+                        <circle cx="8" cy="8" r="1.4" fill="currentColor" />
+                        <circle cx="8" cy="12.8" r="1.4" fill="currentColor" />
+                      </svg>
+                    </button>
+                  )}
+                </SortableTabRow>
+                  {hint === 'after' && <DropLine />}
+                </Fragment>
+                );
+              })}
+            </ul>
+            </SortableContext>
+          )}
+          </div>
+          </div>
         </div>
-        </div>
-        </div>
-        )}
-      </SortableSection>
       )}
-      </SortableContext>
       {sectionOrder.length === 0 && !collapsed && (
         <div className="mx-3 mt-2 rounded-lg border border-dashed border-gray-300 px-3 py-4 text-center">
           <p className="font-givonic text-xs text-perrific-graphite/50">
@@ -2365,38 +2507,12 @@ function SidebarContent({
         </div>
       )}
       <DragOverlay adjustScale={false} dropAnimation={null}>
-        {dragClone ? (
-          <div className="pointer-events-none w-64 overflow-hidden rounded-xl border border-gray-200 bg-white/90 opacity-80 shadow-[0_8px_24px_rgba(26,26,30,0.18)] backdrop-blur">
-            <div className="flex items-center gap-2 px-3 py-2">
-              <svg width="10" height="14" viewBox="0 0 10 14" fill="none" aria-hidden="true" className="shrink-0 text-perrific-graphite/50">
-                <circle cx="3" cy="2.5" r="1.2" fill="currentColor" />
-                <circle cx="7" cy="2.5" r="1.2" fill="currentColor" />
-                <circle cx="3" cy="7" r="1.2" fill="currentColor" />
-                <circle cx="7" cy="7" r="1.2" fill="currentColor" />
-                <circle cx="3" cy="11.5" r="1.2" fill="currentColor" />
-                <circle cx="7" cy="11.5" r="1.2" fill="currentColor" />
-              </svg>
-              <span className="font-mono text-[11px] tracking-widest text-perrific-wood">
-                {dragClone.title}
-              </span>
-            </div>
-            {dragCloneShown.length > 0 && (
-              <ul className="space-y-0.5 px-3 pb-2">
-                {dragCloneShown.map((label, i) => (
-                  <li
-                    key={i}
-                    className="truncate rounded-lg bg-gray-100 px-3 py-2 font-givonic text-sm text-gray-600"
-                  >
-                    {label}
-                  </li>
-                ))}
-                {dragCloneExtra > 0 && (
-                  <li className="px-3 py-1 font-givonic text-xs text-perrific-graphite/50">
-                    +{dragCloneExtra} lainnya
-                  </li>
-                )}
-              </ul>
-            )}
+        {draggedTabInfo ? (
+          <div className="pointer-events-none inline-flex max-w-[220px] items-center gap-2 rounded-lg border border-perrific-violet/30 bg-white/95 px-3 py-1.5 text-perrific-graphite opacity-90 shadow-[0_6px_18px_rgba(0,0,0,0.12)] backdrop-blur-sm">
+            {draggedTabInfo.icon}
+            <span className="min-w-0 flex-1 truncate font-givonic text-sm font-medium">
+              {draggedTabInfo.title}
+            </span>
           </div>
         ) : null}
       </DragOverlay>
@@ -2781,6 +2897,17 @@ function SidebarContent({
                       </svg>
                     ),
                     iconClass: 'bg-green-600/10 text-green-700',
+                  },
+                  {
+                    id: 'organisasi',
+                    name: 'Organisasi',
+                    desc: 'Kolaborasi dan delegasi antar-tim',
+                    icon: (
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                        <path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3" />
+                      </svg>
+                    ),
+                    iconClass: 'bg-blue-600/10 text-blue-600',
                   },
                   {
                     id: 'favorit',

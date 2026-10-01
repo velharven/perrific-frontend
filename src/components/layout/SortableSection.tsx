@@ -37,10 +37,11 @@ export default function SortableSection({
     // Tanpa transisi saat dragging (1:1 dengan pointer) dan saat settle mati
     // (snap instan); selebihnya luncuran 300ms.
     transition:
-      isDragging || !settle ? undefined : 'transform 300ms cubic-bezier(0.22, 1, 0.36, 1)',
-    // Blok asli disembunyikan selama diseret (ruang dipertahankan, tanpa
-    // lompatan layout). Yang terlihat hanya klon transparan di overlay.
-    visibility: isDragging ? 'hidden' : undefined,
+      isDragging || !settle
+        ? undefined
+        : 'opacity 150ms ease, transform 300ms cubic-bezier(0.22, 1, 0.36, 1)',
+    // Blok asli di sidebar dibuat semi-transparan saat diseret sebagai placeholder ghost
+    opacity: isDragging ? 0.4 : undefined,
     order,
   };
   // Garis oranye penanda posisi drop.

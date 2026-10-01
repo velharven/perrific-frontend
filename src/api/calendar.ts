@@ -1,5 +1,5 @@
 import { api } from '@/lib/api';
-import type { GoogleCalendarStatus, GoogleCalendarEvent, DailyActivity } from '@/types';
+import type { GoogleCalendarStatus, GoogleCalendarEvent, DailyActivity, RecurrenceEditScope } from '@/types';
 
 export interface CalendarSyncResult {
   syncRunId?: string;
@@ -47,6 +47,7 @@ export const calendarApi = {
   importEvents: (
     events: Array<{
       id: string;
+      recurringEventId?: string | null;
       title: string;
       description?: string | null;
       start: string;
@@ -82,6 +83,8 @@ export const calendarApi = {
       endTime?: string | null;
       recurrence?: Record<string, unknown> | null;
       colorId?: string | null;
+      scope?: RecurrenceEditScope;
+      instanceDate?: string;
     },
   ) => api.patch<{ data: { id: string } }>(`/calendar/google/events/${eventId}`, data).then((r) => r.data.data),
 

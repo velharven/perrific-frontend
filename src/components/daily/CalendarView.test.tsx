@@ -12,6 +12,7 @@ import CalendarView from "./CalendarView";
 import type { DailyActivity, GoogleCalendarStatus } from "@/types";
 import { calendarCardEnd, isCalendarCardPast } from "@/lib/calendarTiming";
 import type { CalendarChange } from '@/store/calendarSync';
+import { showToast } from "@/components/ui/Toast";
 
 const mocks = vi.hoisted(() => ({
   fetchEvents: vi.fn().mockResolvedValue([]),
@@ -26,6 +27,7 @@ const mocks = vi.hoisted(() => ({
   updateActivity: vi.fn().mockResolvedValue({}),
   createActivity: vi.fn().mockResolvedValue({ id: "created-act-1" }),
   removeActivity: vi.fn().mockResolvedValue({}),
+  updateGoogleEvent: vi.fn().mockResolvedValue({}),
 }));
 vi.mock("@/api/activities", () => ({
   activityApi: {
@@ -57,7 +59,9 @@ vi.mock("@/store/calendarSync", () => ({
   }),
 }));
 vi.mock("@/api/calendar", () => ({
-  calendarApi: {},
+  calendarApi: {
+    updateEvent: (...args: unknown[]) => mocks.updateGoogleEvent(...args),
+  },
 }));
 vi.mock("@/components/ui/Toast", () => ({ showToast: vi.fn() }));
 vi.mock("./CalendarSidebar", () => ({ default: () => null }));
@@ -907,6 +911,222 @@ describe("Notion-style lifecycle sync", () => {
       });
     });
 
+    it("optimistically renders THIS_EVENT at target position immediately without delay", async () => {
+      const recurringAct = fixture({
+        id: "standup-opt-1",
+        title: "Daily Standup Optimistic",
+        date: "2026-09-28T00:00:00Z",
+        startTime: "2026-09-28T09:00:00+07:00",
+        endTime: "2026-09-28T10:00:00+07:00",
+        recurrence: {
+          freq: "DAILY",
+          interval: 1,
+          excludeDates: [],
+          endType: "NEVER",
+        },
+      });
+
+      let resolveCreate: (val: any) => void;
+      const pendingCreate = new Promise((resolve) => {
+        resolveCreate = resolve;
+      });
+      mocks.createActivity.mockReturnValueOnce(pendingCreate);
+
+      render(
+        <CalendarView
+          {...props}
+          selectedDate={new Date("2026-09-28T00:00:00+07:00")}
+          activities={[recurringAct]}
+        />,
+      );
+
+      const cards = screen.getAllByTitle("Daily Standup Optimistic");
+      const card = cards[0];
+      const dataTransfer = transfer();
+      dragStart(card, dataTransfer);
+
+      const targetColumn = card.parentElement!;
+      const drop = createEvent.drop(targetColumn, { dataTransfer });
+      Object.defineProperty(drop, "clientY", { value: 960 }); // 16:00
+      await act(async () => {
+        fireEvent(targetColumn, drop);
+        await Promise.resolve();
+      });
+
+      // Pilih Event Ini dan Terapkan
+      fireEvent.click(screen.getByText("Event ini"));
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Terapkan" }));
+        await Promise.resolve();
+      });
+
+      // Seketika itu juga (walaupun createActivity masih pending di server),
+      // kartu optimistik sudah ter-render di posisi baru (top: 960px = 16:00)!
+      const allRenderedCards = screen.getAllByTitle("Daily Standup Optimistic");
+      expect(allRenderedCards.length).toBeGreaterThan(0);
+      const movedCard = allRenderedCards.find((c) => c.style.top === "960px");
+      expect(movedCard).toBeDefined();
+
+      // Selesaikan promise
+      await act(async () => {
+        resolveCreate!({ id: "detached-opt-created" });
+        await Promise.resolve();
+      });
+    });
+
+    it("optimistically undos THIS_EVENT recurring move immediately on frame 0 before API resolves", async () => {
+      const recurringAct = fixture({
+        id: "standup-opt-undo-1",
+        title: "Daily Standup Undo Opt",
+        date: "2026-09-28T00:00:00Z",
+        startTime: "2026-09-28T09:00:00+07:00",
+        endTime: "2026-09-28T10:00:00+07:00",
+        recurrence: {
+          freq: "DAILY",
+          interval: 1,
+          excludeDates: [],
+          endType: "NEVER",
+        },
+      });
+
+      mocks.createActivity.mockResolvedValueOnce({
+        id: "detached-opt-undo-1",
+        title: "Daily Standup Undo Opt",
+        startTime: "2026-09-28T16:00:00+07:00",
+        endTime: "2026-09-28T17:00:00+07:00",
+      });
+
+      render(
+        <CalendarView
+          {...props}
+          selectedDate={new Date("2026-09-28T00:00:00+07:00")}
+          activities={[recurringAct]}
+        />,
+      );
+
+      const cards = screen.getAllByTitle("Daily Standup Undo Opt");
+      const card = cards[0];
+      const dataTransfer = transfer();
+      dragStart(card, dataTransfer);
+
+      const targetColumn = card.parentElement!;
+      const drop = createEvent.drop(targetColumn, { dataTransfer });
+      Object.defineProperty(drop, "clientY", { value: 960 }); // 16:00
+      await act(async () => {
+        fireEvent(targetColumn, drop);
+        await Promise.resolve();
+      });
+
+      fireEvent.click(screen.getByText("Event ini"));
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Terapkan" }));
+        await Promise.resolve();
+      });
+
+      expect(screen.getAllByTitle("Daily Standup Undo Opt").length).toBeGreaterThan(0);
+
+      let resolveRemove: (val: any) => void;
+      const pendingRemove = new Promise((resolve) => {
+        resolveRemove = resolve;
+      });
+      mocks.removeActivity.mockReturnValueOnce(pendingRemove);
+
+      // Tekan Ctrl+Z (Undo)
+      await act(async () => {
+        fireEvent.keyDown(window, { key: "z", ctrlKey: true });
+        await Promise.resolve();
+      });
+
+      // Pada frame 0 (sebelum server selesai): toast undo langsung muncul & API removeActivity dipanggil
+      expect(showToast).toHaveBeenCalledWith(
+        expect.stringMatching(/Perubahan kegiatan "Daily Standup Undo Opt".*diurungkan/),
+      );
+      expect(mocks.removeActivity).toHaveBeenCalledWith("detached-opt-undo-1");
+
+      // Selesaikan pendingRemove
+      await act(async () => {
+        resolveRemove!(true);
+        await Promise.resolve();
+      });
+    });
+
+    it("optimistically undos THIS_AND_FOLLOWING recurring move immediately on frame 0 before API resolves", async () => {
+      const recurringAct = fixture({
+        id: "standup-opt-undo-following",
+        title: "Daily Standup Following Opt",
+        date: "2026-09-28T00:00:00Z",
+        startTime: "2026-09-28T09:00:00+07:00",
+        endTime: "2026-09-28T10:00:00+07:00",
+        recurrence: {
+          freq: "DAILY",
+          interval: 1,
+          excludeDates: [],
+          endType: "NEVER",
+        },
+      });
+
+      mocks.createActivity.mockResolvedValueOnce({
+        id: "series-new-following-1",
+        title: "Daily Standup Following Opt",
+        startTime: "2026-09-29T16:00:00+07:00",
+        endTime: "2026-09-29T17:00:00+07:00",
+        recurrence: {
+          freq: "DAILY",
+          interval: 1,
+          endType: "NEVER",
+        },
+      });
+
+      render(
+        <CalendarView
+          {...props}
+          selectedDate={new Date("2026-09-29T00:00:00+07:00")}
+          activities={[recurringAct]}
+        />,
+      );
+
+      const cards = screen.getAllByTitle("Daily Standup Following Opt");
+      const card = cards[0];
+      const dataTransfer = transfer();
+      dragStart(card, dataTransfer);
+
+      const targetColumn = card.parentElement!;
+      const drop = createEvent.drop(targetColumn, { dataTransfer });
+      Object.defineProperty(drop, "clientY", { value: 960 }); // 16:00
+      await act(async () => {
+        fireEvent(targetColumn, drop);
+        await Promise.resolve();
+      });
+
+      fireEvent.click(screen.getByText(/Event ini dan/));
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Terapkan" }));
+        await Promise.resolve();
+      });
+
+      let resolveRemove: (val: any) => void;
+      const pendingRemove = new Promise((resolve) => {
+        resolveRemove = resolve;
+      });
+      mocks.removeActivity.mockReturnValueOnce(pendingRemove);
+
+      // Tekan Ctrl+Z (Undo)
+      await act(async () => {
+        fireEvent.keyDown(window, { key: "z", ctrlKey: true });
+        await Promise.resolve();
+      });
+
+      expect(showToast).toHaveBeenCalledWith(
+        expect.stringMatching(/Perubahan kegiatan "Daily Standup Following Opt" dan seterusnya diurungkan/),
+      );
+      expect(mocks.removeActivity).toHaveBeenCalledWith("series-new-following-1");
+
+      await act(async () => {
+        resolveRemove!(true);
+        await Promise.resolve();
+      });
+    });
+
     it("undoes sequential recurring moves in strict reverse chronological order (THIS_EVENT then ALL_EVENTS)", async () => {
       const card1 = fixture({
         id: "act-card-1",
@@ -1373,6 +1593,105 @@ describe("Notion-style lifecycle sync", () => {
       // Exception card only renders on its own date, displaying the modified recurrence tooltip
       expect(screen.getAllByTitle('Kegiatan berulang (jadwal diubah)')).toHaveLength(1);
       expect(screen.queryAllByTitle('Kegiatan berulang')).toHaveLength(0);
+    });
+
+    it("opens recurrence scope modal when dragging an imported Google recurring activity", async () => {
+      const importedRecurring = fixture({
+        id: "imported-rec-1",
+        title: "Sprint Sync (Google)",
+        googleEventId: "google-master-123",
+        date: "2026-09-29T00:00:00Z",
+        startTime: "2026-09-29T10:00:00+07:00",
+        endTime: "2026-09-29T11:00:00+07:00",
+        recurrence: {
+          freq: "WEEKLY",
+          interval: 1,
+          byDays: [2],
+          endType: "NEVER",
+        },
+      });
+
+      render(
+        <CalendarView
+          {...props}
+          selectedDate={new Date("2026-09-29T00:00:00+07:00")}
+          activities={[importedRecurring]}
+        />,
+      );
+
+      const cards = screen.getAllByTitle("Sprint Sync (Google)");
+      const card = cards[0];
+      const dataTransfer = transfer();
+      dragStart(card, dataTransfer);
+
+      const targetColumn = card.parentElement!;
+      const drop = createEvent.drop(targetColumn, { dataTransfer });
+      Object.defineProperty(drop, "clientY", { value: 960 }); // 16:00
+      await act(async () => {
+        fireEvent(targetColumn, drop);
+        await Promise.resolve();
+      });
+
+      // RecurrenceScopeModal options should be visible
+      expect(screen.getByText("Pindahkan Kegiatan Berulang")).toBeTruthy();
+      expect(screen.getByText("Event ini")).toBeTruthy();
+      expect(screen.getByText("Semua event")).toBeTruthy();
+    });
+
+    it("opens recurrence scope modal when dragging an unimported recurring Google Calendar event card", async () => {
+      mocks.fetchEvents.mockResolvedValueOnce([
+        {
+          id: "google-series-1_20260929T030000Z",
+          recurringEventId: "google-series-1",
+          title: "Weekly Planning",
+          start: "2026-09-29T10:00:00+07:00",
+          end: "2026-09-29T11:00:00+07:00",
+        },
+      ]);
+      mocks.status = { connected: true, email: "user@test.com" } as GoogleCalendarStatus;
+
+      render(
+        <CalendarView
+          {...props}
+          selectedDate={new Date("2026-09-29T00:00:00+07:00")}
+          activities={[]}
+        />,
+      );
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      const cards = screen.getAllByTitle("Weekly Planning");
+      const card = cards[0];
+      const dataTransfer = transfer();
+      dragStart(card, dataTransfer);
+
+      const targetColumn = card.parentElement!;
+      const drop = createEvent.drop(targetColumn, { dataTransfer });
+      Object.defineProperty(drop, "clientY", { value: 960 });
+      await act(async () => {
+        fireEvent(targetColumn, drop);
+        await Promise.resolve();
+      });
+
+      expect(screen.getByText("Pindahkan Kegiatan Berulang")).toBeTruthy();
+      expect(screen.getByText("Event ini")).toBeTruthy();
+      expect(screen.getByText("Semua event")).toBeTruthy();
+
+      // Confirm with ALL_EVENTS
+      fireEvent.click(screen.getByText("Semua event"));
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Terapkan" }));
+        await Promise.resolve();
+      });
+
+      expect(mocks.updateGoogleEvent).toHaveBeenCalledWith(
+        "google-series-1_20260929T030000Z",
+        expect.objectContaining({
+          scope: "ALL_EVENTS",
+        }),
+      );
     });
   });
 });

@@ -164,6 +164,8 @@ export interface Task {
   comments?: Comment[];
   attachments?: Attachment[];
   dailyActivities?: { id: string; date: string; startTime?: string | null; endTime?: string | null; allDay?: boolean; calendarConnectionId?: string | null; googleEventId?: string | null }[];
+  project?: Pick<Project, 'id' | 'name'> & { team?: Pick<Team, 'id' | 'name'> };
+  organizationId?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -349,3 +351,61 @@ export interface TaskActivity {
   actor?: Pick<User, 'id' | 'name' | 'avatarUrl'>;
   targetUser?: Pick<User, 'id' | 'name' | 'avatarUrl'> | null;
 }
+
+export interface Organization {
+  id: string;
+  name: string;
+  description?: string | null;
+  avatarUrl?: string | null;
+  createdById: string;
+  order: number;
+  createdAt: string;
+  updatedAt: string;
+  members?: OrganizationMember[];
+  connectedTeams?: OrganizationTeam[];
+  projectProposals?: ProjectProposal[];
+  tasks?: Task[];
+  _count?: {
+    projectProposals: number;
+    tasks: number;
+  };
+}
+
+export interface OrganizationMember {
+  id: string;
+  organizationId: string;
+  userId: string;
+  role: TeamRole;
+  joinedAt: string;
+  user?: User;
+}
+
+export interface OrganizationTeam {
+  id: string;
+  organizationId: string;
+  teamId: string;
+  createdAt: string;
+  team: Team & { projects?: Project[] };
+}
+
+export interface ProjectProposal {
+  id: string;
+  organizationId: string;
+  teamId: string;
+  createdById: string;
+  name: string;
+  description?: string | null;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  rejectionReason?: string | null;
+  approvedProjectId?: string | null;
+  decidedById?: string | null;
+  decidedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  organization?: Pick<Organization, 'id' | 'name' | 'avatarUrl'>;
+  team?: Pick<Team, 'id' | 'name' | 'avatarUrl'>;
+  createdBy?: Pick<User, 'id' | 'name' | 'email' | 'avatarUrl'>;
+  decidedBy?: Pick<User, 'id' | 'name'>;
+  approvedProject?: Pick<Project, 'id' | 'name'>;
+}
+

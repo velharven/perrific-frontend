@@ -91,6 +91,7 @@ export default function TeamPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [tab, setTab] = useState<'project' | 'team'>('project');
   const [email, setEmail] = useState('');
+  const [pendingProposalCount, setPendingProposalCount] = useState(0);
   // Offset pill fixed agar center ke area konten (di luar sidebar utama).
   const [sbCollapsed, setSbCollapsed] = useState<boolean>(isAppSidebarCollapsed);
 
@@ -133,9 +134,14 @@ export default function TeamPage() {
   }
 
   async function refresh(tid: string) {
-    const [t, ps] = await Promise.all([teamApi.getTeam(tid), teamApi.listProjects(tid)]);
+    const [t, ps, props] = await Promise.all([
+      teamApi.getTeam(tid),
+      teamApi.listProjects(tid),
+      teamApi.listProjectProposals(tid).catch(() => []),
+    ]);
     setTeam(t);
     setProjects(ps);
+    setPendingProposalCount(props.filter((p) => p.status === 'PENDING').length);
     setTasksLoading(true);
     try {
       const entries = await Promise.all(ps.map(async (p) => [p.id, await projectApi.listTasks(p.id)] as const));
@@ -225,6 +231,28 @@ export default function TeamPage() {
           {team.description && <p className="mt-0.5 truncate text-sm text-gray-500">{team.description}</p>}
         </div>
       </div>
+
+      {isAdmin && pendingProposalCount > 0 && (
+        <div className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-xs text-amber-900">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-amber-100 text-amber-700">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+              </svg>
+            </span>
+            <p>
+              Ada <strong>{pendingProposalCount} usulan project baru</strong> dari organisasi yang menunggu persetujuan Anda.
+            </p>
+          </div>
+          <Link
+            to={`/team/${team.id}/projects`}
+            className="shrink-0 rounded-lg bg-amber-600 px-3 py-1.5 font-semibold text-white transition hover:bg-amber-700"
+          >
+            Tinjau Usulan
+          </Link>
+        </div>
+      )}
 
       <div className="flex-1">
         {tab === 'project' ? (

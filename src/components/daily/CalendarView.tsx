@@ -41,6 +41,15 @@ interface LinkedActivityMove {
   observedEvent?: GoogleCalendarEvent;
 }
 
+interface OptimisticRecurringMove {
+  id: string;
+  masterActivityId: string;
+  scope: 'THIS_EVENT' | 'THIS_AND_FOLLOWING';
+  updatedMasterRecurrence: RecurrenceConfig | null;
+  optimisticActivity?: DailyActivity;
+  realCreatedId?: string;
+}
+
 const MONTH_NAMES = [
   'Januari',
   'Februari',
@@ -291,10 +300,15 @@ export default function CalendarView({
 
   const [recurringMovePrompt, setRecurringMovePrompt] = useState<{
     isOpen: boolean;
-    activity: DailyActivity;
+    activity?: DailyActivity;
+    googleEvent?: GoogleCalendarEvent;
     payload: {
       id: string;
       title: string;
+      itemType?: 'activity' | 'google';
+      hasRecurrence?: boolean;
+      recurrence?: RecurrenceConfig | null;
+      recurringEventId?: string | null;
       cardDate?: string | null;
       cardStartTime?: string | null;
       cardEndTime?: string | null;
@@ -319,6 +333,56 @@ export default function CalendarView({
   const deletedActivityIdsRef = useRef<Set<string>>(new Set());
   const deletedGoogleIdsRef = useRef<Set<string>>(new Set());
   const deletingIdsRef = useRef<Set<string>>(new Set());
+
+  // State & rekonsiliasi pemindahan kegiatan berulang optimistik (zero-delay)
+  const [optimisticRecurringMoves, setOptimisticRecurringMoves] = useState<OptimisticRecurringMove[]>([]);
+
+  useEffect(() => {
+    if (optimisticRecurringMoves.length === 0) return;
+    setOptimisticRecurringMoves((prev) =>
+      prev.filter((m) => {
+        if (!m.realCreatedId) return true;
+        // Hapus entri optimistik jika kegiatan asli dari server sudah masuk ke props activities
+        return !activities.some((a) => a.id === m.realCreatedId);
+      }),
+    );
+  }, [activities, optimisticRecurringMoves.length]);
+
+  // Menggabungkan activities dari props dengan modifikasi master & kartu optimistik tanpa jeda
+  const effectiveActivities = useMemo(() => {
+    if (optimisticRecurringMoves.length === 0) {
+      return activities.filter((act) => !deletedActivityIdsRef.current.has(act.id));
+    }
+
+    const modifiedMasters = new Map<string, RecurrenceConfig | null>();
+    const extraActivities: DailyActivity[] = [];
+
+    for (const move of optimisticRecurringMoves) {
+      modifiedMasters.set(move.masterActivityId, move.updatedMasterRecurrence);
+      if (move.optimisticActivity) {
+        const hasRealInProps = move.realCreatedId && activities.some((a) => a.id === move.realCreatedId);
+        if (!hasRealInProps) {
+          extraActivities.push(move.optimisticActivity);
+        }
+      }
+    }
+
+    const updated = activities
+      .filter((act) => !deletedActivityIdsRef.current.has(act.id))
+      .map((act) => {
+        if (modifiedMasters.has(act.id)) {
+          const overridden = modifiedMasters.get(act.id);
+          return {
+            ...act,
+            recurrence: overridden ?? undefined,
+          };
+        }
+        return act;
+      });
+
+    return [...updated, ...extraActivities];
+  }, [activities, optimisticRecurringMoves]);
+
   const googleEventsRequestRef = useRef(0);
   const nextUndoIdRef = useRef(1);
   const isUndoingRef = useRef(false);
@@ -395,6 +459,7 @@ export default function CalendarView({
     deletingIdsRef.current.clear(); pendingActivityMoveIdsRef.current.clear();
     linkedActivityMovesRef.current = new Map();
     setLinkedActivityMoves(linkedActivityMovesRef.current);
+    setOptimisticRecurringMoves([]);
     clearDragState();
   }, [gcalStatus.connectionId, gcalStatus.connected]);
 
@@ -465,7 +530,7 @@ export default function CalendarView({
   useEffect(() => {
     if (!selectedCardItem) return;
     if (selectedCardItem.type === 'activity') {
-      const updated = activities.find((a) => a.id === selectedCardItem.act.id);
+      const updated = effectiveActivities.find((a) => a.id === selectedCardItem.act.id);
       if (updated) {
         const instanceDate = selectedCardItem.instanceDate;
         const projected =
@@ -494,7 +559,7 @@ export default function CalendarView({
         });
       }
     }
-  }, [activities, googleEvents]);
+  }, [effectiveActivities, googleEvents]);
 
   const [dragOverSlot, setDragOverSlot] = useState<{ dayDate: string; startMinutes: number } | null>(null);
 
@@ -545,6 +610,27 @@ export default function CalendarView({
       if (!last) return;
 
       if (last.type === 'move-calendar-card') {
+        selectedCardItemRef.current = null;
+        setSelectedCardItem(null);
+        showToast(`Posisi kegiatan "${last.title}" dikembalikan.`);
+
+        if (last.itemType !== 'activity') {
+          setGoogleEvents((prev) =>
+            prev.map((g) => {
+              if (g.id !== last.rawId) return g;
+              const datePrefix = last.prevDate || (g.start && g.start.includes('T') ? g.start.split('T')[0] : g.start);
+              const newStart = last.prevStartTime
+                ? (last.prevStartTime.includes('T') ? last.prevStartTime : `${datePrefix}T${last.prevStartTime}`)
+                : g.start;
+              const newEnd = last.prevEndTime
+                ? (last.prevEndTime.includes('T') ? last.prevEndTime : `${datePrefix}T${last.prevEndTime}`)
+                : g.end;
+              return { ...g, start: newStart, end: newEnd };
+            }),
+          );
+        }
+        isUndoingRef.current = false;
+
         try {
           if (last.itemType === 'activity') {
             await moveActivity(last.rawId, {
@@ -554,24 +640,20 @@ export default function CalendarView({
               ...(last.prevAllDay !== undefined ? { allDay: last.prevAllDay } : {}),
               ...(last.prevRecurrence !== undefined ? { recurrence: last.prevRecurrence } : {}),
             });
-
           } else {
             await calendarApi.updateEvent(last.rawId, {
               ...(last.prevDate ? { date: last.prevDate } : {}),
               startTime: last.prevStartTime,
               endTime: last.prevEndTime,
             });
-
-
           }
 
-          selectedCardItemRef.current = null;
-          setSelectedCardItem(null);
           onRefreshActivities?.();
           void loadGoogleEvents();
-          showToast(`Posisi kegiatan "${last.title}" dikembalikan.`);
         } catch (err) {
           console.error('[CalendarView] Gagal mengembalikan posisi kegiatan:', err);
+          onRefreshActivities?.();
+          void loadGoogleEvents();
           showToast('Gagal mengembalikan posisi kegiatan.');
           recordUndo(last);
         }
@@ -579,27 +661,33 @@ export default function CalendarView({
       }
 
       if (last.type === 'drag-from-sidebar-item') {
-        try {
-          const act = activities.find((a) => a.id === last.activityId);
-          const gId = last.googleEventId || act?.googleEventId;
-          if (gId) {
-            deletedGoogleIdsRef.current.add(gId);
-            setGoogleEvents((prev) => prev.filter((g) => g.id !== gId));
-          }
+        const act = activities.find((a) => a.id === last.activityId);
+        const gId = last.googleEventId || act?.googleEventId;
+        if (gId) {
+          deletedGoogleIdsRef.current.add(gId);
+          setGoogleEvents((prev) => prev.filter((g) => g.id !== gId));
+        }
 
+        deletedActivityIdsRef.current.add(last.activityId);
+        onDeleteActivity?.(last.activityId);
+        selectedCardItemRef.current = null;
+        setSelectedCardItem(null);
+        showToast(`"${last.title}" dikembalikan ke menu "Belum di kalender".`);
+        isUndoingRef.current = false;
+
+        try {
           await activityApi.update(last.activityId, {
             startTime: null,
             endTime: null,
             ...(last.prevDate ? { date: last.prevDate } : {}),
           });
-
-
-
-          selectedCardItemRef.current = null;
-          setSelectedCardItem(null);
-          showToast(`"${last.title}" dikembalikan ke menu "Belum di kalender".`);
+          deletedActivityIdsRef.current.delete(last.activityId);
+          onRefreshActivities?.();
         } catch (err) {
           console.error('[CalendarView] Gagal mengembalikan item ke menu:', err);
+          deletedActivityIdsRef.current.delete(last.activityId);
+          if (gId) deletedGoogleIdsRef.current.delete(gId);
+          onRefreshActivities?.();
           showToast('Gagal mengembalikan item ke menu.');
           recordUndo(last);
         }
@@ -607,23 +695,29 @@ export default function CalendarView({
       }
 
       if (last.type === 'drag-from-sidebar-team-task' || last.type === 'drag-from-sidebar-personal-task') {
+        const act = activities.find((a) => a.id === last.createdActivityId);
+        const gId = last.googleEventId || act?.googleEventId;
+        if (gId) {
+          deletedGoogleIdsRef.current.add(gId);
+          setGoogleEvents((prev) => prev.filter((g) => g.id !== gId));
+        }
+
+        deletedActivityIdsRef.current.add(last.createdActivityId);
+        onDeleteActivity?.(last.createdActivityId);
+        selectedCardItemRef.current = null;
+        setSelectedCardItem(null);
+        showToast(`${last.type === 'drag-from-sidebar-personal-task' ? 'Tugas pribadi' : 'Tugas'} "${last.title}" dikembalikan ke menu "Belum di kalender".`);
+        isUndoingRef.current = false;
+
         try {
-          const act = activities.find((a) => a.id === last.createdActivityId);
-          const gId = last.googleEventId || act?.googleEventId;
-          if (gId) {
-            deletedGoogleIdsRef.current.add(gId);
-            setGoogleEvents((prev) => prev.filter((g) => g.id !== gId));
-          }
-
           await activityApi.remove(last.createdActivityId);
-
-
-
-          selectedCardItemRef.current = null;
-          setSelectedCardItem(null);
-          showToast(`${last.type === 'drag-from-sidebar-personal-task' ? 'Tugas pribadi' : 'Tugas'} "${last.title}" dikembalikan ke menu "Belum di kalender".`);
+          deletedActivityIdsRef.current.delete(last.createdActivityId);
+          onRefreshActivities?.();
         } catch (err) {
           console.error('[CalendarView] Gagal mengembalikan tugas ke menu:', err);
+          deletedActivityIdsRef.current.delete(last.createdActivityId);
+          if (gId) deletedGoogleIdsRef.current.delete(gId);
+          onRefreshActivities?.();
           showToast('Gagal mengembalikan tugas ke menu.');
           recordUndo(last);
         }
@@ -631,21 +725,45 @@ export default function CalendarView({
       }
 
       if (last.type === 'recurring-move-this-event' || last.type === 'recurring-edit-this-event') {
+        const masterAct = activities.find((a) => a.id === last.masterActivityId);
+        const undoId = `undo-this-event-${Date.now()}-${Math.random()}`;
+        const undoEntry: OptimisticRecurringMove = {
+          id: undoId,
+          masterActivityId: last.masterActivityId,
+          scope: 'THIS_EVENT',
+          updatedMasterRecurrence: {
+            ...(masterAct?.recurrence || {}),
+            excludeDates: last.prevExcludeDates,
+          },
+        };
+
+        deletedActivityIdsRef.current.add(last.createdActivityId);
+        onDeleteActivity?.(last.createdActivityId);
+        setOptimisticRecurringMoves((prev) => [
+          ...prev.filter((m) => m.masterActivityId !== last.masterActivityId && m.realCreatedId !== last.createdActivityId),
+          undoEntry,
+        ]);
+        selectedCardItemRef.current = null;
+        setSelectedCardItem(null);
+        showToast(`Perubahan kegiatan "${last.title}" pada ${last.instanceDateStr} diurungkan.`);
+        isUndoingRef.current = false;
+
         try {
           await activityApi.remove(last.createdActivityId);
-          const masterAct = activities.find((a) => a.id === last.masterActivityId);
           await activityApi.update(last.masterActivityId, {
             recurrence: {
               ...(masterAct?.recurrence || {}),
               excludeDates: last.prevExcludeDates,
             },
           });
-          selectedCardItemRef.current = null;
-          setSelectedCardItem(null);
-          onRefreshActivities?.();
-          showToast(`Perubahan kegiatan "${last.title}" pada ${last.instanceDateStr} diurungkan.`);
+          await onRefreshActivities?.();
+          setOptimisticRecurringMoves((prev) => prev.filter((m) => m.id !== undoId));
+          deletedActivityIdsRef.current.delete(last.createdActivityId);
         } catch (err) {
           console.error('[CalendarView] Gagal mengurungkan aksi this-event:', err);
+          setOptimisticRecurringMoves((prev) => prev.filter((m) => m.id !== undoId));
+          deletedActivityIdsRef.current.delete(last.createdActivityId);
+          onRefreshActivities?.();
           recordUndo(last);
           showToast('Gagal mengurungkan perubahan kegiatan.');
         }
@@ -653,17 +771,38 @@ export default function CalendarView({
       }
 
       if (last.type === 'recurring-move-following' || last.type === 'recurring-edit-following') {
+        const undoId = `undo-following-${Date.now()}-${Math.random()}`;
+        const undoEntry: OptimisticRecurringMove = {
+          id: undoId,
+          masterActivityId: last.masterActivityId,
+          scope: 'THIS_AND_FOLLOWING',
+          updatedMasterRecurrence: last.prevRecurrence,
+        };
+
+        deletedActivityIdsRef.current.add(last.createdActivityId);
+        onDeleteActivity?.(last.createdActivityId);
+        setOptimisticRecurringMoves((prev) => [
+          ...prev.filter((m) => m.masterActivityId !== last.masterActivityId && m.realCreatedId !== last.createdActivityId),
+          undoEntry,
+        ]);
+        selectedCardItemRef.current = null;
+        setSelectedCardItem(null);
+        showToast(`Perubahan kegiatan "${last.title}" dan seterusnya diurungkan.`);
+        isUndoingRef.current = false;
+
         try {
           await activityApi.remove(last.createdActivityId);
           await activityApi.update(last.masterActivityId, {
             recurrence: last.prevRecurrence,
           });
-          selectedCardItemRef.current = null;
-          setSelectedCardItem(null);
-          onRefreshActivities?.();
-          showToast(`Perubahan kegiatan "${last.title}" dan seterusnya diurungkan.`);
+          await onRefreshActivities?.();
+          setOptimisticRecurringMoves((prev) => prev.filter((m) => m.id !== undoId));
+          deletedActivityIdsRef.current.delete(last.createdActivityId);
         } catch (err) {
           console.error('[CalendarView] Gagal mengurungkan aksi following:', err);
+          setOptimisticRecurringMoves((prev) => prev.filter((m) => m.id !== undoId));
+          deletedActivityIdsRef.current.delete(last.createdActivityId);
+          onRefreshActivities?.();
           recordUndo(last);
           showToast('Gagal mengurungkan perubahan kegiatan.');
         }
@@ -671,20 +810,40 @@ export default function CalendarView({
       }
 
       if (last.type === 'recurring-delete-this-event') {
+        const masterAct = activities.find((a) => a.id === last.masterActivityId);
+        const undoId = `undo-del-this-${Date.now()}-${Math.random()}`;
+        const undoEntry: OptimisticRecurringMove = {
+          id: undoId,
+          masterActivityId: last.masterActivityId,
+          scope: 'THIS_EVENT',
+          updatedMasterRecurrence: {
+            ...(masterAct?.recurrence || {}),
+            excludeDates: last.prevExcludeDates,
+          },
+        };
+
+        setOptimisticRecurringMoves((prev) => [
+          ...prev.filter((m) => m.masterActivityId !== last.masterActivityId),
+          undoEntry,
+        ]);
+        selectedCardItemRef.current = null;
+        setSelectedCardItem(null);
+        showToast(`Penghapusan kegiatan "${last.title}" pada ${last.instanceDateStr} diurungkan.`);
+        isUndoingRef.current = false;
+
         try {
-          const masterAct = activities.find((a) => a.id === last.masterActivityId);
           await activityApi.update(last.masterActivityId, {
             recurrence: {
               ...(masterAct?.recurrence || {}),
               excludeDates: last.prevExcludeDates,
             },
           });
-          selectedCardItemRef.current = null;
-          setSelectedCardItem(null);
-          onRefreshActivities?.();
-          showToast(`Penghapusan kegiatan "${last.title}" pada ${last.instanceDateStr} diurungkan.`);
+          await onRefreshActivities?.();
+          setOptimisticRecurringMoves((prev) => prev.filter((m) => m.id !== undoId));
         } catch (err) {
           console.error('[CalendarView] Gagal mengurungkan penghapusan this-event:', err);
+          setOptimisticRecurringMoves((prev) => prev.filter((m) => m.id !== undoId));
+          onRefreshActivities?.();
           recordUndo(last);
           showToast('Gagal mengurungkan penghapusan kegiatan.');
         }
@@ -692,16 +851,33 @@ export default function CalendarView({
       }
 
       if (last.type === 'recurring-delete-following') {
+        const undoId = `undo-del-following-${Date.now()}-${Math.random()}`;
+        const undoEntry: OptimisticRecurringMove = {
+          id: undoId,
+          masterActivityId: last.masterActivityId,
+          scope: 'THIS_AND_FOLLOWING',
+          updatedMasterRecurrence: last.prevRecurrence,
+        };
+
+        setOptimisticRecurringMoves((prev) => [
+          ...prev.filter((m) => m.masterActivityId !== last.masterActivityId),
+          undoEntry,
+        ]);
+        selectedCardItemRef.current = null;
+        setSelectedCardItem(null);
+        showToast(`Penghapusan kegiatan "${last.title}" dan seterusnya diurungkan.`);
+        isUndoingRef.current = false;
+
         try {
           await activityApi.update(last.masterActivityId, {
             recurrence: last.prevRecurrence,
           });
-          selectedCardItemRef.current = null;
-          setSelectedCardItem(null);
-          onRefreshActivities?.();
-          showToast(`Penghapusan kegiatan "${last.title}" dan seterusnya diurungkan.`);
+          await onRefreshActivities?.();
+          setOptimisticRecurringMoves((prev) => prev.filter((m) => m.id !== undoId));
         } catch (err) {
           console.error('[CalendarView] Gagal mengurungkan penghapusan following:', err);
+          setOptimisticRecurringMoves((prev) => prev.filter((m) => m.id !== undoId));
+          onRefreshActivities?.();
           recordUndo(last);
           showToast('Gagal mengurungkan penghapusan kegiatan.');
         }
@@ -709,6 +885,11 @@ export default function CalendarView({
       }
 
       if (last.type === 'card-settings-update') {
+        selectedCardItemRef.current = null;
+        setSelectedCardItem(null);
+        showToast(`Pengaturan kegiatan "${last.title}" dikembalikan.`);
+        isUndoingRef.current = false;
+
         try {
           await activityApi.update(last.activityId, {
             title: last.prevSnapshot.title,
@@ -719,12 +900,10 @@ export default function CalendarView({
             allDay: last.prevSnapshot.allDay,
             recurrence: last.prevSnapshot.recurrence,
           });
-          selectedCardItemRef.current = null;
-          setSelectedCardItem(null);
           onRefreshActivities?.();
-          showToast(`Pengaturan kegiatan "${last.title}" dikembalikan.`);
         } catch (err) {
           console.error('[CalendarView] Gagal mengembalikan pengaturan kegiatan:', err);
+          onRefreshActivities?.();
           recordUndo(last);
           showToast('Gagal mengembalikan pengaturan kegiatan.');
         }
@@ -733,8 +912,19 @@ export default function CalendarView({
 
       if (last.type === 'delete') {
         const { item, title } = last;
+        selectedCardItemRef.current = null;
+        setSelectedCardItem(null);
+        showToast(`Kegiatan "${title}" dipulihkan.`);
+
+        if (item.type === 'activity') {
+          deletedActivityIdsRef.current.delete(item.act.id);
+        } else {
+          deletedGoogleIdsRef.current.delete(item.gEv.id);
+          setGoogleEvents((prev) => prev.some((g) => g.id === item.gEv.id) ? prev : [...prev, item.gEv]);
+        }
+        isUndoingRef.current = false;
+
         try {
-          // Delete yang dipicu tepat sebelum Ctrl+Z harus selesai dahulu.
           await last.pendingDelete;
           if (item.type === 'activity') {
             const act = item.act;
@@ -756,9 +946,6 @@ export default function CalendarView({
               customValues: act.customValues ?? undefined,
               checklist: act.checklistItems?.length ? act.checklistItems.map((c) => ({ text: c.text })) : undefined,
             });
-
-
-
           } else {
             const gEv = item.gEv;
             const createdG = await calendarApi.createEvent({
@@ -770,16 +957,19 @@ export default function CalendarView({
             });
             const restoredGEv = { ...gEv, id: createdG.id };
             googleEventsRequestRef.current++;
-            setGoogleEvents((prev) => prev.some((g) => g.id === createdG.id) ? prev : [...prev, restoredGEv]);
-
+            setGoogleEvents((prev) => prev.some((g) => g.id === createdG.id) ? prev : [...prev.filter((g) => g.id !== item.gEv.id), restoredGEv]);
           }
 
-          showToast(`Kegiatan "${title}" dipulihkan.`);
+          onRefreshActivities?.();
+          void loadGoogleEvents();
         } catch (err) {
           console.error('[CalendarView] Gagal memulihkan kegiatan:', err);
-          // Delete yang gagal sudah di-rollback dan tidak boleh di-undo lagi.
-          if (!deletedActivityIdsRef.current.has(item.type === 'activity' ? item.act.id : '') &&
-              !deletedGoogleIdsRef.current.has(item.type === 'google' ? item.gEv.id : '')) return;
+          if (item.type === 'activity') {
+            deletedActivityIdsRef.current.add(item.act.id);
+          } else {
+            deletedGoogleIdsRef.current.add(item.gEv.id);
+            setGoogleEvents((prev) => prev.filter((g) => g.id !== item.gEv.id));
+          }
           recordUndo(last);
           showToast('Gagal memulihkan kegiatan. Coba urungkan lagi.');
         }
@@ -788,7 +978,7 @@ export default function CalendarView({
     } finally {
       isUndoingRef.current = false;
     }
-  }, [onRefreshActivities, loadGoogleEvents, moveActivity, activities]);
+  }, [onRefreshActivities, onDeleteActivity, loadGoogleEvents, moveActivity, activities]);
 
   // Fungsi internal menghapus kartu terpilih
   const executeDeleteCard = useCallback(
@@ -971,6 +1161,44 @@ export default function CalendarView({
     const newEndTimeStr = newEnd.toISOString();
     const newDateStr = new Date(newStart.getFullYear(), newStart.getMonth(), newStart.getDate(), 0, 0, 0, 0).toISOString();
 
+    if (payload.itemType === 'google') {
+      try {
+        await calendarApi.updateEvent(payload.id, {
+          date: newDateStr,
+          startTime: newStartTimeStr,
+          endTime: newEndTimeStr,
+          scope,
+          instanceDate: instanceDateStr,
+        });
+
+        recordUndo({
+          id: actionId,
+          type: 'move-calendar-card',
+          itemType: 'google',
+          rawId: payload.id,
+          title: payload.title,
+          prevDate: payload.originalDate || null,
+          prevStartTime: payload.originalStartTime || null,
+          prevEndTime: payload.originalEndTime || null,
+          prevAllDay: payload.originalAllDay,
+        });
+
+        onRefreshActivities?.();
+        void loadGoogleEvents();
+
+        showToast(`Kegiatan "${payload.title}" dipindahkan`, {
+          label: 'Urungkan (Ctrl+Z)',
+          onAction: () => {
+            void handleUndo(actionId);
+          },
+        });
+      } catch {
+        showToast('Gagal memindahkan kegiatan Google Calendar');
+      }
+      return;
+    }
+
+    if (!originalAct) return;
     if (pendingActivityMoveIdsRef.current.has(payload.id)) return;
     pendingActivityMoveIdsRef.current.add(payload.id);
 
@@ -1047,62 +1275,103 @@ export default function CalendarView({
       if (scope === 'THIS_EVENT') {
         const prevExcludeDates = [...(originalAct.recurrence?.excludeDates || [])];
         const updatedExcludeDates = [...prevExcludeDates, instanceDateStr];
-        await activityApi.update(originalAct.id, {
-          recurrence: {
-            ...originalAct.recurrence,
-            excludeDates: updatedExcludeDates,
-          },
-        });
 
-        const created = await activityApi.create({
-          title: originalAct.title || 'Tanpa judul',
-          description: originalAct.description,
+        // Optimistic UI Update: seketika tanpa delay
+        const optimisticId = `optimistic-exc-${Date.now()}`;
+        const optimisticAct: DailyActivity = {
+          ...originalAct,
+          id: optimisticId,
           date: newDateStr,
           startTime: newStartTimeStr,
           endTime: newEndTimeStr,
           allDay: false,
-          type: originalAct.type || 'CUSTOM',
-          status: originalAct.status || 'PENDING',
-          icon: originalAct.icon,
-          color: originalAct.color,
-          recurrence: originalAct.recurrence
-            ? {
-                isException: true,
-                masterActivityId: originalAct.id,
-              }
-            : null,
-        });
-
-        recordUndo({
-          id: actionId,
-          type: 'recurring-move-this-event',
-          createdActivityId: created.id,
-          masterActivityId: originalAct.id,
-          prevExcludeDates,
-          instanceDateStr,
-          title: payload.title,
-        });
-
-        onRefreshActivities?.();
-        showToast(`Kegiatan "${payload.title}" dipindahkan`, {
-          label: 'Urungkan (Ctrl+Z)',
-          onAction: () => {
-            void handleUndo(actionId);
+          recurrence: {
+            isException: true,
+            masterActivityId: originalAct.id,
           },
-        });
+        };
+        const moveEntry: OptimisticRecurringMove = {
+          id: optimisticId,
+          masterActivityId: originalAct.id,
+          scope: 'THIS_EVENT',
+          updatedMasterRecurrence: {
+            ...originalAct.recurrence,
+            excludeDates: updatedExcludeDates,
+          },
+          optimisticActivity: optimisticAct,
+        };
+        setOptimisticRecurringMoves((prev) => [...prev, moveEntry]);
+
+        try {
+          await activityApi.update(originalAct.id, {
+            recurrence: {
+              ...originalAct.recurrence,
+              excludeDates: updatedExcludeDates,
+            },
+          });
+
+          const created = await activityApi.create({
+            title: originalAct.title || 'Tanpa judul',
+            description: originalAct.description,
+            date: newDateStr,
+            startTime: newStartTimeStr,
+            endTime: newEndTimeStr,
+            allDay: false,
+            type: originalAct.type || 'CUSTOM',
+            status: originalAct.status || 'PENDING',
+            icon: originalAct.icon ?? undefined,
+            color: originalAct.color,
+            recurrence: originalAct.recurrence
+              ? {
+                  isException: true,
+                  masterActivityId: originalAct.id,
+                }
+              : null,
+          });
+
+          // Catat real id untuk rekonsiliasi mulus setelah fetch
+          setOptimisticRecurringMoves((prev) =>
+            prev.map((m) => (m.id === optimisticId ? { ...m, realCreatedId: created.id } : m)),
+          );
+
+          recordUndo({
+            id: actionId,
+            type: 'recurring-move-this-event',
+            createdActivityId: created.id,
+            masterActivityId: originalAct.id,
+            prevExcludeDates,
+            instanceDateStr,
+            title: payload.title,
+          });
+
+          onRefreshActivities?.();
+          void loadGoogleEvents();
+          showToast(`Kegiatan "${payload.title}" dipindahkan`, {
+            label: 'Urungkan (Ctrl+Z)',
+            onAction: () => {
+              void handleUndo(actionId);
+            },
+          });
+        } catch (createErr) {
+          console.error('[CalendarView] Gagal membuat exception event, membatalkan perubahan master:', createErr);
+          setOptimisticRecurringMoves((prev) => prev.filter((m) => m.id !== optimisticId));
+          await activityApi.update(originalAct.id, {
+            recurrence: {
+              ...originalAct.recurrence,
+              excludeDates: prevExcludeDates,
+            },
+          }).catch((rollbackErr) => {
+            console.error('[CalendarView] Gagal rollback master activity:', rollbackErr);
+          });
+          onRefreshActivities?.();
+          showToast('Gagal memindahkan kegiatan berulang. Perubahan dibatalkan.');
+        }
         return;
       }
 
       if (scope === 'THIS_AND_FOLLOWING') {
         const prevRecurrence = originalAct.recurrence ? { ...originalAct.recurrence } : null;
         const dayBefore = getDayBefore(instanceDateStr);
-        await activityApi.update(originalAct.id, {
-          recurrence: {
-            ...originalAct.recurrence,
-            endType: 'ON_DATE',
-            untilDate: dayBefore,
-          },
-        });
 
         let nextRecurrence: RecurrenceConfig | null = originalAct.recurrence
           ? {
@@ -1113,6 +1382,11 @@ export default function CalendarView({
             }
           : null;
         if (nextRecurrence) {
+          delete (nextRecurrence as Record<string, unknown>).isException;
+          delete (nextRecurrence as Record<string, unknown>).masterActivityId;
+          if (!nextRecurrence.freq) {
+            nextRecurrence.freq = 'DAILY';
+          }
           const sourceDateObj = new Date(`${instanceDateStr}T12:00:00`);
           const sourceDay = sourceDateObj.getDay();
           const targetDay = targetDate.getDay();
@@ -1134,36 +1408,86 @@ export default function CalendarView({
           }
         }
 
-        const created = await activityApi.create({
-          title: originalAct.title || 'Tanpa judul',
-          description: originalAct.description,
+        // Optimistic UI Update: seketika tanpa delay
+        const optimisticId = `optimistic-foll-${Date.now()}`;
+        const optimisticAct: DailyActivity = {
+          ...originalAct,
+          id: optimisticId,
           date: newDateStr,
           startTime: newStartTimeStr,
           endTime: newEndTimeStr,
           allDay: false,
-          type: originalAct.type || 'CUSTOM',
-          status: originalAct.status || 'PENDING',
-          icon: originalAct.icon,
-          color: originalAct.color,
           recurrence: nextRecurrence,
-        });
-
-        recordUndo({
-          id: actionId,
-          type: 'recurring-move-following',
-          createdActivityId: created.id,
+        };
+        const moveEntry: OptimisticRecurringMove = {
+          id: optimisticId,
           masterActivityId: originalAct.id,
-          prevRecurrence,
-          title: payload.title,
-        });
-
-        onRefreshActivities?.();
-        showToast(`Kegiatan "${payload.title}" dan seterusnya dipindahkan`, {
-          label: 'Urungkan (Ctrl+Z)',
-          onAction: () => {
-            void handleUndo(actionId);
+          scope: 'THIS_AND_FOLLOWING',
+          updatedMasterRecurrence: {
+            ...originalAct.recurrence,
+            endType: 'ON_DATE',
+            untilDate: dayBefore,
           },
-        });
+          optimisticActivity: optimisticAct,
+        };
+        setOptimisticRecurringMoves((prev) => [...prev, moveEntry]);
+
+        try {
+          await activityApi.update(originalAct.id, {
+            recurrence: {
+              ...originalAct.recurrence,
+              endType: 'ON_DATE',
+              untilDate: dayBefore,
+            },
+          });
+
+          const created = await activityApi.create({
+            title: originalAct.title || 'Tanpa judul',
+            description: originalAct.description,
+            date: newDateStr,
+            startTime: newStartTimeStr,
+            endTime: newEndTimeStr,
+            allDay: false,
+            type: originalAct.type || 'CUSTOM',
+            status: originalAct.status || 'PENDING',
+            icon: originalAct.icon ?? undefined,
+            color: originalAct.color,
+            recurrence: nextRecurrence,
+          });
+
+          // Catat real id untuk rekonsiliasi mulus setelah fetch
+          setOptimisticRecurringMoves((prev) =>
+            prev.map((m) => (m.id === optimisticId ? { ...m, realCreatedId: created.id } : m)),
+          );
+
+          recordUndo({
+            id: actionId,
+            type: 'recurring-move-following',
+            createdActivityId: created.id,
+            masterActivityId: originalAct.id,
+            prevRecurrence,
+            title: payload.title,
+          });
+
+          onRefreshActivities?.();
+          void loadGoogleEvents();
+          showToast(`Kegiatan "${payload.title}" dan seterusnya dipindahkan`, {
+            label: 'Urungkan (Ctrl+Z)',
+            onAction: () => {
+              void handleUndo(actionId);
+            },
+          });
+        } catch (createErr) {
+          console.error('[CalendarView] Gagal membuat seri perulangan baru, membatalkan perubahan master:', createErr);
+          setOptimisticRecurringMoves((prev) => prev.filter((m) => m.id !== optimisticId));
+          await activityApi.update(originalAct.id, {
+            recurrence: prevRecurrence,
+          }).catch((rollbackErr) => {
+            console.error('[CalendarView] Gagal rollback master activity:', rollbackErr);
+          });
+          onRefreshActivities?.();
+          showToast('Gagal memindahkan kegiatan berulang. Perubahan dibatalkan.');
+        }
         return;
       }
     } finally {
@@ -1192,6 +1516,7 @@ export default function CalendarView({
         cardEndTime?: string | null;
         hasRecurrence?: boolean;
         recurrence?: RecurrenceConfig | null;
+        recurringEventId?: string | null;
         originalDate?: string | null;
         originalStartTime?: string | null;
         originalEndTime?: string | null;
@@ -1228,10 +1553,15 @@ export default function CalendarView({
         let actionId: number;
         if (payload.itemType === 'activity') {
           if (pendingActivityMoveIdsRef.current.has(payload.id)) return;
-          const originalAct = activities.find((a) => a.id === payload.id);
+          let originalAct = activities.find((a) => a.id === payload.id);
+          if (originalAct?.googleEventId?.includes('_')) {
+            const baseId = originalAct.googleEventId.split('_')[0];
+            const master = activities.find((a) => a.googleEventId === baseId);
+            if (master) originalAct = master;
+          }
           const isRepeating = Boolean(
             (payload.hasRecurrence || originalAct?.recurrence) &&
-            !originalAct?.recurrence?.isException
+            (!originalAct?.recurrence?.isException || !originalAct?.recurrence?.masterActivityId)
           );
 
           if (isRepeating && originalAct) {
@@ -1262,6 +1592,28 @@ export default function CalendarView({
           }
 
         } else {
+          const gEv = googleEvents.find((g) => g.id === payload.id);
+          const isGoogleRepeating = Boolean(
+            payload.hasRecurrence ||
+            payload.recurringEventId ||
+            gEv?.recurringEventId ||
+            payload.id.includes('_')
+          );
+
+          if (isGoogleRepeating) {
+            const instanceDateStr = payload.cardDate || toISODate(new Date(payload.cardStartTime || gEv?.start || targetDate));
+            setRecurringMovePrompt({
+              isOpen: true,
+              googleEvent: gEv,
+              payload,
+              targetDate,
+              startMinutes,
+              durationMinutes,
+              instanceDateStr,
+            });
+            return;
+          }
+
           actionId = nextUndoIdRef.current++;
           setGoogleEvents((prev) =>
             prev.map((g) =>
@@ -1276,8 +1628,6 @@ export default function CalendarView({
             startTime: newStartTimeStr,
             endTime: newEndTimeStr,
           });
-
-
         }
 
         recordUndo({
@@ -1635,6 +1985,7 @@ export default function CalendarView({
           description: event.description,
           start: event.start || new Date().toISOString(),
           end: event.end,
+          recurringEventId: event.recurringEventId || (event.id.includes('_') ? event.id.split('_')[0] : undefined),
         },
       ]);
       setSelectedEvent(null);
@@ -1649,7 +2000,7 @@ export default function CalendarView({
   // Helper untuk mendapatkan gabungan aktivitas & Google event pada suatu hari
   const getDayItems = useCallback(
     (dayDate: Date): CombinedItem[] => {
-      const dayActivities = activities
+      const dayActivities = effectiveActivities
         .filter((act) => {
           if (deletedActivityIdsRef.current.has(act.id)) return false;
           if (act.googleEventId && deletedGoogleIdsRef.current.has(act.googleEventId)) return false;
@@ -1668,7 +2019,7 @@ export default function CalendarView({
         if (deletedGoogleIdsRef.current.has(gEv.id)) return false;
         const move = linkedActivityMoves.get(gEv.id);
         // Local moves own the card across dates until a fetched Google event catches up.
-        if (move && activities.some(activity => activity.id === move.activity.id && activity.googleEventId === gEv.id &&
+        if (move && effectiveActivities.some(activity => activity.id === move.activity.id && activity.googleEventId === gEv.id &&
             !deletedActivityIdsRef.current.has(activity.id))) return false;
         if (!gEv.start) return false;
         const gStartStr = gEv.start;
@@ -1678,7 +2029,7 @@ export default function CalendarView({
         // De-duplikasi terhadap aktivitas lokal HARI INI maupun seri berulang lokal:
         const isDuplicateOfActivity =
           dayActivities.some((act) => act.googleEventId === gEv.id) ||
-          activities.some(
+          effectiveActivities.some(
             (act) =>
               !deletedActivityIdsRef.current.has(act.id) &&
               Boolean(act.recurrence) &&
@@ -1708,7 +2059,7 @@ export default function CalendarView({
 
       return items;
     },
-    [activities, googleEvents, linkedActivityMoves],
+    [effectiveActivities, googleEvents, linkedActivityMoves],
   );
 
   function renderAllDayRow(days: Date[]) {
@@ -1722,7 +2073,7 @@ export default function CalendarView({
           <div key={toISODate(days[index])} className="space-y-1 border-r border-gray-200 p-1 last:border-r-0">
             {dayItems.map((item) => {
               const activity = item.type === 'activity' ? item.act : null;
-              const masterAct = activity ? (activities.find((a) => a.id === activity.id) ?? activity) : null;
+              const masterAct = activity ? (effectiveActivities.find((a) => a.id === activity.id) ?? activity) : null;
               const google = item.type === 'google' ? item.gEv : null;
               const title = activity?.title || google?.title || 'Tanpa judul';
               const color = getCalendarColorMeta(masterAct?.color || google?.colorId);
@@ -1736,6 +2087,9 @@ export default function CalendarView({
                       event.preventDefault();
                       return;
                     }
+                    const hasRecurrence = item.type === 'activity'
+                      ? Boolean(masterAct?.recurrence)
+                      : Boolean(google?.recurringEventId || (google?.id && google.id.includes('_')));
                     const payload = JSON.stringify({
                       source: 'calendar-card',
                       itemType: item.type,
@@ -1745,8 +2099,9 @@ export default function CalendarView({
                       cardDate: toISODate(days[index]),
                       cardStartTime: null,
                       cardEndTime: null,
-                      hasRecurrence: Boolean(masterAct?.recurrence),
+                      hasRecurrence,
                       recurrence: masterAct?.recurrence || null,
+                      recurringEventId: item.type === 'activity' ? (masterAct?.googleEventId || null) : (google?.recurringEventId || (google?.id?.includes('_') ? google.id.split('_')[0] : null)),
                       originalDate: masterAct?.date || google?.start,
                       originalStartTime: masterAct?.startTime || null,
                       originalEndTime: masterAct?.endTime || null,
@@ -1784,11 +2139,13 @@ export default function CalendarView({
   function renderEventCard(geo: TimedItemGeometry, cardDate: Date) {
     const { item, top, height, colIndex, totalCols, colSpan } = geo;
     const isAct = item.type === 'activity';
-    const masterAct = isAct ? (activities.find((a) => a.id === item.act.id) ?? item.act) : null;
+    const masterAct = isAct ? (effectiveActivities.find((a) => a.id === item.act.id) ?? item.act) : null;
     const colorId = isAct ? (masterAct?.color || null) : (item.gEv.colorId || null);
     const colorMeta = getCalendarColorMeta(colorId);
-    const hasRecurrence = isAct && Boolean(item.act.recurrence);
-    const showRecurrenceIndicator = hasRecurrence || (!isAct && Boolean(item.gEv.recurringEventId));
+    const hasRecurrence = isAct
+      ? Boolean(item.act.recurrence || masterAct?.recurrence)
+      : Boolean(item.gEv.recurringEventId || item.gEv.id.includes('_'));
+    const showRecurrenceIndicator = hasRecurrence;
     const isDraggingThis = draggingCardId === item.id;
     const effectiveEnd = calendarCardEnd(item.time, isAct ? item.act.endTime : item.gEv.end);
     const isPastCard = isCalendarCardPast(effectiveEnd, now);
@@ -1850,6 +2207,7 @@ export default function CalendarView({
             cardEndTime: effectiveEnd || null,
             hasRecurrence,
             recurrence: isAct ? (masterAct?.recurrence || null) : null,
+            recurringEventId: isAct ? (masterAct?.googleEventId || null) : (item.gEv.recurringEventId || (item.gEv.id.includes('_') ? item.gEv.id.split('_')[0] : null)),
             originalDate: isAct ? (masterAct?.date || null) : (item.gEv.start || null),
             originalStartTime: isAct ? (masterAct?.startTime || null) : (item.gEv.start || null),
             originalEndTime: isAct ? (masterAct?.endTime || null) : (item.gEv.end || null),
@@ -2638,8 +2996,8 @@ export default function CalendarView({
           isOpen={recurringMovePrompt.isOpen}
           actionType="move"
           targetDate={recurringMovePrompt.instanceDateStr}
-          recurrence={recurringMovePrompt.activity.recurrence}
-          activityTitle={recurringMovePrompt.activity.title}
+          recurrence={recurringMovePrompt.activity?.recurrence || null}
+          activityTitle={recurringMovePrompt.activity?.title || recurringMovePrompt.googleEvent?.title || recurringMovePrompt.payload.title}
           onSelect={(scope) => void handleConfirmRecurringMove(scope)}
           onClose={() => setRecurringMovePrompt(null)}
         />

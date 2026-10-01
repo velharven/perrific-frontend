@@ -778,40 +778,53 @@ export default function CalendarCardSettings({
           startIso = new Date(`${effectiveDateStr}T${effectiveStartTimeStr}:00`).toISOString();
           endIso = new Date(`${effectiveDateStr}T${effectiveEndTimeStr}:00`).toISOString();
         }
-        const created = await activityApi.create({
-          title: effectiveTitle,
-          description: act.description,
-          date: new Date(`${effectiveDateStr}T00:00:00`).toISOString(),
-          startTime: startIso,
-          endTime: endIso,
-          allDay: effectiveAllDay,
-          type: act.type || 'CUSTOM',
-          status: act.status || 'PENDING',
-          icon: act.icon,
-          color: effectiveColor,
-          recurrence: act.recurrence
-            ? {
-                isException: true,
-                masterActivityId: act.id,
-              }
-            : null,
-        });
-
-        if (onRecordUndo && getNextUndoId) {
-          const actionId = getNextUndoId();
-          onRecordUndo({
-            id: actionId,
-            type: 'recurring-edit-this-event',
-            createdActivityId: created.id,
-            masterActivityId: act.id,
-            prevExcludeDates,
-            instanceDateStr: instanceDate,
+        try {
+          const created = await activityApi.create({
             title: effectiveTitle,
+            description: act.description,
+            date: new Date(`${effectiveDateStr}T00:00:00`).toISOString(),
+            startTime: startIso,
+            endTime: endIso,
+            allDay: effectiveAllDay,
+            type: act.type || 'CUSTOM',
+            status: act.status || 'PENDING',
+            icon: act.icon ?? undefined,
+            color: effectiveColor,
+            recurrence: act.recurrence
+              ? {
+                  isException: true,
+                  masterActivityId: act.id,
+                }
+              : null,
           });
-          showToast(`Perubahan kegiatan "${effectiveTitle}" disimpan`, {
-            label: 'Urungkan (Ctrl+Z)',
-            onAction: () => onUndo?.(actionId),
+
+          if (onRecordUndo && getNextUndoId) {
+            const actionId = getNextUndoId();
+            onRecordUndo({
+              id: actionId,
+              type: 'recurring-edit-this-event',
+              createdActivityId: created.id,
+              masterActivityId: act.id,
+              prevExcludeDates,
+              instanceDateStr: instanceDate,
+              title: effectiveTitle,
+            });
+            showToast(`Perubahan kegiatan "${effectiveTitle}" disimpan`, {
+              label: 'Urungkan (Ctrl+Z)',
+              onAction: () => onUndo?.(actionId),
+            });
+          }
+        } catch (createErr) {
+          console.error('[CalendarCardSettings] Gagal membuat exception event, membatalkan perubahan master:', createErr);
+          await activityApi.update(act.id, {
+            recurrence: {
+              ...act.recurrence,
+              excludeDates: prevExcludeDates,
+            },
+          }).catch((rollbackErr) => {
+            console.error('[CalendarCardSettings] Gagal rollback master activity:', rollbackErr);
           });
+          showToast('Gagal menyimpan perubahan kegiatan berulang. Perubahan dibatalkan.');
         }
       } else if (gEv) {
         await calendarApi.updateEvent(gEv.id, {
@@ -856,34 +869,44 @@ export default function CalendarCardSettings({
           );
         }
 
-        const created = await activityApi.create({
-          title: effectiveTitle,
-          description: act.description,
-          date: new Date(`${effectiveDateStr}T00:00:00`).toISOString(),
-          startTime: startIso,
-          endTime: endIso,
-          allDay: effectiveAllDay,
-          type: act.type || 'CUSTOM',
-          status: act.status || 'PENDING',
-          icon: act.icon,
-          color: effectiveColor,
-          recurrence: nextRecurrence,
-        });
-
-        if (onRecordUndo && getNextUndoId) {
-          const actionId = getNextUndoId();
-          onRecordUndo({
-            id: actionId,
-            type: 'recurring-edit-following',
-            createdActivityId: created.id,
-            masterActivityId: act.id,
-            prevRecurrence,
+        try {
+          const created = await activityApi.create({
             title: effectiveTitle,
+            description: act.description,
+            date: new Date(`${effectiveDateStr}T00:00:00`).toISOString(),
+            startTime: startIso,
+            endTime: endIso,
+            allDay: effectiveAllDay,
+            type: act.type || 'CUSTOM',
+            status: act.status || 'PENDING',
+            icon: act.icon ?? undefined,
+            color: effectiveColor,
+            recurrence: nextRecurrence,
           });
-          showToast(`Perubahan kegiatan "${effectiveTitle}" dan seterusnya disimpan`, {
-            label: 'Urungkan (Ctrl+Z)',
-            onAction: () => onUndo?.(actionId),
+
+          if (onRecordUndo && getNextUndoId) {
+            const actionId = getNextUndoId();
+            onRecordUndo({
+              id: actionId,
+              type: 'recurring-edit-following',
+              createdActivityId: created.id,
+              masterActivityId: act.id,
+              prevRecurrence,
+              title: effectiveTitle,
+            });
+            showToast(`Perubahan kegiatan "${effectiveTitle}" dan seterusnya disimpan`, {
+              label: 'Urungkan (Ctrl+Z)',
+              onAction: () => onUndo?.(actionId),
+            });
+          }
+        } catch (createErr) {
+          console.error('[CalendarCardSettings] Gagal membuat seri perulangan baru, membatalkan perubahan master:', createErr);
+          await activityApi.update(act.id, {
+            recurrence: prevRecurrence,
+          }).catch((rollbackErr) => {
+            console.error('[CalendarCardSettings] Gagal rollback master activity:', rollbackErr);
           });
+          showToast('Gagal menyimpan perubahan kegiatan berulang. Perubahan dibatalkan.');
         }
       }
       onClose();

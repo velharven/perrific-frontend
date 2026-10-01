@@ -1,5 +1,5 @@
 import { api } from '@/lib/api';
-import type { JoinRequest, JoinRequestStatus, PendingTask, Team, TeamMember, Project } from '@/types';
+import type { JoinRequest, JoinRequestStatus, PendingTask, Team, TeamMember, Project, ProjectProposal } from '@/types';
 
 export const teamApi = {
   listMyTeams: () => api.get<{ data: Team[] }>('/teams').then((r) => r.data.data),
@@ -35,5 +35,11 @@ export const teamApi = {
   createProject: (
     teamId: string,
     body: { name: string; description?: string; sourceProjectId?: string; memberUserIds?: string[] },
-  ) => api.post<{ data: Project }>(`/teams/${teamId}/projects`, body).then((r) => r.data.data),
+  ) => api.post<{ data: Project }>('/teams/' + teamId + '/projects', body).then((r) => r.data.data),
+  listProjectProposals: (teamId: string) =>
+    api.get<{ data: ProjectProposal[] }>(`/teams/${teamId}/project-proposals`).then((r) => r.data.data),
+  approveProjectProposal: (teamId: string, proposalId: string) =>
+    api.post<{ data: { project: Project; proposal: ProjectProposal } }>(`/teams/${teamId}/project-proposals/${proposalId}/approve`).then((r) => r.data.data),
+  rejectProjectProposal: (teamId: string, proposalId: string, reason?: string) =>
+    api.post<{ data: ProjectProposal }>(`/teams/${teamId}/project-proposals/${proposalId}/reject`, { reason }).then((r) => r.data.data),
 };

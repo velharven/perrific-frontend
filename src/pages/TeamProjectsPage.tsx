@@ -6,7 +6,8 @@ import ConfirmModal from '@/components/ui/ConfirmModal';
 import CreateProjectModal from '@/components/project/CreateProjectModal';
 import { PROJECT_UPDATED_EVENT } from '@/pages/ProjectSettingsPage';
 import { useAuth } from '@/store/auth';
-import type { Project, Team } from '@/types';
+import { showToast } from '@/components/ui/Toast';
+import type { Project, Team, ProjectProposal } from '@/types';
 
 export default function TeamProjectsPage() {
   const { teamId } = useParams<{ teamId: string }>();
@@ -14,6 +15,8 @@ export default function TeamProjectsPage() {
   const navigate = useNavigate();
   const [team, setTeam] = useState<Team | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [proposals, setProposals] = useState<ProjectProposal[]>([]);
+  const [actionProposalId, setActionProposalId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
   const [drafts, setDrafts] = useState<Record<string, { name: string; description: string; status: Project['status'] }>>({});
@@ -24,9 +27,14 @@ export default function TeamProjectsPage() {
   const [deleting, setDeleting] = useState(false);
 
   async function refresh(tid: string) {
-    const [t, ps] = await Promise.all([teamApi.getTeam(tid), teamApi.listProjects(tid)]);
+    const [t, ps, props] = await Promise.all([
+      teamApi.getTeam(tid),
+      teamApi.listProjects(tid),
+      teamApi.listProjectProposals(tid).catch(() => []),
+    ]);
     setTeam(t);
     setProjects(ps);
+    setProposals(props);
     setDrafts(Object.fromEntries(ps.map((p) => [p.id, { name: p.name, description: p.description ?? '', status: p.status }])));
   }
 
@@ -85,6 +93,35 @@ export default function TeamProjectsPage() {
     }
   }
 
+  async function handleApproveProposal(proposal: ProjectProposal) {
+    if (!teamId) return;
+    setActionProposalId(proposal.id);
+    try {
+      await teamApi.approveProjectProposal(teamId, proposal.id);
+      showToast(`Project "${proposal.name}" disetujui dan berhasil dibuat!`);
+      await refresh(teamId);
+    } catch {
+      showToast('Gagal menyetujui usulan project.');
+    } finally {
+      setActionProposalId(null);
+    }
+  }
+
+  async function handleRejectProposal(proposal: ProjectProposal) {
+    if (!teamId) return;
+    const reason = window.prompt('Alasan penolakan (opsional):') ?? undefined;
+    setActionProposalId(proposal.id);
+    try {
+      await teamApi.rejectProjectProposal(teamId, proposal.id, reason);
+      showToast(`Usulan project "${proposal.name}" ditolak.`);
+      await refresh(teamId);
+    } catch {
+      showToast('Gagal menolak usulan project.');
+    } finally {
+      setActionProposalId(null);
+    }
+  }
+
   if (loading) return <p className="text-gray-500">Memuat…</p>;
   if (!team) return <p className="text-gray-500">Tim tidak ditemukan.</p>;
 
@@ -102,6 +139,84 @@ export default function TeamProjectsPage() {
         <h1 className="text-2xl font-bold text-gray-800">Projects</h1>
         <p className="mt-0.5 text-sm text-gray-500">{team.name}</p>
       </div>
+
+      {/* Usulan Project dari Organisasi */}
+      {proposals.length > 0 && (
+        <div className="space-y-3 rounded-2xl border border-amber-200/80 bg-amber-50/40 p-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="flex h-6 w-6 items-center justify-center rounded-md bg-amber-100 text-amber-700">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+                  <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+                </svg>
+              </span>
+              <h2 className="font-givonic text-sm font-bold text-amber-950">
+                Usulan Project dari Organisasi
+              </h2>
+            </div>
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 font-mono text-[11px] font-bold text-amber-800">
+              {proposals.filter((p) => p.status === 'PENDING').length} Menunggu
+            </span>
+          </div>
+
+          <div className="space-y-2">
+            {proposals.map((prop) => (
+              <div
+                key={prop.id}
+                className="flex flex-col gap-2 rounded-xl border border-amber-100 bg-white p-3.5 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-givonic text-sm font-bold text-perrific-graphite">{prop.name}</h3>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                        prop.status === 'APPROVED'
+                          ? 'bg-emerald-100 text-emerald-700'
+                          : prop.status === 'REJECTED'
+                            ? 'bg-red-100 text-red-600'
+                            : 'bg-amber-100 text-amber-700'
+                      }`}
+                    >
+                      {prop.status === 'APPROVED' ? 'Disetujui' : prop.status === 'REJECTED' ? 'Ditolak' : 'Menunggu Approval'}
+                    </span>
+                  </div>
+                  {prop.description && (
+                    <p className="mt-0.5 text-xs text-gray-500">{prop.description}</p>
+                  )}
+                  <p className="mt-1 text-[11px] text-gray-400">
+                    Organisasi: <strong className="text-gray-600">{prop.organization?.name}</strong> • Diajukan oleh: {prop.createdBy?.name}
+                  </p>
+                  {prop.rejectionReason && (
+                    <p className="mt-1 text-[11px] text-red-600">Alasan: {prop.rejectionReason}</p>
+                  )}
+                </div>
+
+                {prop.status === 'PENDING' && isAdmin && (
+                  <div className="flex shrink-0 items-center gap-2 pt-2 sm:pt-0">
+                    <button
+                      type="button"
+                      disabled={actionProposalId === prop.id}
+                      onClick={() => handleApproveProposal(prop)}
+                      className="rounded-lg bg-emerald-600 px-3 py-1.5 font-givonic text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-50"
+                    >
+                      {actionProposalId === prop.id ? 'Memproses...' : 'Setujui'}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={actionProposalId === prop.id}
+                      onClick={() => handleRejectProposal(prop)}
+                      className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 font-givonic text-xs font-semibold text-red-600 transition hover:bg-red-100 disabled:opacity-50"
+                    >
+                      Tolak
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white p-3">
         <p className="font-givonic text-sm text-perrific-graphite/60">

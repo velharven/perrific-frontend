@@ -343,15 +343,15 @@ export function useCollapsedSections(userId?: string) {
   return { isOpen, toggle };
 }
 
-export type PresetSection = 'privat' | 'teams' | 'favorit' | 'shortcut';
+export type PresetSection = 'privat' | 'teams' | 'organisasi' | 'favorit' | 'shortcut';
 
-export type SidebarSection = 'privat' | 'teams' | PresetSection;
+export type SidebarSection = 'privat' | 'teams' | 'organisasi' | PresetSection;
 
 // Section yang langsung aktif untuk pengguna baru. Favorit/shortcut tetap opt-in.
-const DEFAULT_PRESETS: PresetSection[] = ['privat', 'teams'];
+const DEFAULT_PRESETS: PresetSection[] = ['privat', 'teams', 'organisasi'];
 
 function isPresetSection(s: string): s is PresetSection {
-  return s === 'privat' || s === 'teams' || s === 'favorit' || s === 'shortcut';
+  return s === 'privat' || s === 'teams' || s === 'organisasi' || s === 'favorit' || s === 'shortcut';
 }
 
 function presetKeyFor(userId?: string) {
@@ -364,7 +364,13 @@ function presetKeyV2For(userId?: string) {
 
 function readActivePresets(userId?: string): PresetSection[] {
   const v2 = readJson<string[] | null>(presetKeyV2For(userId), null);
-  if (v2 !== null) return v2.filter(isPresetSection);
+  if (v2 !== null) {
+    const list = v2.filter(isPresetSection);
+    if (!list.includes('organisasi')) {
+      list.push('organisasi');
+    }
+    return list;
+  }
   // Migrasi sekali jalan: preset lama (favorit/shortcut) digabung default,
   // agar user lama tidak kehilangan section. 'sampah' era lama terbuang.
   const next = [...DEFAULT_PRESETS];
@@ -382,7 +388,11 @@ function normalizeSections(stored: string[] | null, active: PresetSection[] = []
   // tanpa tempel otomatis agar section yang dihapus tetap hilang.
   if (stored === null) return [...DEFAULT_PRESETS];
   const ok = new Set<string>(active);
-  return stored.filter((s): s is SidebarSection => ok.has(s));
+  const filtered = stored.filter((s): s is SidebarSection => ok.has(s));
+  if (active.includes('organisasi') && !filtered.includes('organisasi')) {
+    filtered.push('organisasi');
+  }
+  return filtered;
 }
 
 /**
@@ -638,3 +648,10 @@ export function useShortcuts(userId?: string) {
 
   return { items, add, remove };
 }
+
+export const ORGANIZATIONS_CHANGED_EVENT = 'organizations-changed';
+
+export function notifyOrganizationsChanged() {
+  window.dispatchEvent(new Event(ORGANIZATIONS_CHANGED_EVENT));
+}
+

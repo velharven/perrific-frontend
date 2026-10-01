@@ -24,7 +24,7 @@ export default function SortableTabRow({
   const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.35 : undefined,
+    opacity: isDragging ? 0.45 : undefined,
   };
   const interactiveProps = disabled ? {} : listeners;
   const cls = disabled ? className : `${className} cursor-grab active:cursor-grabbing`;

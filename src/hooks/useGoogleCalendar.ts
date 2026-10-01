@@ -126,6 +126,7 @@ export function useGoogleCalendar() {
     async (
       events: Array<{
         id: string;
+        recurringEventId?: string | null;
         title: string;
         description?: string | null;
         start: string;
