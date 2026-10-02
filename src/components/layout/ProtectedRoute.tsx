@@ -3,6 +3,8 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/store/auth';
 import { getToken } from '@/lib/api';
 
+import { PurrificBrandLoader } from '@/components/ui/loading';
+
 const MAX_AUTO_RETRY = 6;
 const RETRY_INTERVAL_MS = 15000;
 
@@ -21,7 +23,7 @@ export default function ProtectedRoute() {
   }, [bootFailed, retry, user, tries]);
 
   if (loading) {
-    return <div className="flex h-screen items-center justify-center text-gray-500">Memuat…</div>;
+    return <PurrificBrandLoader fullscreen message="Menyiapkan sesi..." />;
   }
 
   if (!user) {

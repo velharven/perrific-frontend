@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { teamApi } from '@/api/teams';
+import { PurrificBrandLoader } from '@/components/ui/loading';
 
 function apiMessage(e: unknown, fallback: string): string {
   if (typeof e === 'object' && e !== null && 'response' in e) {
@@ -49,11 +50,7 @@ export default function JoinPage() {
   }
 
   if (!error) {
-    return (
-      <div className="flex min-h-[50vh] items-center justify-center">
-        <p className="font-givonic text-sm text-gray-500">Bergabung ke tim…</p>
-      </div>
-    );
+    return <PurrificBrandLoader message="Bergabung ke tim..." />;
   }
 
   return (

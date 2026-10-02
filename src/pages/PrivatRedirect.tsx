@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { noteApi } from '@/api/notes';
 import { useTrash } from '@/hooks/useNavLabels';
 import { useAuth } from '@/store/auth';
+import { PurrificBrandLoader } from '@/components/ui/loading';
 import type { NoteKind } from '@/types';
 
 const pathFor = (kind: NoteKind, id: string) =>
@@ -64,5 +65,5 @@ export default function PrivatRedirect({ kind }: { kind: NoteKind }) {
       </div>
     );
   }
-  return <p className="text-gray-500">Memuat…</p>;
+  return <PurrificBrandLoader fullscreen message="Membuka kamar kerja..." />;
 }
