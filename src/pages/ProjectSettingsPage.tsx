@@ -13,6 +13,7 @@ import { buildJoinLink, formatExpiryText, INVITE_PRESETS, matchPreset } from '@/
 import { PROJECT_SIDEBAR_EVENT, isProjectSidebarCollapsed } from '@/components/layout/ProjectLayout';
 import { useAuth } from '@/store/auth';
 import { showToast } from '@/components/ui/Toast';
+import { FormSettingsSkeleton } from '@/components/ui/loading';
 import type { Project, Team } from '@/types';
 
 type Section = 'umum' | 'board' | 'undang' | 'role' | 'danger';
@@ -248,7 +249,7 @@ export default function ProjectSettingsPage() {
     team?.inviteExpiresAt != null && new Date(team.inviteExpiresAt).getTime() <= Date.now();
   const joinLink = team?.inviteCode ? buildJoinLink(team.inviteCode) : '';
 
-  if (loading) return <p className="text-gray-500">Memuat…</p>;
+  if (loading) return <FormSettingsSkeleton />;
   if (!project) return <p className="text-gray-500">Project tidak ditemukan.</p>;
 
   return (

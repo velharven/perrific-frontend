@@ -10,6 +10,7 @@ import ProposeProjectModal from '@/components/organization/ProposeProjectModal';
 import SendTaskModal from '@/components/organization/SendTaskModal';
 import ModalShell from '@/components/ui/ModalShell';
 import { Building2, Plus, Briefcase, ChevronRight, CheckCircle2, X } from 'lucide-react';
+import { ListCardsSkeleton } from '@/components/ui/loading';
 import type { Organization, Team } from '@/types';
 
 export default function OrganizationPage() {
@@ -74,12 +75,23 @@ export default function OrganizationPage() {
     }
   }, [connectTeamOpen, org?.connectedTeams, trashedTeamIds]);
 
+  const visibleConnectedTeams = useMemo(
+    () => (org?.connectedTeams ?? []).filter((ct) => !trashedTeamIds.has(ct.teamId)),
+    [org?.connectedTeams, trashedTeamIds],
+  );
+
+  const connectedTeamOptions = useMemo(
+    () =>
+      visibleConnectedTeams.map((ct) => ({
+        id: ct.team?.id ?? ct.teamId,
+        name: ct.team?.name ?? 'Tim',
+        projects: ct.team?.projects ?? [],
+      })),
+    [visibleConnectedTeams],
+  );
+
   if (loading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <p className="text-sm text-gray-400">Memuat organisasi...</p>
-      </div>
-    );
+    return <ListCardsSkeleton />;
   }
 
   if (!org) {
@@ -97,21 +109,6 @@ export default function OrganizationPage() {
   }
 
   const isOrgAdmin = org.createdById === user?.id || org.members?.some((m) => m.userId === user?.id && m.role === 'ADMIN');
-  const visibleConnectedTeams = useMemo(
-    () => (org.connectedTeams ?? []).filter((ct) => !trashedTeamIds.has(ct.teamId)),
-    [org.connectedTeams, trashedTeamIds],
-  );
-
-  const connectedTeamOptions = useMemo(
-    () =>
-      visibleConnectedTeams.map((ct) => ({
-        id: ct.team.id,
-        name: ct.team.name,
-        projects: ct.team.projects ?? [],
-      })),
-    [visibleConnectedTeams],
-  );
-
   const pendingProposalsCount = (org.projectProposals ?? []).filter((p) => p.status === 'PENDING').length;
   const pendingTasksCount = (org.tasks ?? []).filter((t) => (t.approval ?? 'APPROVED') === 'PENDING').length;
 
@@ -507,28 +504,33 @@ export default function OrganizationPage() {
             </div>
           ) : (
             <div className="grid gap-3 sm:grid-cols-3">
-              {visibleConnectedTeams.map((ct) => (
-                <div key={ct.teamId} className="flex items-center justify-between rounded-xl border border-gray-100 bg-white p-3.5 shadow-sm">
-                  <div className="flex items-center gap-3 truncate">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-perrific-violet/10 font-bold text-perrific-violet">
-                      {ct.team.name[0]?.toUpperCase()}
-                    </span>
-                    <div className="truncate">
-                      <p className="truncate font-givonic text-xs font-bold text-perrific-graphite">{ct.team.name}</p>
-                      <p className="text-[11px] text-gray-400">{ct.team.projects?.length ?? 0} Project Aktif</p>
+              {visibleConnectedTeams.map((ct) => {
+                const teamName = ct.team?.name ?? 'Tim';
+                const teamInitial = teamName[0]?.toUpperCase() ?? 'T';
+                const projectCount = ct.team?.projects?.length ?? 0;
+                return (
+                  <div key={ct.teamId} className="flex items-center justify-between rounded-xl border border-gray-100 bg-white p-3.5 shadow-sm">
+                    <div className="flex items-center gap-3 truncate">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-perrific-violet/10 font-bold text-perrific-violet">
+                        {teamInitial}
+                      </span>
+                      <div className="truncate">
+                        <p className="truncate font-givonic text-xs font-bold text-perrific-graphite">{teamName}</p>
+                        <p className="text-[11px] text-gray-400">{projectCount} Project Aktif</p>
+                      </div>
                     </div>
+                    {isOrgAdmin && (
+                      <button
+                        onClick={() => handleDisconnectTeam(ct.teamId, teamName)}
+                        title="Putuskan tim"
+                        className="ml-2 rounded p-1 text-gray-300 hover:bg-red-50 hover:text-red-500 cursor-pointer"
+                      >
+                        <X size={14} strokeWidth={1.6} aria-hidden="true" />
+                      </button>
+                    )}
                   </div>
-                  {isOrgAdmin && (
-                    <button
-                      onClick={() => handleDisconnectTeam(ct.teamId, ct.team.name)}
-                      title="Putuskan tim"
-                      className="ml-2 rounded p-1 text-gray-300 hover:bg-red-50 hover:text-red-500 cursor-pointer"
-                    >
-                      <X size={14} strokeWidth={1.6} aria-hidden="true" />
-                    </button>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

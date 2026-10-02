@@ -5,6 +5,7 @@ import { teamApi } from '@/api/teams';
 import ApprovalLists, { type ApprovalTab } from '@/components/team/ApprovalLists';
 import { PROJECT_SIDEBAR_EVENT, isProjectSidebarCollapsed } from '@/components/layout/ProjectLayout';
 import { useAuth } from '@/store/auth';
+import { ListCardsSkeleton } from '@/components/ui/loading';
 import type { Project } from '@/types';
 
 export default function ProjectApprovalPage() {
@@ -47,7 +48,7 @@ export default function ProjectApprovalPage() {
       .finally(() => setLoading(false));
   }, [projectId, user?.id]);
 
-  if (loading) return <p className="text-gray-500">Memuat…</p>;
+  if (loading) return <ListCardsSkeleton />;
   if (!project) return <p className="text-gray-500">Project tidak ditemukan.</p>;
   if (!isAdmin) return <p className="text-gray-500">Hanya admin tim yang bisa membuka halaman ini.</p>;
 

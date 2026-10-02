@@ -9,6 +9,7 @@ import { APP_SIDEBAR_EVENT, isAppSidebarCollapsed } from '@/components/layout/Ap
 import { TEAMS_CHANGED_EVENT } from '@/hooks/useNavLabels';
 import { useAuth } from '@/store/auth';
 import { Briefcase } from 'lucide-react';
+import { KanbanSkeleton } from '@/components/ui/loading';
 import type { Project, Task, Team } from '@/types';
 
 type TaskWithProject = Task & { projectName: string; projectId: string };
@@ -177,7 +178,7 @@ export default function TeamPage() {
     [allTasks, user?.id],
   );
 
-  if (loading) return <p className="text-gray-500">Memuat…</p>;
+  if (loading) return <KanbanSkeleton />;
   if (!team) return <p className="text-gray-500">Tim tidak ditemukan.</p>;
 
   const myRole = team.members?.find((m) => m.userId === user?.id)?.role;

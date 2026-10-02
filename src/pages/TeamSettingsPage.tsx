@@ -7,6 +7,7 @@ import { SettingsBlock } from '@/components/ui/SettingsShell';
 import { buildJoinLink, formatExpiryText, INVITE_PRESETS, matchPreset } from '@/lib/invite';
 import { useAuth } from '@/store/auth';
 import { APP_SIDEBAR_EVENT, isAppSidebarCollapsed } from '@/components/layout/AppLayout';
+import { FormSettingsSkeleton } from '@/components/ui/loading';
 import type { Team } from '@/types';
 
 export default function TeamSettingsPage() {
@@ -110,7 +111,7 @@ export default function TeamSettingsPage() {
     }
   }
 
-  if (loading) return <p className="text-gray-500">Memuat…</p>;
+  if (loading) return <FormSettingsSkeleton />;
   if (!team) return <p className="text-gray-500">Tim tidak ditemukan.</p>;
 
   const isAdmin = team.members?.some((m) => m.userId === user?.id && m.role === 'ADMIN') ?? false;

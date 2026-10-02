@@ -8,6 +8,7 @@ import { Pencil, Trash2 } from 'lucide-react';
 import MenuPortal from '@/components/ui/MenuPortal';
 import { showToast } from '@/components/ui/Toast';
 import { decodeDataUrlText, fileExtLabel, previewKind } from '@/lib/preview';
+import { TaskDetailSkeleton } from '@/components/ui/loading';
 import type { Attachment, BoardColumn, Comment, Project, Task, TaskActivity, Team } from '@/types';
 
 function timeAgo(iso: string): string {
@@ -409,7 +410,7 @@ export default function TaskDetailView({
   return (
     <>
       {loading ? (
-        <p className="py-10 text-center font-givonic text-sm text-gray-500">Memuat task…</p>
+        <TaskDetailSkeleton />
       ) : loadError || !task ? (
         <div className="py-10 text-center">
           <p className="font-givonic text-sm text-gray-500">Task tidak ditemukan.</p>

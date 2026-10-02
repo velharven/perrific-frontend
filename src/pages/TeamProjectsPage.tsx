@@ -8,6 +8,7 @@ import { PROJECT_UPDATED_EVENT } from '@/pages/ProjectSettingsPage';
 import { useAuth } from '@/store/auth';
 import { showToast } from '@/components/ui/Toast';
 import { Briefcase, MoreVertical } from 'lucide-react';
+import { ListCardsSkeleton } from '@/components/ui/loading';
 import type { Project, Team, ProjectProposal } from '@/types';
 
 export default function TeamProjectsPage() {
@@ -123,7 +124,7 @@ export default function TeamProjectsPage() {
     }
   }
 
-  if (loading) return <p className="text-gray-500">Memuat…</p>;
+  if (loading) return <ListCardsSkeleton />;
   if (!team) return <p className="text-gray-500">Tim tidak ditemukan.</p>;
 
   const isAdmin = team.members?.some((m) => m.userId === user?.id && m.role === 'ADMIN') ?? false;

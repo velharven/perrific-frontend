@@ -9,6 +9,7 @@ import { useAuth } from '@/store/auth';
 import { PROJECT_UPDATED_EVENT } from '@/pages/ProjectSettingsPage';
 import { PROJECT_SIDEBAR_EVENT, isProjectSidebarCollapsed } from '@/components/layout/ProjectLayout';
 import { fileExtLabel, previewKind } from '@/lib/preview';
+import { ListCardsSkeleton } from '@/components/ui/loading';
 import type { Attachment, BoardColumn, Comment, Project, Task, TaskActivity, Team } from '@/types';
 
 type OverviewTab = 'aktivitas' | 'team';
@@ -235,7 +236,7 @@ export default function ProjectPage() {
     return items.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime()).slice(0, 30);
   }, [tasks, comments, activities]);
 
-  if (loading) return <p className="text-gray-500">Memuat…</p>;
+  if (loading) return <ListCardsSkeleton />;
   if (!project) return <p className="text-gray-500">Project tidak ditemukan.</p>;
 
   return (
