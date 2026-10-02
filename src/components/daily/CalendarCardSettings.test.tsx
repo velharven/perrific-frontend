@@ -215,4 +215,52 @@ describe('CalendarCardSettings (Notion-style recurring options)', () => {
       expect(onDelete).toHaveBeenCalledWith(secondOccurrenceItem, true);
     });
   });
+
+  it('relocates date to tomorrow using quick pill and calls onDateChanged', async () => {
+    const onDateChanged = vi.fn();
+    const singleActivity: DailyActivity = {
+      id: 'single-act-1',
+      userId: 'user-a',
+      title: 'Review Project',
+      date: '2026-09-29T00:00:00.000Z',
+      startTime: '2026-09-29T09:00:00.000Z',
+      endTime: '2026-09-29T10:00:00.000Z',
+      type: 'CUSTOM',
+      status: 'PENDING',
+      order: 0,
+      checklistItems: [],
+    };
+    const item: CombinedItem = {
+      type: 'activity',
+      id: 'single-act-1',
+      act: singleActivity,
+      instanceDate: '2026-09-29',
+    };
+
+    render(
+      <CalendarCardSettings
+        selectedItem={item}
+        onClose={onClose}
+        onRefresh={onRefresh}
+        onDateChanged={onDateChanged}
+      />,
+    );
+
+    const besokBtn = screen.getByRole('button', { name: 'Besok (+1 Hr)' });
+    expect(besokBtn).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.click(besokBtn);
+    });
+
+    await waitFor(() => {
+      expect(mocks.updateActivity).toHaveBeenCalledWith(
+        'single-act-1',
+        expect.objectContaining({
+          date: '2026-09-30T00:00:00.000Z',
+        }),
+      );
+      expect(onDateChanged).toHaveBeenCalledWith(expect.any(Date));
+    });
+  });
 });

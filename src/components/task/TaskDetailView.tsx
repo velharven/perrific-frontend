@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { taskApi } from '@/api/tasks';
 import { projectApi } from '@/api/projects';
@@ -75,7 +75,7 @@ function UploadActivityText({
             <img src={live.dataUrl} alt="" aria-hidden="true" loading="lazy" draggable={false} className="h-6 w-6 object-cover" />
           ) : (
             <span
-              className={`flex h-6 w-6 items-center justify-center font-givonic text-[8px] font-bold ${
+              className={`flex h-6 w-6 items-center justify-center font-manrope text-[8px] font-bold ${
                 kind === 'pdf' ? 'bg-red-50 text-red-600' : 'bg-gray-100 text-gray-500'
               }`}
             >
@@ -413,11 +413,11 @@ export default function TaskDetailView({
         <TaskDetailSkeleton />
       ) : loadError || !task ? (
         <div className="py-10 text-center">
-          <p className="font-givonic text-sm text-gray-500">Task tidak ditemukan.</p>
+          <p className="font-manrope text-sm text-gray-500">Task tidak ditemukan.</p>
           <button
             type="button"
             onClick={onClose}
-            className="mt-3 rounded-lg bg-gray-900 px-4 py-2 font-givonic text-xs font-semibold text-white"
+            className="mt-3 rounded-lg bg-gray-900 px-4 py-2 font-manrope text-xs font-semibold text-white"
           >
             Kembali
           </button>
@@ -429,7 +429,7 @@ export default function TaskDetailView({
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div className="min-w-0">
                 <div className="flex min-w-0 items-baseline gap-1.5">
-                  <span className="shrink-0 font-givonic text-lg font-bold text-perrific-violet">
+                  <span className="shrink-0 font-manrope text-lg font-bold text-perrific-violet">
                     #{task.number}
                   </span>
                   {editingTitle ? (
@@ -446,14 +446,14 @@ export default function TaskDetailView({
                         }
                       }}
                       maxLength={120}
-                      className="min-w-0 flex-1 rounded-lg border border-perrific-violet px-2 py-1 font-givonic text-lg font-bold text-perrific-graphite focus:outline-none"
+                      className="min-w-0 flex-1 rounded-lg border border-perrific-violet px-2 py-1 font-manrope text-lg font-bold text-perrific-graphite focus:outline-none"
                     />
                   ) : (
                     <button
                       type="button"
                       onClick={() => setEditingTitle(true)}
                       title="Ubah judul"
-                      className="min-w-0 flex-1 truncate text-left font-givonic text-lg font-bold text-perrific-graphite hover:underline"
+                      className="min-w-0 flex-1 truncate text-left font-manrope text-lg font-bold text-perrific-graphite hover:underline"
                     >
                       {task.title}
                     </button>
@@ -464,7 +464,7 @@ export default function TaskDetailView({
                 </p>
               </div>
               <div className="shrink-0 text-right">
-                <p className="font-givonic text-[11px] text-gray-400">
+                <p className="font-manrope text-[11px] text-gray-400">
                   Dibuat {formatDayTime(task.createdAt)}
                 </p>
                 {task.assignees.length > 0 && (
@@ -483,7 +483,7 @@ export default function TaskDetailView({
                   task.approval === 'REJECTED' ? 'bg-red-50' : 'bg-amber-50'
                 }`}
               >
-                <p className={`font-givonic text-xs font-semibold ${task.approval === 'REJECTED' ? 'text-red-700' : 'text-amber-700'}`}>
+                <p className={`font-manrope text-xs font-semibold ${task.approval === 'REJECTED' ? 'text-red-700' : 'text-amber-700'}`}>
                   {task.approval === 'REJECTED' ? 'Usulan ini ditolak admin.' : 'Usulan ini menunggu persetujuan admin.'}
                 </p>
                 {isAdmin && (
@@ -493,7 +493,7 @@ export default function TaskDetailView({
                         type="button"
                         onClick={() => decideApproval('REJECTED')}
                         disabled={saving}
-                        className="rounded-lg border border-red-200 bg-white px-3 py-1.5 font-givonic text-[11px] font-semibold text-red-600 hover:bg-red-100 disabled:opacity-50"
+                        className="rounded-lg border border-red-200 bg-white px-3 py-1.5 font-manrope text-[11px] font-semibold text-red-600 hover:bg-red-100 disabled:opacity-50"
                       >
                         Tolak
                       </button>
@@ -502,7 +502,7 @@ export default function TaskDetailView({
                       type="button"
                       onClick={() => decideApproval('APPROVED')}
                       disabled={saving}
-                      className="rounded-lg bg-perrific-mint px-3 py-1.5 font-givonic text-[11px] font-bold text-perrific-graphite hover:brightness-95 disabled:opacity-50"
+                      className="rounded-lg bg-perrific-mint px-3 py-1.5 font-manrope text-[11px] font-bold text-perrific-graphite hover:brightness-95 disabled:opacity-50"
                     >
                       {task.approval === 'REJECTED' ? 'Setujui lagi' : 'Setujui'}
                     </button>
@@ -518,7 +518,7 @@ export default function TaskDetailView({
                 onChange={(e) => setDescDraft(e.target.value)}
                 placeholder="Tambahkan deskripsi agar anggota lain paham task ini"
                 rows={3}
-                className="w-full rounded-xl border border-gray-200 px-3 py-2 font-givonic text-sm text-gray-700 placeholder:text-gray-400 focus:border-perrific-violet focus:outline-none"
+                className="w-full rounded-xl border border-gray-200 px-3 py-2 font-manrope text-sm text-gray-700 placeholder:text-gray-400 focus:border-perrific-violet focus:outline-none"
               />
               {descDirty && (
                 <div className="mt-1.5 flex gap-2">
@@ -526,14 +526,14 @@ export default function TaskDetailView({
                     type="button"
                     onClick={saveDesc}
                     disabled={saving}
-                    className="rounded-lg bg-perrific-violet px-3 py-1.5 font-givonic text-xs font-semibold text-white disabled:opacity-50"
+                    className="rounded-lg bg-perrific-violet px-3 py-1.5 font-manrope text-xs font-semibold text-white disabled:opacity-50"
                   >
                     {saving ? 'Menyimpan…' : 'Simpan deskripsi'}
                   </button>
                   <button
                     type="button"
                     onClick={() => setDescDraft(task.description ?? '')}
-                    className="rounded-lg border border-gray-200 px-3 py-1.5 font-givonic text-xs text-gray-500 hover:bg-gray-50"
+                    className="rounded-lg border border-gray-200 px-3 py-1.5 font-manrope text-xs text-gray-500 hover:bg-gray-50"
                   >
                     Batal
                   </button>
@@ -544,7 +544,7 @@ export default function TaskDetailView({
             {/* Lampiran */}
             <div className="mt-4">
               <div className="flex items-center justify-between bg-gray-100 px-2 py-1.5">
-                <p className="font-givonic text-xs font-bold text-perrific-graphite">
+                <p className="font-manrope text-xs font-bold text-perrific-graphite">
                   {(task.attachments ?? []).length} Attachments
                 </p>
                 <button
@@ -552,7 +552,7 @@ export default function TaskDetailView({
                   onClick={() => fileInputRef.current?.click()}
                   aria-label="Tambah lampiran"
                   title="Tambah lampiran"
-                  className="flex h-6 w-6 items-center justify-center rounded-md bg-perrific-mint font-givonic text-sm font-bold leading-none text-perrific-graphite transition hover:brightness-95"
+                  className="flex h-6 w-6 items-center justify-center rounded-md bg-perrific-mint font-manrope text-sm font-bold leading-none text-perrific-graphite transition hover:brightness-95"
                 >
                   +
                 </button>
@@ -570,7 +570,7 @@ export default function TaskDetailView({
                     setDragActive(false);
                     readFiles(e.dataTransfer.files);
                   }}
-                  className={`mt-1 block cursor-pointer rounded-lg border border-dashed px-3 py-4 text-center font-givonic text-xs transition ${
+                  className={`mt-1 block cursor-pointer rounded-lg border border-dashed px-3 py-4 text-center font-manrope text-xs transition ${
                     dragActive
                       ? 'border-perrific-violet bg-orange-50 text-perrific-violet'
                       : 'border-gray-300 text-gray-400 hover:border-perrific-violet hover:text-perrific-violet'
@@ -593,7 +593,7 @@ export default function TaskDetailView({
                   className={`mt-1 rounded-lg border ${dragActive ? 'border-perrific-violet bg-orange-50/50' : 'border-gray-200'}`}
                 >
                   {dragActive && (
-                    <p className="px-3 py-2 text-center font-givonic text-xs font-semibold text-perrific-violet">
+                    <p className="px-3 py-2 text-center font-manrope text-xs font-semibold text-perrific-violet">
                       Lepaskan file untuk menambah!
                     </p>
                   )}
@@ -623,7 +623,7 @@ export default function TaskDetailView({
                                   />
                                 ) : (
                                   <span
-                                    className={`flex h-10 w-10 items-center justify-center font-givonic text-[10px] font-bold ${
+                                    className={`flex h-10 w-10 items-center justify-center font-manrope text-[10px] font-bold ${
                                       kind === 'pdf' ? 'bg-red-50 text-red-600' : 'bg-gray-100 text-gray-500'
                                     }`}
                                   >
@@ -636,12 +636,12 @@ export default function TaskDetailView({
                           <a
                             href={a.dataUrl}
                             download={a.filename}
-                            className="min-w-0 flex-1 truncate font-givonic text-xs text-perrific-violet hover:underline"
+                            className="min-w-0 flex-1 truncate font-manrope text-xs text-perrific-violet hover:underline"
                             title={a.filename}
                           >
                             {a.filename}
                           </a>
-                          <span className="shrink-0 font-givonic text-[11px] text-gray-400">
+                          <span className="shrink-0 font-manrope text-[11px] text-gray-400">
                             {(a.size / 1024).toFixed(0)} KB
                           </span>
                           <span className="flex shrink-0 gap-0.5 opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100">
@@ -684,18 +684,18 @@ export default function TaskDetailView({
                               placeholder="Deskripsi pendek… (maks 280)"
                               maxLength={280}
                               aria-label={`Deskripsi untuk ${a.filename}`}
-                              className="min-w-0 flex-1 rounded-lg border border-perrific-violet px-2 py-1 font-givonic text-xs focus:outline-none"
+                              className="min-w-0 flex-1 rounded-lg border border-perrific-violet px-2 py-1 font-manrope text-xs focus:outline-none"
                             />
                             <button
                               type="button"
                               onClick={saveAttachmentCaption}
-                              className="shrink-0 rounded-lg bg-perrific-violet px-2.5 py-1 font-givonic text-[11px] font-semibold text-white"
+                              className="shrink-0 rounded-lg bg-perrific-violet px-2.5 py-1 font-manrope text-[11px] font-semibold text-white"
                             >
                               Simpan
                             </button>
                           </div>
                         ) : (
-                          a.description && <p className="mt-0.5 font-givonic text-[11px] text-gray-500">{a.description}</p>
+                          a.description && <p className="mt-0.5 font-manrope text-[11px] text-gray-500">{a.description}</p>
                         )}
                       </li>
                     ))}
@@ -732,14 +732,14 @@ export default function TaskDetailView({
                   }}
                 >
                   <div className="flex shrink-0 items-center justify-between gap-3 p-4">
-                    <p className="min-w-0 flex-1 truncate font-givonic text-sm font-bold text-white">
+                    <p className="min-w-0 flex-1 truncate font-manrope text-sm font-bold text-white">
                       {preview.filename}
                     </p>
                     <span className="flex shrink-0 gap-1.5">
                       <a
                         href={preview.dataUrl}
                         download={preview.filename}
-                        className="rounded-lg bg-white/15 px-3 py-1.5 font-givonic text-xs font-semibold text-white transition hover:bg-white/25"
+                        className="rounded-lg bg-white/15 px-3 py-1.5 font-manrope text-xs font-semibold text-white transition hover:bg-white/25"
                       >
                         Unduh
                       </a>
@@ -747,7 +747,7 @@ export default function TaskDetailView({
                         type="button"
                         onClick={() => setPreviewId(null)}
                         aria-label="Tutup pratinjau"
-                        className="rounded-lg bg-white/15 px-3 py-1.5 font-givonic text-xs font-semibold text-white transition hover:bg-white/25"
+                        className="rounded-lg bg-white/15 px-3 py-1.5 font-manrope text-xs font-semibold text-white transition hover:bg-white/25"
                       >
                         Tutup
                       </button>
@@ -767,7 +767,7 @@ export default function TaskDetailView({
                         type="application/pdf"
                         className="h-full min-h-[60vh] w-full max-w-6xl rounded-lg bg-white"
                       >
-                        <p className="p-4 font-givonic text-sm text-gray-500">
+                        <p className="p-4 font-manrope text-sm text-gray-500">
                           Browser tidak bisa menampilkan PDF ini. Gunakan tombol Unduh.
                         </p>
                       </object>
@@ -778,7 +778,7 @@ export default function TaskDetailView({
                     )}
                   </div>
                   {preview.description && (
-                    <p className="shrink-0 px-4 pb-4 text-center font-givonic text-xs text-gray-300">
+                    <p className="shrink-0 px-4 pb-4 text-center font-manrope text-xs text-gray-300">
                       {preview.description}
                     </p>
                   )}
@@ -793,14 +793,14 @@ export default function TaskDetailView({
                 <button
                   type="button"
                   onClick={() => setTab('comments')}
-                  className={`border-b-2 py-2 font-givonic text-xs font-bold ${tab === 'comments' ? 'border-perrific-graphite text-perrific-graphite' : 'border-transparent text-gray-400'}`}
+                  className={`border-b-2 py-2 font-manrope text-xs font-bold ${tab === 'comments' ? 'border-perrific-graphite text-perrific-graphite' : 'border-transparent text-gray-400'}`}
                 >
                   {comments.length} Comments
                 </button>
                 <button
                   type="button"
                   onClick={() => setTab('activities')}
-                  className={`border-b-2 py-2 font-givonic text-xs font-bold ${tab === 'activities' ? 'border-perrific-graphite text-perrific-graphite' : 'border-transparent text-gray-400'}`}
+                  className={`border-b-2 py-2 font-manrope text-xs font-bold ${tab === 'activities' ? 'border-perrific-graphite text-perrific-graphite' : 'border-transparent text-gray-400'}`}
                 >
                   {activities.length} Activities
                 </button>
@@ -808,7 +808,7 @@ export default function TaskDetailView({
               {tab === 'comments' ? (
                 <div className="mt-2">
                   {comments.length === 0 ? (
-                    <p className="py-3 text-center font-givonic text-xs text-gray-400">Belum ada komentar.</p>
+                    <p className="py-3 text-center font-manrope text-xs text-gray-400">Belum ada komentar.</p>
                   ) : (
                     <ul className="space-y-2">
                       {comments.map((c) => {
@@ -818,7 +818,7 @@ export default function TaskDetailView({
                           <li key={c.id} className="group flex items-start gap-2 rounded-xl bg-gray-50 px-3 py-2">
                             <Avatar src={c.author?.avatarUrl} name={c.author?.name ?? '?'} size={24} alt={c.author?.name ?? 'Penulis'} className="h-6 w-6 shrink-0 text-[10px]" />
                             <div className="min-w-0 flex-1">
-                              <p className="flex items-start justify-between gap-2 font-givonic text-[11px] text-gray-400">
+                              <p className="flex items-start justify-between gap-2 font-manrope text-[11px] text-gray-400">
                                 <span>
                                   <span className="font-bold text-perrific-graphite">{c.author?.name ?? 'Anggota'}</span> · {timeAgo(c.createdAt)}
                                   {c.updatedAt !== c.createdAt && <span> · diubah</span>}
@@ -856,14 +856,14 @@ export default function TaskDetailView({
                                     value={editingCommentDraft}
                                     onChange={(e) => setEditingCommentDraft(e.target.value)}
                                     rows={2}
-                                    className="w-full rounded-lg border border-perrific-violet px-2 py-1.5 font-givonic text-sm focus:outline-none"
+                                    className="w-full rounded-lg border border-perrific-violet px-2 py-1.5 font-manrope text-sm focus:outline-none"
                                   />
                                   <div className="mt-1 flex gap-1.5">
                                     <button
                                       type="button"
                                       onClick={saveEditedComment}
                                       disabled={!editingCommentDraft.trim()}
-                                      className="rounded-md bg-perrific-violet px-2.5 py-1 font-givonic text-[11px] font-semibold text-white disabled:opacity-50"
+                                      className="rounded-md bg-perrific-violet px-2.5 py-1 font-manrope text-[11px] font-semibold text-white disabled:opacity-50"
                                     >
                                       Simpan
                                     </button>
@@ -873,14 +873,14 @@ export default function TaskDetailView({
                                         setEditingCommentId(null);
                                         setEditingCommentDraft('');
                                       }}
-                                      className="rounded-md border border-gray-200 px-2.5 py-1 font-givonic text-[11px] text-gray-500 hover:bg-gray-100"
+                                      className="rounded-md border border-gray-200 px-2.5 py-1 font-manrope text-[11px] text-gray-500 hover:bg-gray-100"
                                     >
                                       Batal
                                     </button>
                                   </div>
                                 </div>
                               ) : (
-                                <p className="mt-0.5 font-givonic text-sm text-gray-700">{c.content}</p>
+                                <p className="mt-0.5 font-manrope text-sm text-gray-700">{c.content}</p>
                               )}
                             </div>
                           </li>
@@ -894,26 +894,26 @@ export default function TaskDetailView({
                       onChange={(e) => setCommentDraft(e.target.value)}
                       placeholder="Type a new comment here"
                       rows={3}
-                      className="w-full rounded-xl border border-gray-300 px-3 py-2 font-givonic text-sm placeholder:text-gray-400 focus:border-perrific-violet focus:outline-none"
+                      className="w-full rounded-xl border border-gray-300 px-3 py-2 font-manrope text-sm placeholder:text-gray-400 focus:border-perrific-violet focus:outline-none"
                     />
                     <button
                       type="submit"
                       disabled={sendingComment || !commentDraft.trim()}
-                      className="mt-1.5 rounded-lg bg-gray-900 px-4 py-2 font-givonic text-xs font-semibold text-white disabled:opacity-50"
+                      className="mt-1.5 rounded-lg bg-gray-900 px-4 py-2 font-manrope text-xs font-semibold text-white disabled:opacity-50"
                     >
                       {sendingComment ? 'Mengirim…' : 'Kirim'}
                     </button>
                   </form>
                 </div>
               ) : activities.length === 0 ? (
-                <p className="py-3 text-center font-givonic text-xs text-gray-400">Belum ada aktivitas.</p>
+                <p className="py-3 text-center font-manrope text-xs text-gray-400">Belum ada aktivitas.</p>
               ) : (
                 <ul className="mt-2 divide-y divide-gray-100">
                   {activities.map((a) => (
                     <li key={a.id} className="flex items-start gap-2 py-2">
                       <Avatar src={a.actor?.avatarUrl} name={a.actor?.name ?? '?'} size={24} alt={a.actor?.name ?? 'Pelaku'} className="h-6 w-6 shrink-0 text-[10px]" />
                       <div className="min-w-0 flex-1">
-                        <p className="font-givonic text-xs text-gray-600">
+                        <p className="font-manrope text-xs text-gray-600">
                           <span className="font-bold text-perrific-graphite">{a.actor?.name ?? 'Anggota'}</span>{' '}
                           {a.kind === 'MOVED' ? (
                             <>
@@ -933,7 +933,7 @@ export default function TaskDetailView({
                             </>
                           )}
                         </p>
-                        <p className="font-givonic text-[11px] text-gray-400">{timeAgo(a.createdAt)} · {formatFull(a.createdAt)}</p>
+                        <p className="font-manrope text-[11px] text-gray-400">{timeAgo(a.createdAt)} · {formatFull(a.createdAt)}</p>
                       </div>
                     </li>
                   ))}
@@ -945,7 +945,7 @@ export default function TaskDetailView({
           {/* Sidebar */}
           <div className="min-w-0 space-y-4">
             <div>
-              <p className="font-givonic text-sm font-bold tracking-wide text-perrific-graphite">{task.column?.name ?? 'Tanpa kolom'}</p>
+              <p className="font-manrope text-sm font-bold tracking-wide text-perrific-graphite">{task.column?.name ?? 'Tanpa kolom'}</p>
               <button
                 ref={statusBtnRef}
                 type="button"
@@ -956,7 +956,7 @@ export default function TaskDetailView({
                 aria-haspopup="menu"
                 aria-expanded={statusMenuOpen}
                 aria-label="Pindah kolom"
-                className="mt-1 flex w-full items-center justify-between rounded-md bg-gray-500 px-2 py-1.5 font-givonic text-[11px] font-bold tracking-widest text-white"
+                className="mt-1 flex w-full items-center justify-between rounded-md bg-gray-500 px-2 py-1.5 font-manrope text-[11px] font-bold tracking-widest text-white"
               >
                 PINDAH KOLOM
                 <span aria-hidden="true">▾</span>
@@ -973,7 +973,7 @@ export default function TaskDetailView({
                         setStatusMenuOpen(false);
                         if (task.columnId !== o.id) patch({ columnId: o.id });
                       }}
-                      className={`flex w-full items-center justify-between px-3 py-2 text-left font-givonic text-xs font-bold tracking-widest transition hover:bg-gray-100 ${task.columnId === o.id ? 'text-perrific-violet' : 'text-perrific-graphite'}`}
+                      className={`flex w-full items-center justify-between px-3 py-2 text-left font-manrope text-xs font-bold tracking-widest transition hover:bg-gray-100 ${task.columnId === o.id ? 'text-perrific-violet' : 'text-perrific-graphite'}`}
                     >
                       {o.name.toUpperCase()}
                       {task.columnId === o.id && <span aria-hidden="true">✓</span>}
@@ -995,7 +995,7 @@ export default function TaskDetailView({
                 aria-haspopup="menu"
                 aria-expanded={priorityMenuOpen}
                 aria-label="Ubah prioritas"
-                className="mt-1 flex w-full items-center justify-between rounded-xl bg-gray-200 py-2 pl-3 pr-3 font-givonic text-xs font-bold tracking-widest text-perrific-graphite"
+                className="mt-1 flex w-full items-center justify-between rounded-xl bg-gray-200 py-2 pl-3 pr-3 font-manrope text-xs font-bold tracking-widest text-perrific-graphite"
               >
                 {task.priority}
                 <span aria-hidden="true" className="text-perrific-graphite/60">▾</span>
@@ -1012,7 +1012,7 @@ export default function TaskDetailView({
                         setPriorityMenuOpen(false);
                         if (task.priority !== o.v) patch({ priority: o.v });
                       }}
-                      className={`flex w-full items-center justify-between px-3 py-2 text-left font-givonic text-xs font-bold tracking-widest transition hover:bg-gray-100 ${task.priority === o.v ? 'text-perrific-violet' : 'text-perrific-graphite'}`}
+                      className={`flex w-full items-center justify-between px-3 py-2 text-left font-manrope text-xs font-bold tracking-widest transition hover:bg-gray-100 ${task.priority === o.v ? 'text-perrific-violet' : 'text-perrific-graphite'}`}
                     >
                       {o.label}
                       {task.priority === o.v && <span aria-hidden="true">✓</span>}
@@ -1028,7 +1028,7 @@ export default function TaskDetailView({
                 type="date"
                 value={task.dueDate ? new Date(task.dueDate).toISOString().slice(0, 10) : ''}
                 onChange={(e) => patch({ dueDate: e.target.value ? new Date(`${e.target.value}T00:00:00`).toISOString() : undefined } as Partial<Task>)}
-                className="mt-1 w-full rounded-xl border border-gray-200 px-2 py-2 font-givonic text-xs focus:border-perrific-violet focus:outline-none"
+                className="mt-1 w-full rounded-xl border border-gray-200 px-2 py-2 font-manrope text-xs focus:border-perrific-violet focus:outline-none"
               />
             </div>
 
@@ -1039,12 +1039,12 @@ export default function TaskDetailView({
                   {task.assignees.map((a) => (
                     <span key={a.id} className="flex items-center gap-1 rounded-full bg-gray-100 py-0.5 pl-0.5 pr-1">
                       <Avatar src={a.avatarUrl} name={a.name} size={20} alt={a.name} className="h-5 w-5 text-[9px]" />
-                      <span className="max-w-[90px] truncate font-givonic text-[11px] text-gray-600">{a.name}</span>
+                      <span className="max-w-[90px] truncate font-manrope text-[11px] text-gray-600">{a.name}</span>
                       <button
                         type="button"
                         onClick={() => toggleAssignee(a.id)}
                         aria-label={`Hapus ${a.name}`}
-                        className="rounded-full px-1 font-givonic text-[11px] text-gray-400 hover:bg-gray-200 hover:text-red-600"
+                        className="rounded-full px-1 font-manrope text-[11px] text-gray-400 hover:bg-gray-200 hover:text-red-600"
                       >
                         ×
                       </button>
@@ -1059,7 +1059,7 @@ export default function TaskDetailView({
                     setAssignQuery('');
                     setAssignMenuOpen(true);
                   }}
-                  className="flex-1 rounded-md bg-gray-50 px-2 py-1.5 font-givonic text-[11px] text-gray-600 hover:bg-gray-100"
+                  className="flex-1 rounded-md bg-gray-50 px-2 py-1.5 font-manrope text-[11px] text-gray-600 hover:bg-gray-100"
                 >
                   + Add assigned
                 </button>
@@ -1067,7 +1067,7 @@ export default function TaskDetailView({
                   <button
                     type="button"
                     onClick={() => toggleAssignee(currentUserId)}
-                    className="flex-1 rounded-md bg-gray-50 px-2 py-1.5 font-givonic text-[11px] text-gray-600 hover:bg-gray-100"
+                    className="flex-1 rounded-md bg-gray-50 px-2 py-1.5 font-manrope text-[11px] text-gray-600 hover:bg-gray-100"
                   >
                     Assign to me
                   </button>
@@ -1085,7 +1085,7 @@ export default function TaskDetailView({
                       }}
                       placeholder="Cari anggota…"
                       aria-label="Cari anggota"
-                      className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 font-givonic text-xs focus:border-perrific-violet focus:outline-none"
+                      className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 font-manrope text-xs focus:border-perrific-violet focus:outline-none"
                     />
                   </div>
                   <div className="nice-scroll max-h-44 overflow-y-auto">
@@ -1097,7 +1097,7 @@ export default function TaskDetailView({
                           !ids.includes(m.userId) &&
                           (!q || (m.user?.name ?? '').toLowerCase().includes(q) || (m.user?.email ?? '').toLowerCase().includes(q)),
                       );
-                      if (opts.length === 0) return <p className="px-3 py-2 font-givonic text-xs text-gray-400">Belum ada anggota.</p>;
+                      if (opts.length === 0) return <p className="px-3 py-2 font-manrope text-xs text-gray-400">Belum ada anggota.</p>;
                       return opts.map((m) => {
                         const label = m.user?.name ?? m.user?.email ?? m.userId;
                         return (
@@ -1111,7 +1111,7 @@ export default function TaskDetailView({
                             className="flex w-full items-center gap-2 px-3 py-2 text-left transition hover:bg-gray-100"
                           >
                             <Avatar src={m.user?.avatarUrl} name={label} size={24} alt={label} className="h-6 w-6 text-[10px]" />
-                            <span className="min-w-0 flex-1 truncate font-givonic text-xs text-gray-600">{label}</span>
+                            <span className="min-w-0 flex-1 truncate font-manrope text-xs text-gray-600">{label}</span>
                           </button>
                         );
                       });
@@ -1128,12 +1128,12 @@ export default function TaskDetailView({
                   {(task.watchers ?? []).map((w) => (
                     <span key={w.id} className="flex items-center gap-1 rounded-full bg-gray-100 py-0.5 pl-0.5 pr-1">
                       <Avatar src={w.avatarUrl} name={w.name} size={20} alt={w.name} className="h-5 w-5 text-[9px]" />
-                      <span className="max-w-[90px] truncate font-givonic text-[11px] text-gray-600">{w.name}</span>
+                      <span className="max-w-[90px] truncate font-manrope text-[11px] text-gray-600">{w.name}</span>
                       <button
                         type="button"
                         onClick={() => toggleWatcher(w.id)}
                         aria-label={`Hapus ${w.name} dari watchers`}
-                        className="rounded-full px-1 font-givonic text-[11px] text-gray-400 hover:bg-gray-200 hover:text-red-600"
+                        className="rounded-full px-1 font-manrope text-[11px] text-gray-400 hover:bg-gray-200 hover:text-red-600"
                       >
                         ×
                       </button>
@@ -1148,7 +1148,7 @@ export default function TaskDetailView({
                     setWatcherQuery('');
                     setWatcherMenuOpen(true);
                   }}
-                  className="flex-1 rounded-md bg-gray-50 px-2 py-1.5 font-givonic text-[11px] text-gray-600 hover:bg-gray-100"
+                  className="flex-1 rounded-md bg-gray-50 px-2 py-1.5 font-manrope text-[11px] text-gray-600 hover:bg-gray-100"
                 >
                   + Add watchers
                 </button>
@@ -1156,7 +1156,7 @@ export default function TaskDetailView({
                   <button
                     type="button"
                     onClick={() => toggleWatcher(currentUserId)}
-                    className="flex-1 rounded-md bg-gray-50 px-2 py-1.5 font-givonic text-[11px] text-gray-600 hover:bg-gray-100"
+                    className="flex-1 rounded-md bg-gray-50 px-2 py-1.5 font-manrope text-[11px] text-gray-600 hover:bg-gray-100"
                   >
                     {(task.watchers ?? []).some((w) => w.id === currentUserId) ? 'Unwatch' : '◎ Watch'}
                   </button>
@@ -1174,7 +1174,7 @@ export default function TaskDetailView({
                       }}
                       placeholder="Cari anggota…"
                       aria-label="Cari anggota"
-                      className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 font-givonic text-xs focus:border-perrific-violet focus:outline-none"
+                      className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 font-manrope text-xs focus:border-perrific-violet focus:outline-none"
                     />
                   </div>
                   <div className="nice-scroll max-h-44 overflow-y-auto">
@@ -1186,7 +1186,7 @@ export default function TaskDetailView({
                           !ids.includes(m.userId) &&
                           (!q || (m.user?.name ?? '').toLowerCase().includes(q) || (m.user?.email ?? '').toLowerCase().includes(q)),
                       );
-                      if (opts.length === 0) return <p className="px-3 py-2 font-givonic text-xs text-gray-400">Belum ada anggota.</p>;
+                      if (opts.length === 0) return <p className="px-3 py-2 font-manrope text-xs text-gray-400">Belum ada anggota.</p>;
                       return opts.map((m) => {
                         const label = m.user?.name ?? m.user?.email ?? m.userId;
                         return (
@@ -1200,7 +1200,7 @@ export default function TaskDetailView({
                             className="flex w-full items-center gap-2 px-3 py-2 text-left transition hover:bg-gray-100"
                           >
                             <Avatar src={m.user?.avatarUrl} name={label} size={24} alt={label} className="h-6 w-6 text-[10px]" />
-                            <span className="min-w-0 flex-1 truncate font-givonic text-xs text-gray-600">{label}</span>
+                            <span className="min-w-0 flex-1 truncate font-manrope text-xs text-gray-600">{label}</span>
                           </button>
                         );
                       });
@@ -1236,7 +1236,7 @@ export default function TaskDetailView({
                 onClick={onClose}
                 title="Kembali"
                 aria-label="Kembali"
-                className="flex h-8 flex-1 items-center justify-center rounded-md bg-gray-100 font-givonic text-xs font-semibold text-gray-600 hover:bg-gray-200"
+                className="flex h-8 flex-1 items-center justify-center rounded-md bg-gray-100 font-manrope text-xs font-semibold text-gray-600 hover:bg-gray-200"
               >
                 Kembali
               </button>

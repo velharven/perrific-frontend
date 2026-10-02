@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+﻿import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { projectApi } from '@/api/projects';
 import { teamApi } from '@/api/teams';
@@ -86,7 +86,7 @@ export default function ProjectApprovalPage() {
               role="tab"
               aria-selected={activeTab === t.id}
               onClick={() => setActiveTab(t.id)}
-              className={`shrink-0 rounded-full px-4 py-2 font-givonic text-xs font-semibold transition ${
+              className={`shrink-0 rounded-full px-4 py-2 font-manrope text-xs font-semibold transition ${
                 activeTab === t.id
                   ? 'bg-perrific-graphite text-white'
                   : 'text-gray-800 hover:bg-gray-200 hover:text-black'

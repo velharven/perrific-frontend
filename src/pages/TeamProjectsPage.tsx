@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { teamApi } from '@/api/teams';
 import { projectApi } from '@/api/projects';
@@ -133,7 +133,7 @@ export default function TeamProjectsPage() {
     <div className="mx-auto max-w-2xl space-y-4">
       <Link
         to={`/team/${team.id}`}
-        className="inline-block font-givonic text-xs font-semibold text-perrific-violet hover:underline"
+        className="inline-block font-manrope text-xs font-semibold text-perrific-violet hover:underline"
       >
         ← Kembali ke board
       </Link>
@@ -150,7 +150,7 @@ export default function TeamProjectsPage() {
               <span className="flex h-6 w-6 items-center justify-center rounded-md bg-amber-100 text-amber-700">
                 <Briefcase size={14} strokeWidth={1.8} aria-hidden="true" />
               </span>
-              <h2 className="font-givonic text-sm font-bold text-amber-950">
+              <h2 className="font-manrope text-sm font-bold text-amber-950">
                 Usulan Project dari Organisasi
               </h2>
             </div>
@@ -167,7 +167,7 @@ export default function TeamProjectsPage() {
               >
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="font-givonic text-sm font-bold text-perrific-graphite">{prop.name}</h3>
+                    <h3 className="font-manrope text-sm font-bold text-perrific-graphite">{prop.name}</h3>
                     <span
                       className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
                         prop.status === 'APPROVED'
@@ -197,7 +197,7 @@ export default function TeamProjectsPage() {
                       type="button"
                       disabled={actionProposalId === prop.id}
                       onClick={() => handleApproveProposal(prop)}
-                      className="rounded-lg bg-emerald-600 px-3 py-1.5 font-givonic text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-50"
+                      className="rounded-lg bg-emerald-600 px-3 py-1.5 font-manrope text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-50"
                     >
                       {actionProposalId === prop.id ? 'Memproses...' : 'Setujui'}
                     </button>
@@ -205,7 +205,7 @@ export default function TeamProjectsPage() {
                       type="button"
                       disabled={actionProposalId === prop.id}
                       onClick={() => handleRejectProposal(prop)}
-                      className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 font-givonic text-xs font-semibold text-red-600 transition hover:bg-red-100 disabled:opacity-50"
+                      className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 font-manrope text-xs font-semibold text-red-600 transition hover:bg-red-100 disabled:opacity-50"
                     >
                       Tolak
                     </button>
@@ -218,7 +218,7 @@ export default function TeamProjectsPage() {
       )}
 
       <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white p-3">
-        <p className="font-givonic text-sm text-perrific-graphite/60">
+        <p className="font-manrope text-sm text-perrific-graphite/60">
           {projects.length} projects · {projects.filter((p) => p.status === 'ACTIVE').length} aktif
         </p>
         {isAdmin && (
@@ -226,7 +226,7 @@ export default function TeamProjectsPage() {
             type="button"
             onClick={() => setCreateOpen(true)}
             aria-haspopup="dialog"
-            className="shrink-0 rounded-full bg-perrific-violet px-4 py-2 font-givonic text-xs font-semibold text-white transition hover:brightness-110"
+            className="shrink-0 rounded-full bg-perrific-violet px-4 py-2 font-manrope text-xs font-semibold text-white transition hover:brightness-110"
           >
             + Project baru
           </button>
@@ -251,11 +251,11 @@ export default function TeamProjectsPage() {
                   onClick={() => navigate(`/projects/${p.id}`)}
                   className="block min-w-0 flex-1 text-left"
                 >
-                  <p className="truncate font-givonic text-sm font-bold text-perrific-graphite hover:text-perrific-violet">
+                  <p className="truncate font-manrope text-sm font-bold text-perrific-graphite hover:text-perrific-violet">
                     {p.name}
                   </p>
                   {p.description && (
-                    <p className="mt-0.5 truncate font-givonic text-xs text-perrific-graphite/50">{p.description}</p>
+                    <p className="mt-0.5 truncate font-manrope text-xs text-perrific-graphite/50">{p.description}</p>
                   )}
                 <p className="mt-1.5 font-mono text-[11px] text-perrific-graphite/50">
                   {p.status === 'ARCHIVED' ? 'Arsip' : 'Aktif'}
@@ -286,7 +286,7 @@ export default function TeamProjectsPage() {
                         setEditing({ id: p.id, mode: 'rename' });
                         setOpenMenuId(null);
                       }}
-                      className="flex w-full items-center px-3 py-2 font-givonic text-sm text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
+                      className="flex w-full items-center px-3 py-2 font-manrope text-sm text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
                     >
                       Rename
                     </button>
@@ -297,7 +297,7 @@ export default function TeamProjectsPage() {
                         setEditing({ id: p.id, mode: 'full' });
                         setOpenMenuId(null);
                       }}
-                      className="flex w-full items-center px-3 py-2 font-givonic text-sm text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
+                      className="flex w-full items-center px-3 py-2 font-manrope text-sm text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
                     >
                       Edit
                     </button>
@@ -308,7 +308,7 @@ export default function TeamProjectsPage() {
                         setDeleteTarget(p);
                         setOpenMenuId(null);
                       }}
-                      className="flex w-full items-center px-3 py-2 font-givonic text-sm font-medium text-red-600 transition hover:bg-red-50"
+                      className="flex w-full items-center px-3 py-2 font-manrope text-sm font-medium text-red-600 transition hover:bg-red-50"
                     >
                       Hapus
                     </button>
@@ -324,7 +324,7 @@ export default function TeamProjectsPage() {
                       maxLength={60}
                       aria-label={`Nama ${p.name}`}
                       autoFocus={editMode === 'rename'}
-                      className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 font-givonic text-sm focus:border-perrific-violet focus:outline-none"
+                      className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 font-manrope text-sm focus:border-perrific-violet focus:outline-none"
                     />
                     {editMode === 'full' && (
                       <>
@@ -334,7 +334,7 @@ export default function TeamProjectsPage() {
                           maxLength={500}
                           placeholder="Deskripsi (opsional)"
                           aria-label="Deskripsi project"
-                          className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 font-givonic text-sm focus:border-perrific-violet focus:outline-none"
+                          className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 font-manrope text-sm focus:border-perrific-violet focus:outline-none"
                         />
                         <select
                           value={d.status}
@@ -342,7 +342,7 @@ export default function TeamProjectsPage() {
                             setDrafts((prev) => ({ ...prev, [p.id]: { ...d, status: e.target.value as Project['status'] } }))
                           }
                           aria-label="Status project"
-                          className="w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 font-givonic text-xs focus:border-perrific-violet focus:outline-none"
+                          className="w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 font-manrope text-xs focus:border-perrific-violet focus:outline-none"
                         >
                           <option value="ACTIVE">Aktif</option>
                           <option value="ARCHIVED">Arsip</option>
@@ -354,7 +354,7 @@ export default function TeamProjectsPage() {
                     <button
                       type="button"
                       onClick={() => setEditing(null)}
-                      className="rounded-full px-3 py-1.5 font-givonic text-xs font-semibold text-gray-600 transition hover:bg-gray-100"
+                      className="rounded-full px-3 py-1.5 font-manrope text-xs font-semibold text-gray-600 transition hover:bg-gray-100"
                     >
                       Batal
                     </button>
@@ -362,7 +362,7 @@ export default function TeamProjectsPage() {
                       type="button"
                       disabled={!dirty || savingId === p.id}
                       onClick={() => void handleSave(p)}
-                      className="rounded-full bg-perrific-graphite px-3 py-1.5 font-givonic text-xs font-semibold text-white transition hover:brightness-110 disabled:opacity-40"
+                      className="rounded-full bg-perrific-graphite px-3 py-1.5 font-manrope text-xs font-semibold text-white transition hover:brightness-110 disabled:opacity-40"
                     >
                       {savingId === p.id ? 'Menyimpan…' : 'Simpan'}
                     </button>

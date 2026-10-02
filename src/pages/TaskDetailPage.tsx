@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { projectApi } from '@/api/projects';
 import { teamApi } from '@/api/teams';
@@ -42,8 +42,8 @@ export default function TaskDetailPage() {
   if (!projectId || !taskId) {
     return (
       <div className="mx-auto max-w-4xl">
-        <p className="font-givonic text-sm text-gray-500">Task tidak ditemukan.</p>
-        <Link to="/notes" className="mt-2 inline-block font-givonic text-xs font-semibold text-perrific-violet hover:underline">
+        <p className="font-manrope text-sm text-gray-500">Task tidak ditemukan.</p>
+        <Link to="/notes" className="mt-2 inline-block font-manrope text-xs font-semibold text-perrific-violet hover:underline">
           Kembali
         </Link>
       </div>
@@ -54,7 +54,7 @@ export default function TaskDetailPage() {
 
   return (
     <div className="w-full space-y-4">
-      <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1.5 font-givonic text-sm">
+      <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1.5 font-manrope text-sm">
         <Link to={backTo} className="shrink-0 font-semibold text-perrific-violet hover:underline">
           Kanban
         </Link>

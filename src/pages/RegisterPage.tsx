@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Link, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '@/store/auth';
 import GoogleAuthButton from '@/components/auth/GoogleAuthButton';
@@ -80,16 +80,16 @@ export default function RegisterPage() {
           <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white">
             <img src="/Purrific.svg" alt="Purrific" width="22" height="22" className="h-[22px] w-[22px]" />
           </span>
-          <span className="font-gendy text-[18px] font-extrabold tracking-[-0.02em]">Purrific</span>
+          <span className="font-space-grotesk text-[18px] font-extrabold tracking-[-0.02em]">Purrific</span>
         </Link>
 
         <div>
-          <h2 className="max-w-[14ch] font-givonic text-[32px] font-extrabold leading-[0.95] tracking-[-0.02em]">
+          <h2 className="max-w-[14ch] font-manrope text-[32px] font-extrabold leading-[0.95] tracking-[-0.02em]">
             Board tim yang langsung jadi harimu.
           </h2>
           <ul className="mt-6 space-y-3">
             {['Kanban ringan untuk tim 3–6 orang', 'Otomatis jadi time-block di Harian', 'Tanpa setup 2 jam — langsung pakai'].map((t) => (
-              <li key={t} className="flex gap-2.5 font-givonic text-sm leading-snug text-white/85">
+              <li key={t} className="flex gap-2.5 font-manrope text-sm leading-snug text-white/85">
                 <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white text-perrific-violet">
                   <Check size={10} strokeWidth={2.5} />
                 </span>
@@ -107,24 +107,24 @@ export default function RegisterPage() {
         <div className="w-full max-w-[400px]">
           <Link to="/" className="mb-6 flex items-center justify-center gap-2 lg:hidden">
             <img src="/Purrific.svg" alt="Purrific" width="28" height="28" className="h-7 w-7" />
-            <span className="font-gendy text-[17px] font-extrabold tracking-[-0.03em] text-perrific-graphite">Purrific</span>
+            <span className="font-space-grotesk text-[17px] font-extrabold tracking-[-0.03em] text-perrific-graphite">Purrific</span>
           </Link>
 
           <div className="rounded-[16px] border border-perrific-line bg-white p-6 shadow-[0_4px_20px_rgba(26,26,30,0.08),0_1px_2px_rgba(26,26,30,0.06)] sm:p-7">
             <div className="mb-6">
-              <h1 className="font-givonic text-[22px] font-extrabold tracking-[-0.02em] text-perrific-graphite">Daftar</h1>
-              <p className="mt-1 font-givonic text-sm leading-relaxed text-perrific-graphite/60">Buat akun — gratis untuk tim kecil, tanpa kartu kredit.</p>
+              <h1 className="font-manrope text-[22px] font-extrabold tracking-[-0.02em] text-perrific-graphite">Daftar</h1>
+              <p className="mt-1 font-manrope text-sm leading-relaxed text-perrific-graphite/60">Buat akun — gratis untuk tim kecil, tanpa kartu kredit.</p>
             </div>
 
             {error && (
               <div role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5">
-                <p className="font-givonic text-sm leading-snug text-red-700">{error}</p>
+                <p className="font-manrope text-sm leading-snug text-red-700">{error}</p>
               </div>
             )}
 
             <form onSubmit={handleSubmit} noValidate className="space-y-4">
               <div>
-                <label htmlFor="name" className="mb-1.5 block font-givonic text-xs font-medium text-perrific-graphite">
+                <label htmlFor="name" className="mb-1.5 block font-manrope text-xs font-medium text-perrific-graphite">
                   Nama
                 </label>
                 <input
@@ -136,12 +136,12 @@ export default function RegisterPage() {
                   placeholder="Nama lengkap"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full rounded-[10px] border border-perrific-line bg-white px-3 py-2.5 font-givonic text-sm text-perrific-graphite placeholder:text-perrific-graphite/40 focus:border-perrific-violet focus:outline-none focus:ring-2 focus:ring-perrific-violet/20"
+                  className="w-full rounded-[10px] border border-perrific-line bg-white px-3 py-2.5 font-manrope text-sm text-perrific-graphite placeholder:text-perrific-graphite/40 focus:border-perrific-violet focus:outline-none focus:ring-2 focus:ring-perrific-violet/20"
                 />
               </div>
 
               <div>
-                <label htmlFor="email" className="mb-1.5 block font-givonic text-xs font-medium text-perrific-graphite">
+                <label htmlFor="email" className="mb-1.5 block font-manrope text-xs font-medium text-perrific-graphite">
                   Email
                 </label>
                 <input
@@ -153,16 +153,16 @@ export default function RegisterPage() {
                   placeholder="kamu@kampus.ac.id"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-[10px] border border-perrific-line bg-white px-3 py-2.5 font-givonic text-sm text-perrific-graphite placeholder:text-perrific-graphite/40 focus:border-perrific-violet focus:outline-none focus:ring-2 focus:ring-perrific-violet/20"
+                  className="w-full rounded-[10px] border border-perrific-line bg-white px-3 py-2.5 font-manrope text-sm text-perrific-graphite placeholder:text-perrific-graphite/40 focus:border-perrific-violet focus:outline-none focus:ring-2 focus:ring-perrific-violet/20"
                 />
               </div>
 
               <div>
-                <label htmlFor="username" className="mb-1.5 block font-givonic text-xs font-medium text-perrific-graphite">
+                <label htmlFor="username" className="mb-1.5 block font-manrope text-xs font-medium text-perrific-graphite">
                   Username
                 </label>
                 <div className="flex items-center rounded-[10px] border border-perrific-line bg-white px-3 focus-within:border-perrific-violet focus-within:ring-2 focus-within:ring-perrific-violet/20">
-                  <span className="select-none font-givonic text-sm text-perrific-graphite/40">@</span>
+                  <span className="select-none font-manrope text-sm text-perrific-graphite/40">@</span>
                   <input
                     id="username"
                     type="text"
@@ -176,31 +176,31 @@ export default function RegisterPage() {
                     spellCheck={false}
                     required
                     aria-describedby="username-status"
-                    className="w-full bg-transparent px-1.5 py-2.5 font-givonic text-sm text-perrific-graphite placeholder:text-perrific-graphite/40 focus:outline-none"
+                    className="w-full bg-transparent px-1.5 py-2.5 font-manrope text-sm text-perrific-graphite placeholder:text-perrific-graphite/40 focus:outline-none"
                   />
                 </div>
                 <div id="username-status" aria-live="polite" className="mt-1.5 min-h-[1rem]">
                   {usernameInvalid ? (
-                    <p className="font-givonic text-xs text-red-600">
+                    <p className="font-manrope text-xs text-red-600">
                       3–30 karakter: huruf kecil, angka, titik, underscore.
                     </p>
                   ) : usernameChecking ? (
-                    <p className="font-givonic text-xs text-perrific-graphite/50">Memeriksa ketersediaan…</p>
+                    <p className="font-manrope text-xs text-perrific-graphite/50">Memeriksa ketersediaan…</p>
                   ) : usernameTaken ? (
-                    <p className="font-givonic text-xs font-medium text-red-600">Username sudah dipakai.</p>
+                    <p className="font-manrope text-xs font-medium text-red-600">Username sudah dipakai.</p>
                   ) : usernameAvailable === true ? (
-                    <p className="font-givonic text-xs font-medium text-green-700">Username tersedia.</p>
+                    <p className="font-manrope text-xs font-medium text-green-700">Username tersedia.</p>
                   ) : null}
                 </div>
               </div>
 
               <div>
                 <div className="mb-1.5 flex items-center justify-between">
-                  <label htmlFor="password" className="block font-givonic text-xs font-medium text-perrific-graphite">
+                  <label htmlFor="password" className="block font-manrope text-xs font-medium text-perrific-graphite">
                     Password
                   </label>
                   {password.length > 0 && (
-                    <span aria-live="polite" className={`font-givonic text-xs font-semibold ${level.text}`}>
+                    <span aria-live="polite" className={`font-manrope text-xs font-semibold ${level.text}`}>
                       {level.label}
                     </span>
                   )}
@@ -217,7 +217,7 @@ export default function RegisterPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     aria-describedby="password-strength"
-                    className="w-full rounded-[10px] border border-perrific-line bg-white px-3 py-2.5 pr-10 font-givonic text-sm text-perrific-graphite placeholder:text-perrific-graphite/40 focus:border-perrific-violet focus:outline-none focus:ring-2 focus:ring-perrific-violet/20"
+                    className="w-full rounded-[10px] border border-perrific-line bg-white px-3 py-2.5 pr-10 font-manrope text-sm text-perrific-graphite placeholder:text-perrific-graphite/40 focus:border-perrific-violet focus:outline-none focus:ring-2 focus:ring-perrific-violet/20"
                   />
                   <button
                     type="button"
@@ -248,7 +248,7 @@ export default function RegisterPage() {
                         { ok: strength.digit, text: 'Mengandung angka' },
                         { ok: strength.symbol, text: 'Mengandung simbol (!@#…)' },
                       ].map((rule) => (
-                        <li key={rule.text} className="flex items-center gap-1.5 font-givonic text-xs">
+                        <li key={rule.text} className="flex items-center gap-1.5 font-manrope text-xs">
                           <span
                             className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full ${
                               rule.ok ? 'bg-green-600 text-white' : 'bg-perrific-graphite/10 text-perrific-graphite/40'
@@ -268,7 +268,7 @@ export default function RegisterPage() {
               <button
                 type="submit"
                 disabled={submitting || passwordTooWeak || !usernameReady || !name.trim() || !email.trim()}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-perrific-violet px-6 py-3 font-givonic text-sm font-semibold text-white hover:bg-[#E64D0A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-perrific-violet focus-visible:ring-offset-2 focus-visible:ring-offset-white active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed transition"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-perrific-violet px-6 py-3 font-manrope text-sm font-semibold text-white hover:bg-[#E64D0A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-perrific-violet focus-visible:ring-offset-2 focus-visible:ring-offset-white active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed transition"
               >
                 {submitting ? 'Memuat…' : 'Daftar'}
                 {!submitting && (
@@ -288,7 +288,7 @@ export default function RegisterPage() {
               </>
             )}
 
-            <p className="mt-5 text-center font-givonic text-sm text-perrific-graphite/60">
+            <p className="mt-5 text-center font-manrope text-sm text-perrific-graphite/60">
               Sudah punya akun?{' '}
               <Link to="/login" className="font-semibold text-perrific-violet hover:underline">
                 Masuk

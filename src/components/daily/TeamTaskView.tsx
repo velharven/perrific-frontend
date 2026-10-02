@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+﻿import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import {
   DndContext,
@@ -38,7 +38,7 @@ import {
   ChevronRight,
   ChevronLeft,
   Users,
-  Kanban,
+  Columns3,
   ArrowUpRight,
   Filter,
   Search,
@@ -122,7 +122,7 @@ function CardView({
               onClick={onOpenTitle}
               title={`Buka detail ${task.title}`}
               aria-label={`Buka detail ${task.title} lewat ID`}
-              className="shrink-0 font-givonic text-xs font-bold text-perrific-violet hover:underline cursor-pointer"
+              className="shrink-0 font-manrope text-xs font-bold text-perrific-violet hover:underline cursor-pointer"
             >
               #{task.number}
             </button>
@@ -138,7 +138,7 @@ function CardView({
           </>
         ) : (
           <>
-            <span className="shrink-0 font-givonic text-xs font-bold text-perrific-violet">
+            <span className="shrink-0 font-manrope text-xs font-bold text-perrific-violet">
               #{task.number}
             </span>
             <p className="min-w-0 flex-1 truncate text-sm font-medium text-gray-800">{task.title}</p>
@@ -305,10 +305,10 @@ function Column({
             <ChevronRight size={12} strokeWidth={1.8} />
           </button>
           <span aria-hidden="true" className="h-3 w-3 shrink-0 rounded-[3px]" style={{ backgroundColor: color }} />
-          <span className="truncate font-givonic text-xs font-bold tracking-widest text-gray-500 [writing-mode:vertical-rl]">
+          <span className="truncate font-manrope text-xs font-bold tracking-widest text-gray-500 [writing-mode:vertical-rl]">
             {label.toUpperCase()}
           </span>
-          <span className="rounded bg-gray-300 px-1.5 py-0.5 font-givonic text-[11px] font-semibold text-gray-600">
+          <span className="rounded bg-gray-300 px-1.5 py-0.5 font-manrope text-[11px] font-semibold text-gray-600">
             {count}
           </span>
         </div>
@@ -1113,14 +1113,14 @@ export default function TeamTaskView({ onRefreshDaily: _onRefreshDaily }: TeamTa
       {loadingInitial ? (
         <div className="py-20 text-center">
           <div className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-orange-500 border-t-transparent" />
-          <p className="mt-3 font-givonic text-sm text-gray-500">Memuat task dan tim Anda...</p>
+          <p className="mt-3 font-manrope text-sm text-gray-500">Memuat task dan tim Anda...</p>
         </div>
       ) : displayedTeams.length === 0 ? (
         <div className="rounded-2xl border border-gray-200 bg-white py-16 text-center shadow-xs">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-50 text-orange-600">
             <Users size={28} strokeWidth={1.6} />
           </div>
-          <h3 className="mt-4 font-givonic text-base font-semibold text-gray-800">
+          <h3 className="mt-4 font-manrope text-base font-semibold text-gray-800">
             {onlyWithTasks || filterSearch || filterPriority
               ? 'Tidak ada task yang cocok dengan filter'
               : 'Belum ada tim atau tugas yang terhubung'}
@@ -1138,7 +1138,7 @@ export default function TeamTaskView({ onRefreshDaily: _onRefreshDaily }: TeamTa
                 setFilterPriority(null);
                 setOnlyWithTasks(false);
               }}
-              className="mt-4 rounded-lg bg-gray-900 px-4 py-2 font-givonic text-xs font-semibold text-white transition hover:bg-black"
+              className="mt-4 rounded-lg bg-gray-900 px-4 py-2 font-manrope text-xs font-semibold text-white transition hover:bg-black"
             >
               Reset Filter
             </button>
@@ -1192,14 +1192,14 @@ export default function TeamTaskView({ onRefreshDaily: _onRefreshDaily }: TeamTa
                         className="h-8 w-8 shrink-0 rounded-xl object-cover shadow-sm"
                       />
                     ) : (
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-perrific-violet/20 bg-perrific-violet/10 font-givonic text-xs font-bold text-perrific-violet">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-perrific-violet/20 bg-perrific-violet/10 font-manrope text-xs font-bold text-perrific-violet">
                         {team.name.trim().slice(0, 2).toUpperCase()}
                       </div>
                     )}
 
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <h2 className="truncate font-givonic text-sm font-bold text-gray-900">
+                        <h2 className="truncate font-manrope text-sm font-bold text-gray-900">
                           {team.name}
                         </h2>
                       </div>
@@ -1212,7 +1212,7 @@ export default function TeamTaskView({ onRefreshDaily: _onRefreshDaily }: TeamTa
                   {/* Badges Info Tim */}
                   <div className="flex shrink-0 items-center gap-2">
                     <span
-                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-givonic text-xs font-semibold ${
+                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-manrope text-xs font-semibold ${
                         teamTaskCount > 0
                           ? 'bg-orange-100 text-orange-700'
                           : 'bg-gray-100 text-gray-500'
@@ -1220,7 +1220,7 @@ export default function TeamTaskView({ onRefreshDaily: _onRefreshDaily }: TeamTa
                     >
                       {teamTaskCount} {onlyWithTasks ? 'Tugas Anda' : 'Tugas'}
                     </span>
-                    <span className="hidden sm:inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 font-givonic text-xs text-gray-600">
+                    <span className="hidden sm:inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 font-manrope text-xs text-gray-600">
                       {projects.length > 0 ? `${projects.length} Project` : 'Project'}
                     </span>
                   </div>
@@ -1281,10 +1281,10 @@ export default function TeamTaskView({ onRefreshDaily: _onRefreshDaily }: TeamTa
 
                                   {/* Ikon Project */}
                                   <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-white text-gray-600 shadow-2xs border border-gray-200/80">
-                                    <Kanban size={13} strokeWidth={1.6} />
+                                    <Columns3 size={13} strokeWidth={1.6} />
                                   </span>
 
-                                  <span className="truncate font-givonic text-xs font-semibold text-gray-800">
+                                  <span className="truncate font-manrope text-xs font-semibold text-gray-800">
                                     {project.name}
                                   </span>
                                 </div>
@@ -1292,7 +1292,7 @@ export default function TeamTaskView({ onRefreshDaily: _onRefreshDaily }: TeamTa
                                 {/* Badges & Action */}
                                 <div className="flex shrink-0 items-center gap-2">
                                   <span
-                                    className={`inline-flex items-center rounded-full px-2 py-0.5 font-givonic text-[11px] font-semibold ${
+                                    className={`inline-flex items-center rounded-full px-2 py-0.5 font-manrope text-[11px] font-semibold ${
                                       projTaskCount > 0
                                         ? 'bg-emerald-100 text-emerald-800'
                                         : 'bg-gray-200/70 text-gray-500'
@@ -1305,7 +1305,7 @@ export default function TeamTaskView({ onRefreshDaily: _onRefreshDaily }: TeamTa
                                     to={`/projects/${project.id}/kanban`}
                                     onClick={(e) => e.stopPropagation()}
                                     title="Buka board tim penuh"
-                                    className="hidden sm:flex items-center gap-1 rounded-md px-2 py-1 font-givonic text-[11px] font-medium text-gray-500 hover:bg-white hover:text-orange-700 hover:shadow-2xs transition"
+                                    className="hidden sm:flex items-center gap-1 rounded-md px-2 py-1 font-manrope text-[11px] font-medium text-gray-500 hover:bg-white hover:text-orange-700 hover:shadow-2xs transition"
                                   >
                                     <span>Board Tim</span>
                                     <ArrowUpRight size={11} strokeWidth={1.8} aria-hidden="true" />
@@ -1374,7 +1374,7 @@ export default function TeamTaskView({ onRefreshDaily: _onRefreshDaily }: TeamTa
             aria-haspopup="menu"
             aria-expanded={filterMenuOpen}
             aria-label="Filter task tim"
-            className={`flex shrink-0 items-center gap-2 rounded-full px-5 py-2.5 font-givonic text-sm font-semibold transition focus:outline-none ${
+            className={`flex shrink-0 items-center gap-2 rounded-full px-5 py-2.5 font-manrope text-sm font-semibold transition focus:outline-none ${
               filterOptionCount > 0
                 ? 'bg-perrific-graphite text-white'
                 : 'text-gray-800 hover:bg-gray-200 hover:text-black'
@@ -1383,7 +1383,7 @@ export default function TeamTaskView({ onRefreshDaily: _onRefreshDaily }: TeamTa
             <Filter size={15} strokeWidth={1.6} aria-hidden="true" />
             Filter
             {filterOptionCount > 0 && (
-              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-white px-1.5 font-givonic text-[11px] font-bold text-perrific-graphite">
+              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-white px-1.5 font-manrope text-[11px] font-bold text-perrific-graphite">
                 {filterOptionCount}
               </span>
             )}
@@ -1397,7 +1397,7 @@ export default function TeamTaskView({ onRefreshDaily: _onRefreshDaily }: TeamTa
               onChange={(e) => setFilterSearch(e.target.value)}
               placeholder="Cari task..."
               aria-label="Cari task"
-              className="w-full rounded-full bg-gray-100 py-2.5 pl-10 pr-8 font-givonic text-sm text-gray-800 placeholder:text-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-perrific-violet/30"
+              className="w-full rounded-full bg-gray-100 py-2.5 pl-10 pr-8 font-manrope text-sm text-gray-800 placeholder:text-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-perrific-violet/30"
             />
             {filterSearch && (
               <button type="button" onClick={() => setFilterSearch('')} aria-label="Hapus pencarian" className="absolute right-3 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded-full text-gray-400 hover:bg-gray-200 hover:text-gray-700 cursor-pointer">
@@ -1433,7 +1433,7 @@ export default function TeamTaskView({ onRefreshDaily: _onRefreshDaily }: TeamTa
           onClose={() => setFilterMenuOpen(false)}
         >
           <div className="p-2 space-y-1">
-            <p className="px-2 py-1 font-givonic text-[11px] font-bold tracking-wider text-gray-400 uppercase">
+            <p className="px-2 py-1 font-manrope text-[11px] font-bold tracking-wider text-gray-400 uppercase">
               Prioritas
             </p>
             {FILTER_PRIORITIES.map((opt) => (
@@ -1443,7 +1443,7 @@ export default function TeamTaskView({ onRefreshDaily: _onRefreshDaily }: TeamTa
                 onClick={() => {
                   setFilterPriority(opt.v as TaskPriority | null);
                 }}
-                className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 font-givonic text-xs font-semibold transition hover:bg-gray-100 cursor-pointer ${
+                className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 font-manrope text-xs font-semibold transition hover:bg-gray-100 cursor-pointer ${
                   filterPriority === opt.v ? 'text-orange-700 bg-orange-50/60' : 'text-gray-700'
                 }`}
               >
@@ -1454,13 +1454,13 @@ export default function TeamTaskView({ onRefreshDaily: _onRefreshDaily }: TeamTa
 
             <div className="my-1.5 border-t border-gray-100" />
 
-            <p className="px-2 py-1 font-givonic text-[11px] font-bold tracking-wider text-gray-400 uppercase">
+            <p className="px-2 py-1 font-manrope text-[11px] font-bold tracking-wider text-gray-400 uppercase">
               Tampilan
             </p>
             <button
               type="button"
               onClick={() => setOnlyWithTasks((prev) => !prev)}
-              className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 font-givonic text-xs font-semibold transition hover:bg-gray-100 cursor-pointer ${
+              className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 font-manrope text-xs font-semibold transition hover:bg-gray-100 cursor-pointer ${
                 onlyWithTasks ? 'text-orange-700 bg-orange-50/60' : 'text-gray-700'
               }`}
             >
@@ -1478,7 +1478,7 @@ export default function TeamTaskView({ onRefreshDaily: _onRefreshDaily }: TeamTa
                     setOnlyWithTasks(false);
                     setFilterMenuOpen(false);
                   }}
-                  className="w-full rounded-lg px-2.5 py-1.5 text-center font-givonic text-xs font-semibold text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                  className="w-full rounded-lg px-2.5 py-1.5 text-center font-manrope text-xs font-semibold text-rose-600 hover:bg-rose-50 transition cursor-pointer"
                 >
                   Bersihkan semua filter
                 </button>

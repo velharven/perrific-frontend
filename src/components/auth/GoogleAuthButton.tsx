@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGoogleLogin } from '@react-oauth/google';
 import { useAuth } from '@/store/auth';
@@ -70,7 +70,7 @@ export default function GoogleAuthButton({
         setBusy(true);
         startGoogle();
       }}
-      className="inline-flex w-full items-center justify-center gap-2.5 rounded-full border border-perrific-line bg-white px-6 py-3 font-givonic text-sm font-semibold text-perrific-graphite shadow-sm hover:bg-perrific-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-perrific-violet focus-visible:ring-offset-2 focus-visible:ring-offset-white active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed transition"
+      className="inline-flex w-full items-center justify-center gap-2.5 rounded-full border border-perrific-line bg-white px-6 py-3 font-manrope text-sm font-semibold text-perrific-graphite shadow-sm hover:bg-perrific-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-perrific-violet focus-visible:ring-offset-2 focus-visible:ring-offset-white active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed transition"
     >
       <GoogleGLogo />
       {busy ? 'Menghubungkan…' : label}

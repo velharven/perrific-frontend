@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+﻿import { useEffect, useState, useRef } from 'react';
 import {
   X,
   Check,
@@ -166,7 +166,7 @@ export default function EditSidebarPanel({
               >
                 <ArrowLeft size={16} strokeWidth={1.8} aria-hidden="true" />
               </button>
-              <h2 className="font-givonic text-sm font-bold text-perrific-graphite">
+              <h2 className="font-manrope text-sm font-bold text-perrific-graphite">
                 Tambah Bagian
               </h2>
             </div>
@@ -192,7 +192,7 @@ export default function EditSidebarPanel({
               >
                 <X size={16} strokeWidth={1.8} aria-hidden="true" />
               </button>
-              <h2 className="font-givonic text-sm font-bold text-perrific-graphite">
+              <h2 className="font-manrope text-sm font-bold text-perrific-graphite">
                 Edit Sidebar
               </h2>
             </div>
@@ -202,7 +202,7 @@ export default function EditSidebarPanel({
               type="button"
               onClick={onClose}
               title="Selesai mengedit sidebar"
-              className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 font-givonic text-xs font-semibold text-perrific-violet transition hover:bg-perrific-violet/10"
+              className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 font-manrope text-xs font-semibold text-perrific-violet transition hover:bg-perrific-violet/10"
             >
               <Check size={14} strokeWidth={1.8} aria-hidden="true" />
               <span>Selesai</span>
@@ -228,10 +228,10 @@ export default function EditSidebarPanel({
                     {p.icon}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block font-givonic text-sm font-semibold text-perrific-graphite">
+                    <span className="block font-manrope text-sm font-semibold text-perrific-graphite">
                       {p.name}
                     </span>
-                    <span className="block truncate font-givonic text-xs text-perrific-graphite/50">
+                    <span className="block truncate font-manrope text-xs text-perrific-graphite/50">
                       {p.desc}
                     </span>
                   </span>
@@ -240,7 +240,7 @@ export default function EditSidebarPanel({
                       type="button"
                       onClick={() => setPendingDelete({ id: p.id, name: p.name })}
                       aria-label={`Hapus bagian ${p.name}`}
-                      className="shrink-0 rounded-full border border-red-200 px-3 py-1 font-givonic text-xs font-semibold text-red-600 transition hover:bg-red-50"
+                      className="shrink-0 rounded-full border border-red-200 px-3 py-1 font-manrope text-xs font-semibold text-red-600 transition hover:bg-red-50"
                     >
                       Hapus
                     </button>
@@ -249,7 +249,7 @@ export default function EditSidebarPanel({
                       type="button"
                       onClick={() => onAddPreset(p.id)}
                       aria-label={`Tambah bagian ${p.name}`}
-                      className="shrink-0 rounded-full bg-perrific-violet px-3 py-1 font-givonic text-xs font-semibold text-white transition hover:bg-perrific-red"
+                      className="shrink-0 rounded-full bg-perrific-violet px-3 py-1 font-manrope text-xs font-semibold text-white transition hover:bg-perrific-red"
                     >
                       Tambah
                     </button>
@@ -260,7 +260,7 @@ export default function EditSidebarPanel({
           </div>
         ) : (
           <div className="space-y-3">
-            <p className="px-1 font-givonic text-xs text-perrific-graphite/50">
+            <p className="px-1 font-manrope text-xs text-perrific-graphite/50">
               Tarik dan geser untuk mengatur urutan bagian sidebar.
             </p>
             <DndContext
@@ -311,7 +311,7 @@ export default function EditSidebarPanel({
               onClick={() => setEditView('preset')}
               title="Tambah bagian baru"
               aria-label="Tambah bagian baru"
-              className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-gray-300 px-3 py-3 font-givonic text-xs font-semibold text-perrific-graphite/70 transition hover:border-perrific-violet hover:bg-perrific-violet/5 hover:text-perrific-violet"
+              className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-gray-300 px-3 py-3 font-manrope text-xs font-semibold text-perrific-graphite/70 transition hover:border-perrific-violet hover:bg-perrific-violet/5 hover:text-perrific-violet"
             >
               <Plus size={15} strokeWidth={1.8} />
               <span>Bagian baru</span>

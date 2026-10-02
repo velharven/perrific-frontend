@@ -19,7 +19,7 @@ export default function Hero() {
 
       <div className="relative mx-auto max-w-[1180px] px-4 text-center sm:px-6 lg:px-8">
         {/* Hero Title */}
-        <h1 className="mx-auto max-w-[20ch] font-givonic text-[36px] font-extrabold leading-[1.08] tracking-[-0.035em] text-perrific-graphite sm:text-[50px] lg:text-[62px]">
+        <h1 className="mx-auto max-w-[20ch] font-manrope text-[36px] font-extrabold leading-[1.08] tracking-[-0.035em] text-perrific-graphite sm:text-[50px] lg:text-[62px]">
           Atur Timmu dan keseharianmu{' '}
           <span className="bg-gradient-to-r from-perrific-violet via-[#FF6826] to-perrific-amber bg-clip-text text-transparent">
             dalam 1 waktu
@@ -27,15 +27,15 @@ export default function Hero() {
         </h1>
 
         {/* Subtitle */}
-        <p className="mx-auto mt-6 max-w-[48ch] font-givonic text-[15px] leading-relaxed text-perrific-graphite/70 sm:text-[18px]">
-          Purrific menghubungkan board kolaborasi tim dengan jadwal harianmu — tugas yang ditugaskan otomatis tersinkronisasi menjadi time-block di Harian. Ringan, terarah, dan tanpa atur ulang.
+        <p className="mx-auto mt-6 max-w-[48ch] font-manrope text-[15px] leading-relaxed text-perrific-graphite/70 sm:text-[18px]">
+          Purrific menghubungkan board kolaborasi tim dengan kalender harianmu — jadwalkan tugas tim secara fleksibel dengan time-blocking serta sinkronisasi dua arah Google Calendar.
         </p>
 
         {/* CTA Buttons */}
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link
             to="/register"
-            className="group inline-flex items-center gap-2 rounded-full bg-perrific-violet px-7 py-3.5 font-givonic text-sm font-semibold text-white shadow-[0_4px_16px_rgba(255,80,11,0.25)] hover:bg-[#E64D0A] hover:shadow-[0_6px_20px_rgba(255,80,11,0.35)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-perrific-violet focus-visible:ring-offset-2 focus-visible:ring-offset-perrific-paper active:scale-[0.98] transition-all"
+            className="group inline-flex items-center gap-2 rounded-full bg-perrific-violet px-7 py-3.5 font-manrope text-sm font-semibold text-white shadow-[0_4px_16px_rgba(255,80,11,0.25)] hover:bg-[#E64D0A] hover:shadow-[0_6px_20px_rgba(255,80,11,0.35)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-perrific-violet focus-visible:ring-offset-2 focus-visible:ring-offset-perrific-paper active:scale-[0.98] transition-all"
           >
             Mulai Gratis
             <ChevronRight
@@ -47,7 +47,7 @@ export default function Hero() {
           </Link>
           <a
             href="#cara-kerja"
-            className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-6 py-3.5 font-givonic text-sm font-medium text-perrific-graphite shadow-sm hover:bg-gray-50 hover:border-gray-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-perrific-violet focus-visible:ring-offset-2 focus-visible:ring-offset-perrific-paper active:scale-[0.98] transition-all"
+            className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-6 py-3.5 font-manrope text-sm font-medium text-perrific-graphite shadow-sm hover:bg-gray-50 hover:border-gray-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-perrific-violet focus-visible:ring-offset-2 focus-visible:ring-offset-perrific-paper active:scale-[0.98] transition-all"
           >
             Lihat Cara Kerja
           </a>
@@ -90,7 +90,7 @@ export default function Hero() {
                       <div className="flex h-6 w-6 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-500 shadow-2xs">
                         <PanelLeft size={13} strokeWidth={1.5} aria-hidden="true" />
                       </div>
-                      <span className="font-givonic text-xs font-bold text-perrific-graphite">
+                      <span className="font-manrope text-xs font-bold text-perrific-graphite">
                         Purrific Workspace
                       </span>
                     </div>
@@ -108,11 +108,11 @@ export default function Hero() {
                       <span className="text-[10px] text-gray-400">▾</span>
                     </div>
                     <div className="space-y-0.5">
-                      <div className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 font-givonic text-xs font-medium text-gray-600 hover:bg-gray-100">
+                      <div className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 font-manrope text-xs font-medium text-gray-600 hover:bg-gray-100">
                         <Calendar size={13} strokeWidth={1.5} aria-hidden="true" className="shrink-0 text-gray-400" />
                         <span>Harian</span>
                       </div>
-                      <div className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 font-givonic text-xs font-medium text-gray-600 hover:bg-gray-100">
+                      <div className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 font-manrope text-xs font-medium text-gray-600 hover:bg-gray-100">
                         <FileText size={13} strokeWidth={1.5} aria-hidden="true" className="shrink-0 text-gray-400" />
                         <span>Catatan Sprint</span>
                       </div>
@@ -130,7 +130,7 @@ export default function Hero() {
 
                     {/* Team Item */}
                     <div className="space-y-0.5">
-                      <div className="flex items-center gap-2 rounded-lg bg-gray-100/90 px-2.5 py-1.5 font-givonic text-xs font-bold text-perrific-graphite">
+                      <div className="flex items-center gap-2 rounded-lg bg-gray-100/90 px-2.5 py-1.5 font-manrope text-xs font-bold text-perrific-graphite">
                         <span className="flex h-5 w-5 items-center justify-center rounded bg-perrific-violet/10 font-mono text-[10px] font-bold text-perrific-violet">
                           TP
                         </span>
@@ -138,7 +138,7 @@ export default function Hero() {
                       </div>
 
                       {/* Sub-item: Board Kanban (Active in Mockup) */}
-                      <div className="ml-4 flex items-center justify-between rounded-lg bg-white border border-gray-200/80 px-2.5 py-1.5 font-givonic text-xs font-semibold text-perrific-graphite shadow-2xs">
+                      <div className="ml-4 flex items-center justify-between rounded-lg bg-white border border-gray-200/80 px-2.5 py-1.5 font-manrope text-xs font-semibold text-perrific-graphite shadow-2xs">
                         <span className="flex items-center gap-1.5">
                           <span className="h-1.5 w-1.5 rounded-full bg-perrific-violet" />
                           <span>Board Kanban</span>
@@ -147,7 +147,7 @@ export default function Hero() {
                           Sprint 4
                         </span>
                       </div>
-                      <div className="ml-4 flex items-center gap-1.5 rounded-lg px-2.5 py-1 font-givonic text-[11px] text-gray-500 hover:bg-gray-100">
+                      <div className="ml-4 flex items-center gap-1.5 rounded-lg px-2.5 py-1 font-manrope text-[11px] text-gray-500 hover:bg-gray-100">
                         <Users size={12} strokeWidth={1.4} aria-hidden="true" className="shrink-0 text-gray-400" />
                         <span>4 Anggota</span>
                       </div>
@@ -163,7 +163,7 @@ export default function Hero() {
                         VH
                       </div>
                       <div className="min-w-0">
-                        <p className="truncate font-givonic text-xs font-bold text-perrific-graphite leading-tight">
+                        <p className="truncate font-manrope text-xs font-bold text-perrific-graphite leading-tight">
                           VelHarven
                         </p>
                         <p className="flex items-center gap-1 text-[10px] text-emerald-600 font-medium leading-none">
@@ -182,11 +182,11 @@ export default function Hero() {
                   {/* Top Workspace Header */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3.5 border-b border-gray-100">
                     <div>
-                      <h3 className="font-givonic text-base font-bold text-perrific-graphite">
+                      <h3 className="font-manrope text-base font-bold text-perrific-graphite">
                         Sprint Peluncuran Purrific
                       </h3>
-                      <p className="text-xs text-perrific-graphite/50 font-givonic">
-                        Board Kanban Tim · Sinkron otomatis ke kalender harian
+                      <p className="text-xs text-perrific-graphite/50 font-manrope">
+                        Board Kanban Tim · Jadwalkan langsung ke kalender harian
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -201,7 +201,7 @@ export default function Hero() {
                     {/* Left: Kanban Column (Sedang Dikerjakan) */}
                     <div className="lg:col-span-7 space-y-2.5">
                       <div className="flex items-center justify-between px-1">
-                        <span className="font-givonic text-xs font-bold text-perrific-graphite flex items-center gap-1.5">
+                        <span className="font-manrope text-xs font-bold text-perrific-graphite flex items-center gap-1.5">
                           <span className="h-2 w-2 rounded-full bg-amber-400" />
                           Sedang Dikerjakan
                         </span>
@@ -217,11 +217,11 @@ export default function Hero() {
                             Prioritas Tinggi
                           </span>
                           <span className="inline-flex items-center gap-1 text-[10px] text-perrific-violet font-semibold">
-                            <span className="h-1.5 w-1.5 rounded-full bg-perrific-violet animate-pulse" />
-                            Auto-Sync
+                            <span className="h-1.5 w-1.5 rounded-full bg-perrific-violet" />
+                            Siap Dijadwalkan
                           </span>
                         </div>
-                        <h4 className="font-givonic text-xs font-bold text-perrific-graphite">
+                        <h4 className="font-manrope text-xs font-bold text-perrific-graphite">
                           Integrasi Google Calendar &amp; Real-time Sync
                         </h4>
                         <div className="mt-2.5 flex items-center justify-between pt-2 border-t border-gray-100 text-[10px] text-gray-500">
@@ -242,7 +242,7 @@ export default function Hero() {
                         <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-700">
                           Desain UI
                         </span>
-                        <h4 className="mt-1 font-givonic text-xs font-medium text-perrific-graphite">
+                        <h4 className="mt-1 font-manrope text-xs font-medium text-perrific-graphite">
                           Update hero layout &amp; tab modern
                         </h4>
                       </div>
@@ -252,7 +252,7 @@ export default function Hero() {
                     <div className="lg:col-span-5 rounded-xl bg-gray-50/70 p-3 border border-gray-200">
                       <div className="flex items-center justify-between pb-2 border-b border-gray-200/70">
                         <span className="font-mono text-[10px] font-bold text-gray-600 uppercase">
-                          Harian Saya
+                          Kalender Harian
                         </span>
                         <span className="text-[10px] font-semibold text-blue-600 flex items-center gap-1">
                           <CheckCircle2 size={10} className="shrink-0" />
@@ -266,7 +266,7 @@ export default function Hero() {
                         <div className="flex items-start gap-2 text-xs">
                           <span className="font-mono text-[10px] text-gray-400 pt-0.5">09:00</span>
                           <div className="flex-1 rounded-lg bg-blue-50/80 border border-blue-100 p-1.5">
-                            <p className="font-givonic text-[11px] font-semibold text-blue-900 leading-tight">
+                            <p className="font-manrope text-[11px] font-semibold text-blue-900 leading-tight">
                               Daily Standup Team
                             </p>
                           </div>
@@ -277,7 +277,7 @@ export default function Hero() {
                           <span className="font-mono text-[10px] text-perrific-violet font-bold pt-0.5">10:00</span>
                           <div className="flex-1 rounded-lg bg-white border border-gray-200 p-2 shadow-2xs">
                             <div className="flex items-center justify-between">
-                              <span className="font-givonic text-[11px] font-bold text-perrific-graphite leading-tight">
+                              <span className="font-manrope text-[11px] font-bold text-perrific-graphite leading-tight">
                                 Integrasi Google Calendar
                               </span>
                             </div>
@@ -291,7 +291,7 @@ export default function Hero() {
                         <div className="flex items-start gap-2 text-xs">
                           <span className="font-mono text-[10px] text-gray-400 pt-0.5">13:30</span>
                           <div className="flex-1 rounded-lg bg-amber-50/60 border border-amber-100 p-1.5">
-                            <p className="font-givonic text-[11px] font-medium text-amber-900 leading-tight">
+                            <p className="font-manrope text-[11px] font-medium text-amber-900 leading-tight">
                               Deep Focus: Coding
                             </p>
                           </div>
@@ -303,10 +303,10 @@ export default function Hero() {
 
                 {/* Bottom Callout in Preview */}
                 <div className="mt-3.5 rounded-xl bg-gray-50 p-2.5 border border-gray-200 text-center">
-                  <p className="flex items-center justify-center gap-1.5 font-givonic text-xs text-perrific-graphite/70">
+                  <p className="flex items-center justify-center gap-1.5 font-manrope text-xs text-perrific-graphite/70">
                     <Lightbulb size={14} strokeWidth={1.5} aria-hidden="true" className="shrink-0 text-amber-500" />
                     <span>
-                      <strong className="text-perrific-graphite">Otomatis &amp; Real-time:</strong> Begitu tugas ditugaskan di Kanban board tim, jadwal harian anggota langsung tertata rapi.
+                      <strong className="text-perrific-graphite">Fleksibel &amp; Terintegrasi:</strong> Tugas tim langsung masuk ke daftar yang siap ditarik (drag &amp; drop) ke linimasa kalender atau disinkronkan ke Google Calendar.
                     </span>
                   </p>
                 </div>

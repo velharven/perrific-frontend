@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+﻿import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 const TOAST_EVENT = 'purrific:toast';
@@ -78,7 +78,7 @@ export function ToastHost() {
         key={toast.key}
         className="flex max-w-md items-center gap-3 rounded-xl bg-perrific-graphite py-2.5 pl-4 pr-2.5 shadow-[0_8px_24px_rgba(26,26,30,0.3)]"
       >
-        <p className="min-w-0 flex-1 truncate font-givonic text-sm text-white" title={toast.message}>
+        <p className="min-w-0 flex-1 truncate font-manrope text-sm text-white" title={toast.message}>
           {toast.message}
         </p>
         {toast.action && (
@@ -88,7 +88,7 @@ export function ToastHost() {
               toast.action?.onAction();
               dismiss();
             }}
-            className="shrink-0 rounded-lg bg-white/15 px-3 py-1.5 font-givonic text-xs font-semibold text-white transition hover:bg-white/25"
+            className="shrink-0 rounded-lg bg-white/15 px-3 py-1.5 font-manrope text-xs font-semibold text-white transition hover:bg-white/25"
           >
             {toast.action.label}
           </button>

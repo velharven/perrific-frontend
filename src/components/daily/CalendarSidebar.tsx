@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import type { DailyActivity, AssignedTeamTask, Task } from '@/types';
 import { taskApi } from '@/api/tasks';
 import { projectApi } from '@/api/projects';
@@ -6,11 +7,26 @@ import { teamApi } from '@/api/teams';
 import { ActivityIcon } from '@/components/icons';
 import { useSocket } from '@/store/socket';
 import { useCalendarSync } from '@/store/calendarSync';
-import { AlertTriangle, Loader2, X } from 'lucide-react';
+import TimePickerInput from '@/components/ui/TimePickerInput';
+import { AlertTriangle, Loader2, X, CalendarPlus, Check } from 'lucide-react';
 
-interface CalendarSidebarProps {
+export interface ScheduleItemPayload {
+  source: 'item' | 'team-task' | 'personal-task';
+  id: string;
+  taskId?: string;
+  title: string;
+  targetDate: Date;
+  startTime?: string;
+  endTime?: string;
+  allDay?: boolean;
+}
+
+export interface CalendarSidebarProps {
   activities: DailyActivity[];
   onRefresh?: () => void;
+  onClose?: () => void;
+  onScheduleItem?: (payload: ScheduleItemPayload) => Promise<void> | void;
+  activeCalendarDate?: Date;
 }
 
 const TYPE_META: Record<DailyActivity['type'], { label: string; className: string }> = {
@@ -33,8 +49,18 @@ function formatShortDate(dateStr?: string | null): string {
   return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
 }
 
+function toISODateString(d: Date): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 export default function CalendarSidebar({
   activities,
+  onClose,
+  onScheduleItem,
+  activeCalendarDate,
 }: CalendarSidebarProps) {
   const { status: calendarStatus } = useCalendarSync();
   const [activeTab, setActiveTab] = useState<'item' | 'teamTask' | 'personalProject'>('item');
@@ -44,6 +70,75 @@ export default function CalendarSidebar({
   const [loadingPersonalTasks, setLoadingPersonalTasks] = useState(false);
   const [search, setSearch] = useState('');
   const hasLoadedRef = useRef(false);
+
+  // State untuk Modal Quick Schedule ke Kalender
+  interface SchedulingTarget {
+    source: 'item' | 'team-task' | 'personal-task';
+    id: string;
+    taskId?: string;
+    title: string;
+    type?: string;
+  }
+  const [schedulingTarget, setSchedulingTarget] = useState<SchedulingTarget | null>(null);
+  const [scheduleDateStr, setScheduleDateStr] = useState<string>('');
+  const [scheduleStartTime, setScheduleStartTime] = useState<string>('09:00');
+  const [scheduleEndTime, setScheduleEndTime] = useState<string>('10:00');
+  const [scheduleAllDay, setScheduleAllDay] = useState<boolean>(false);
+  const [submittingSchedule, setSubmittingSchedule] = useState<boolean>(false);
+
+  const openScheduleModal = (target: SchedulingTarget) => {
+    setSchedulingTarget(target);
+    const initialDate = activeCalendarDate ? activeCalendarDate : new Date();
+    setScheduleDateStr(toISODateString(initialDate));
+
+    // Waktu default: jam bulat terdekat berikutnya
+    const now = new Date();
+    const nextH = (now.getHours() + 1) % 24;
+    const startStr = `${String(nextH).padStart(2, '0')}:00`;
+    const endH = (nextH + 1) % 24;
+    const endStr = `${String(endH).padStart(2, '0')}:00`;
+    setScheduleStartTime(startStr);
+    setScheduleEndTime(endStr);
+    setScheduleAllDay(false);
+  };
+
+  const handleConfirmSchedule = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!schedulingTarget || !scheduleDateStr) return;
+    setSubmittingSchedule(true);
+    try {
+      const [y, m, d] = scheduleDateStr.split('-').map(Number);
+      const targetDate = new Date(y, m - 1, d, 12, 0, 0);
+
+      let startIso: string | undefined = undefined;
+      let endIso: string | undefined = undefined;
+      if (!scheduleAllDay) {
+        const [sh, sm] = (scheduleStartTime || '09:00').split(':').map(Number);
+        const [eh, em] = (scheduleEndTime || '10:00').split(':').map(Number);
+        startIso = new Date(y, m - 1, d, sh, sm, 0).toISOString();
+        endIso = new Date(y, m - 1, d, eh, em, 0).toISOString();
+      }
+
+      if (onScheduleItem) {
+        await onScheduleItem({
+          source: schedulingTarget.source,
+          id: schedulingTarget.id,
+          taskId: schedulingTarget.taskId,
+          title: schedulingTarget.title,
+          targetDate,
+          startTime: startIso,
+          endTime: endIso,
+          allDay: scheduleAllDay,
+        });
+      }
+      setSchedulingTarget(null);
+      onClose?.();
+    } catch (err) {
+      console.error('[CalendarSidebar] Gagal menjadwalkan kartu:', err);
+    } finally {
+      setSubmittingSchedule(false);
+    }
+  };
 
   // Muat tugas tim yang di-assign ke user (silent = true tidak mengganti tampilan menjadi spinner memuat)
   const fetchAssignedTasks = useCallback(async (silent = false) => {
@@ -226,6 +321,17 @@ export default function CalendarSidebar({
             <p className="text-[10px] text-gray-500">{totalUnscheduled} item tertunda</p>
           </div>
         </div>
+
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Tutup panel belum terjadwal"
+            className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-200/70 hover:text-gray-700 transition"
+          >
+            <X size={16} strokeWidth={1.8} />
+          </button>
+        )}
       </div>
 
       {/* Tab Navigasi: Item, Team Task, & Project Pribadi */}
@@ -342,7 +448,15 @@ export default function CalendarSidebar({
                       e.dataTransfer.setData('text/plain', jsonPayload);
                       e.dataTransfer.effectAllowed = 'copyMove';
                     }}
-                    className="group relative cursor-grab rounded-lg border border-amber-200/80 bg-amber-50/40 p-2.5 shadow-2xs transition hover:border-amber-300 hover:bg-amber-50 hover:shadow-xs active:cursor-grabbing"
+                    onClick={() => {
+                      openScheduleModal({
+                        source: 'item',
+                        id: a.id,
+                        title: a.title || 'Tanpa judul',
+                        type: a.type,
+                      });
+                    }}
+                    className="group relative cursor-pointer sm:cursor-grab rounded-lg border border-amber-200/80 bg-amber-50/40 p-2.5 shadow-2xs transition hover:border-amber-300 hover:bg-amber-50 hover:shadow-xs active:cursor-grabbing"
                   >
                     <div className="flex items-start gap-2">
                       <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center text-amber-500">
@@ -356,7 +470,7 @@ export default function CalendarSidebar({
                           </h3>
                         </div>
 
-                        <div className="mt-1.5 flex flex-wrap items-center gap-1 text-[10px]">
+                        <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10px]">
                           <span className={`rounded px-1.5 py-0.2 font-medium ${typeInfo.className}`}>
                             {typeInfo.label}
                           </span>
@@ -367,9 +481,23 @@ export default function CalendarSidebar({
                             </span>
                           )}
 
-                          <span className="text-[10px] text-amber-600 font-medium ml-auto">
-                            Seret ke kalender ⤳
-                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openScheduleModal({
+                                source: 'item',
+                                id: a.id,
+                                title: a.title || 'Tanpa judul',
+                                type: a.type,
+                              });
+                            }}
+                            className="inline-flex items-center gap-1 rounded-md bg-amber-200/70 hover:bg-amber-300 text-amber-900 px-2 py-0.5 text-[10px] font-semibold transition ml-auto cursor-pointer"
+                            title="Jadwalkan ke kalender"
+                          >
+                            <CalendarPlus size={11} className="shrink-0" />
+                            <span>Jadwalkan</span>
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -411,7 +539,16 @@ export default function CalendarSidebar({
                       e.dataTransfer.setData('text/plain', jsonPayload);
                       e.dataTransfer.effectAllowed = 'copyMove';
                     }}
-                    className="group relative cursor-grab rounded-lg border border-orange-200/80 bg-orange-50/30 p-2.5 shadow-2xs transition hover:border-orange-300 hover:bg-orange-50/70 hover:shadow-xs active:cursor-grabbing"
+                    onClick={() => {
+                      openScheduleModal({
+                        source: 'team-task',
+                        id: task.id,
+                        taskId: task.id,
+                        title: task.title,
+                        type: 'TASK',
+                      });
+                    }}
+                    className="group relative cursor-pointer sm:cursor-grab rounded-lg border border-orange-200/80 bg-orange-50/30 p-2.5 shadow-2xs transition hover:border-orange-300 hover:bg-orange-50/70 hover:shadow-xs active:cursor-grabbing"
                   >
                     <div className="flex items-start gap-2">
                       <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center text-orange-600">
@@ -432,7 +569,7 @@ export default function CalendarSidebar({
                           {task.title}
                         </h3>
 
-                        <div className="mt-1.5 flex flex-wrap items-center gap-1 text-[10px]">
+                        <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10px]">
                           <span className={`rounded border px-1.5 py-0.2 font-medium ${priorityInfo.className}`}>
                             {priorityInfo.label}
                           </span>
@@ -443,9 +580,24 @@ export default function CalendarSidebar({
                             </span>
                           )}
 
-                          <span className="text-[10px] text-orange-600 font-medium ml-auto">
-                            Seret ke kalender ⤳
-                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openScheduleModal({
+                                source: 'team-task',
+                                id: task.id,
+                                taskId: task.id,
+                                title: task.title,
+                                type: 'TASK',
+                              });
+                            }}
+                            className="inline-flex items-center gap-1 rounded-md bg-orange-100 hover:bg-orange-200 text-orange-800 px-2 py-0.5 text-[10px] font-semibold transition ml-auto cursor-pointer"
+                            title="Jadwalkan ke kalender"
+                          >
+                            <CalendarPlus size={11} className="shrink-0" />
+                            <span>Jadwalkan</span>
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -487,7 +639,16 @@ export default function CalendarSidebar({
                       e.dataTransfer.setData('text/plain', jsonPayload);
                       e.dataTransfer.effectAllowed = 'copyMove';
                     }}
-                    className="group relative cursor-grab rounded-lg border border-amber-200/80 bg-amber-50/30 p-2.5 shadow-2xs transition hover:border-amber-300 hover:bg-amber-50/70 hover:shadow-xs active:cursor-grabbing"
+                    onClick={() => {
+                      openScheduleModal({
+                        source: 'personal-task',
+                        id: task.id,
+                        taskId: task.id,
+                        title: task.title,
+                        type: 'CUSTOM',
+                      });
+                    }}
+                    className="group relative cursor-pointer sm:cursor-grab rounded-lg border border-amber-200/80 bg-amber-50/30 p-2.5 shadow-2xs transition hover:border-amber-300 hover:bg-amber-50/70 hover:shadow-xs active:cursor-grabbing"
                   >
                     <div className="flex items-start gap-2">
                       <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center text-amber-500" title="Belum diatur di kalender">
@@ -506,7 +667,7 @@ export default function CalendarSidebar({
                           {task.title}
                         </h3>
 
-                        <div className="mt-1.5 flex flex-wrap items-center gap-1 text-[10px]">
+                        <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10px]">
                           <span className={`rounded border px-1.5 py-0.2 font-medium ${priorityInfo.className}`}>
                             {priorityInfo.label}
                           </span>
@@ -517,9 +678,24 @@ export default function CalendarSidebar({
                             </span>
                           )}
 
-                          <span className="text-[10px] text-amber-600 font-medium ml-auto">
-                            Seret ke kalender ⤳
-                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openScheduleModal({
+                                source: 'personal-task',
+                                id: task.id,
+                                taskId: task.id,
+                                title: task.title,
+                                type: 'CUSTOM',
+                              });
+                            }}
+                            className="inline-flex items-center gap-1 rounded-md bg-amber-200/80 hover:bg-amber-300 text-amber-900 px-2 py-0.5 text-[10px] font-semibold transition ml-auto cursor-pointer"
+                            title="Jadwalkan ke kalender"
+                          >
+                            <CalendarPlus size={11} className="shrink-0" />
+                            <span>Jadwalkan</span>
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -530,6 +706,164 @@ export default function CalendarSidebar({
           </>
         )}
       </div>
+
+      {/* Modal Quick Schedule ke Kalender (Mobile & Desktop) */}
+      {schedulingTarget && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-[2px] animate-in fade-in duration-150">
+          <div
+            className="fixed inset-0"
+            onClick={() => !submittingSchedule && setSchedulingTarget(null)}
+            aria-hidden="true"
+          />
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="relative z-10 w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl border border-gray-100 animate-in zoom-in-95 duration-150 flex flex-col gap-4"
+          >
+            <div className="flex items-start justify-between gap-2 border-b border-gray-100 pb-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-perrific-violet">
+                  <CalendarPlus size={14} className="shrink-0" />
+                  <span>Jadwalkan ke Kalender</span>
+                </div>
+                <h3 className="mt-1 font-semibold text-sm text-gray-900 truncate" title={schedulingTarget.title}>
+                  {schedulingTarget.title}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSchedulingTarget(null)}
+                disabled={submittingSchedule}
+                className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmSchedule} className="flex flex-col gap-3.5">
+              {/* Tanggal */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                  Pilih Tanggal
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="date"
+                    required
+                    value={scheduleDateStr}
+                    onChange={(e) => setScheduleDateStr(e.target.value)}
+                    className="flex-1 rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2 text-xs text-gray-900 focus:border-perrific-violet focus:bg-white focus:outline-none transition cursor-pointer"
+                  />
+                </div>
+                {/* Quick Date Pills */}
+                <div className="mt-1.5 flex items-center gap-1.5">
+                  {(() => {
+                    const todayStr = toISODateString(new Date());
+                    const tomorrow = new Date();
+                    tomorrow.setDate(tomorrow.getDate() + 1);
+                    const tomorrowStr = toISODateString(tomorrow);
+
+                    return (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setScheduleDateStr(todayStr)}
+                          className={`rounded-lg px-2.5 py-1 text-[11px] font-medium border transition cursor-pointer ${
+                            scheduleDateStr === todayStr
+                              ? 'bg-blue-50 border-blue-200 text-blue-700 font-semibold'
+                              : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                          }`}
+                        >
+                          Hari Ini
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setScheduleDateStr(tomorrowStr)}
+                          className={`rounded-lg px-2.5 py-1 text-[11px] font-medium border transition cursor-pointer ${
+                            scheduleDateStr === tomorrowStr
+                              ? 'bg-blue-50 border-blue-200 text-blue-700 font-semibold'
+                              : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                          }`}
+                        >
+                          Besok
+                        </button>
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
+
+              {/* All-Day Toggle */}
+              <div className="flex items-center justify-between py-1 border-t border-gray-100 pt-3">
+                <span className="text-xs font-medium text-gray-700">Sepanjang Hari (All Day)</span>
+                <input
+                  type="checkbox"
+                  checked={scheduleAllDay}
+                  onChange={(e) => setScheduleAllDay(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-perrific-violet focus:ring-perrific-violet cursor-pointer"
+                />
+              </div>
+
+              {/* Waktu Mulai & Selesai (Jika bukan All Day) */}
+              {!scheduleAllDay && (
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="block text-[11px] font-medium text-gray-500 mb-1">
+                      Jam Mulai
+                    </label>
+                    <TimePickerInput
+                      value={scheduleStartTime}
+                      onChange={(val) => setScheduleStartTime(val)}
+                      className="w-full"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium text-gray-500 mb-1">
+                      Jam Selesai
+                    </label>
+                    <TimePickerInput
+                      value={scheduleEndTime}
+                      onChange={(val) => setScheduleEndTime(val)}
+                      referenceStartTime={scheduleStartTime}
+                      className="w-full"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="mt-2 flex items-center justify-end gap-2 border-t border-gray-100 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setSchedulingTarget(null)}
+                  disabled={submittingSchedule}
+                  className="rounded-xl border border-gray-200 px-3.5 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingSchedule || !scheduleDateStr}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-perrific-violet hover:bg-[#E64D0A] px-4 py-2 text-xs font-semibold text-white shadow-xs transition disabled:opacity-50 cursor-pointer"
+                >
+                  {submittingSchedule ? (
+                    <>
+                      <Loader2 size={13} className="animate-spin" />
+                      <span>Menjadwalkan…</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check size={14} />
+                      <span>Simpan ke Kalender</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
     </aside>
   );
 }

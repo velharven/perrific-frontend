@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/store/auth';
 import { getToken } from '@/lib/api';
@@ -32,14 +32,14 @@ export default function ProtectedRoute() {
     if (getToken() && bootFailed) {
       return (
         <div className="flex h-screen flex-col items-center justify-center gap-3 bg-perrific-paper px-4 text-center">
-          <p className="font-givonic text-base font-bold text-perrific-graphite">Koneksi ke server terputus</p>
-          <p className="max-w-xs font-givonic text-sm text-gray-500">
+          <p className="font-manrope text-base font-bold text-perrific-graphite">Koneksi ke server terputus</p>
+          <p className="max-w-xs font-manrope text-sm text-gray-500">
             Sesi kamu masih tersimpan. Menyambungkan ulang otomatis…
           </p>
           <button
             type="button"
             onClick={() => void retry()}
-            className="rounded-full bg-perrific-graphite px-5 py-2 font-givonic text-xs font-semibold text-white transition hover:brightness-110"
+            className="rounded-full bg-perrific-graphite px-5 py-2 font-manrope text-xs font-semibold text-white transition hover:brightness-110"
           >
             Coba lagi sekarang
           </button>

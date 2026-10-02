@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+﻿import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import {
   DndContext,
   KeyboardSensor,
@@ -233,7 +233,7 @@ export default function BoardColumnEditor({
     }
   }
 
-  if (loading) return <p className="font-givonic text-sm text-gray-500">Memuat kolom…</p>;
+  if (loading) return <p className="font-manrope text-sm text-gray-500">Memuat kolom…</p>;
 
   return (
     <div className="space-y-5">
@@ -271,7 +271,7 @@ export default function BoardColumnEditor({
                     }}
                     maxLength={30}
                     aria-label="Nama kolom"
-                    className="w-full rounded-md border border-perrific-violet/40 px-2 py-1 font-givonic text-sm focus:outline-none"
+                    className="w-full rounded-md border border-perrific-violet/40 px-2 py-1 font-manrope text-sm focus:outline-none"
                   />
                 ) : (
                   <button
@@ -281,13 +281,13 @@ export default function BoardColumnEditor({
                       setEditDraft(c.name);
                     }}
                     title="Ubah nama"
-                    className="block w-full truncate text-left font-givonic text-sm font-semibold text-perrific-graphite hover:underline"
+                    className="block w-full truncate text-left font-manrope text-sm font-semibold text-perrific-graphite hover:underline"
                   >
                     {c.name}
                   </button>
                 )}
                 </div>
-                <p className="font-givonic text-xs text-gray-400">{counts[c.id] ?? 0} task</p>
+                <p className="font-manrope text-xs text-gray-400">{counts[c.id] ?? 0} task</p>
               </div>
               <button
                 type="button"
@@ -295,7 +295,7 @@ export default function BoardColumnEditor({
                 onClick={() => askDelete(c)}
                 aria-label={`Hapus kolom ${c.name}`}
                 title={columns.length <= 1 ? 'Minimal 1 kolom' : `Hapus kolom ${c.name}`}
-                className="shrink-0 rounded-lg px-2 py-1 font-givonic text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-30"
+                className="shrink-0 rounded-lg px-2 py-1 font-manrope text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-30"
               >
                 Hapus
               </button>
@@ -310,12 +310,12 @@ export default function BoardColumnEditor({
             onChange={(e) => setNewName(e.target.value)}
             placeholder="Nama kolom baru"
             maxLength={30}
-            className="min-w-0 flex-1 rounded-[10px] border border-perrific-line bg-white px-3 py-2.5 font-givonic text-sm text-perrific-graphite placeholder:text-perrific-graphite/40 focus:border-perrific-violet focus:outline-none focus:ring-2 focus:ring-perrific-violet/20"
+            className="min-w-0 flex-1 rounded-[10px] border border-perrific-line bg-white px-3 py-2.5 font-manrope text-sm text-perrific-graphite placeholder:text-perrific-graphite/40 focus:border-perrific-violet focus:outline-none focus:ring-2 focus:ring-perrific-violet/20"
           />
           <button
             type="submit"
             disabled={creating || !newName.trim()}
-            className="shrink-0 rounded-full bg-perrific-violet px-5 py-2.5 font-givonic text-sm font-semibold text-white transition hover:bg-[#E64D0A] disabled:opacity-50"
+            className="shrink-0 rounded-full bg-perrific-violet px-5 py-2.5 font-manrope text-sm font-semibold text-white transition hover:bg-[#E64D0A] disabled:opacity-50"
           >
             {creating ? 'Menambah…' : 'Tambah'}
           </button>
@@ -333,18 +333,18 @@ export default function BoardColumnEditor({
       {moveTarget && (
         <ModalShell label="Pindahkan isi kolom" onClose={() => !busy && setMoveTarget(null)}>
           <div className="p-6">
-            <h2 className="font-givonic text-base font-extrabold text-perrific-graphite">Kolom berisi task</h2>
-            <p className="mt-1 font-givonic text-sm leading-relaxed text-perrific-graphite/60">
+            <h2 className="font-manrope text-base font-extrabold text-perrific-graphite">Kolom berisi task</h2>
+            <p className="mt-1 font-manrope text-sm leading-relaxed text-perrific-graphite/60">
               “{moveTarget.name}” berisi {counts[moveTarget.id] ?? 0} task. Pilih kolom tujuan sebelum menghapus.
             </p>
-            <label htmlFor="move-target" className="mt-4 block font-givonic text-xs font-semibold text-perrific-graphite">
+            <label htmlFor="move-target" className="mt-4 block font-manrope text-xs font-semibold text-perrific-graphite">
               Pindahkan ke
             </label>
             <select
               id="move-target"
               value={targetId}
               onChange={(e) => setTargetId(e.target.value)}
-              className="mt-1.5 w-full rounded-[10px] border border-perrific-line bg-white px-3 py-2.5 font-givonic text-sm focus:border-perrific-violet focus:outline-none"
+              className="mt-1.5 w-full rounded-[10px] border border-perrific-line bg-white px-3 py-2.5 font-manrope text-sm focus:border-perrific-violet focus:outline-none"
             >
               {columns
                 .filter((c) => c.id !== moveTarget.id)
@@ -359,7 +359,7 @@ export default function BoardColumnEditor({
                 type="button"
                 onClick={() => setMoveTarget(null)}
                 disabled={busy}
-                className="rounded-full px-4 py-2 font-givonic text-sm font-semibold text-gray-600 transition hover:bg-gray-100 disabled:opacity-50"
+                className="rounded-full px-4 py-2 font-manrope text-sm font-semibold text-gray-600 transition hover:bg-gray-100 disabled:opacity-50"
               >
                 Batal
               </button>
@@ -367,7 +367,7 @@ export default function BoardColumnEditor({
                 type="button"
                 onClick={() => void confirmDeleteMove()}
                 disabled={busy || !targetId}
-                className="rounded-full bg-red-600 px-4 py-2 font-givonic text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-50"
+                className="rounded-full bg-red-600 px-4 py-2 font-manrope text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-50"
               >
                 {busy ? 'Memindahkan…' : 'Pindahkan & hapus'}
               </button>

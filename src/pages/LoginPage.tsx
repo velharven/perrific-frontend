@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Link, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '@/store/auth';
 import { useNextPath } from '@/lib/next';
@@ -40,16 +40,16 @@ export default function LoginPage() {
           <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white">
             <img src="/Purrific.svg" alt="Purrific" width="22" height="22" className="h-[22px] w-[22px]" />
           </span>
-          <span className="font-gendy text-[18px] font-extrabold tracking-[-0.02em]">Purrific</span>
+          <span className="font-space-grotesk text-[18px] font-extrabold tracking-[-0.02em]">Purrific</span>
         </Link>
 
         <div>
-          <h2 className="max-w-[14ch] font-givonic text-[32px] font-extrabold leading-[0.95] tracking-[-0.02em]">
+          <h2 className="max-w-[14ch] font-manrope text-[32px] font-extrabold leading-[0.95] tracking-[-0.02em]">
             Board tim yang langsung jadi harimu.
           </h2>
           <ul className="mt-6 space-y-3">
             {['Kanban ringan untuk tim 3–6 orang', 'Otomatis jadi time-block di Harian', 'Tanpa setup 2 jam — langsung pakai'].map((t) => (
-              <li key={t} className="flex gap-2.5 font-givonic text-sm leading-snug text-white/85">
+              <li key={t} className="flex gap-2.5 font-manrope text-sm leading-snug text-white/85">
                 <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white text-perrific-violet">
                   <Check size={10} strokeWidth={2.5} />
                 </span>
@@ -67,24 +67,24 @@ export default function LoginPage() {
         <div className="w-full max-w-[400px]">
           <Link to="/" className="mb-6 flex items-center justify-center gap-2 lg:hidden">
             <img src="/Purrific.svg" alt="Purrific" width="28" height="28" className="h-7 w-7" />
-            <span className="font-gendy text-[17px] font-extrabold tracking-[-0.03em] text-perrific-graphite">Purrific</span>
+            <span className="font-space-grotesk text-[17px] font-extrabold tracking-[-0.03em] text-perrific-graphite">Purrific</span>
           </Link>
 
           <div className="rounded-[16px] border border-perrific-line bg-white p-6 shadow-[0_4px_20px_rgba(26,26,30,0.08),0_1px_2px_rgba(26,26,30,0.06)] sm:p-7">
             <div className="mb-6">
-              <h1 className="font-givonic text-[22px] font-extrabold tracking-[-0.02em] text-perrific-graphite">Masuk</h1>
-              <p className="mt-1 font-givonic text-sm leading-relaxed text-perrific-graphite/60">Lanjutkan ke board & Harian-mu.</p>
+              <h1 className="font-manrope text-[22px] font-extrabold tracking-[-0.02em] text-perrific-graphite">Masuk</h1>
+              <p className="mt-1 font-manrope text-sm leading-relaxed text-perrific-graphite/60">Lanjutkan ke board & Harian-mu.</p>
             </div>
 
             {error && (
               <div role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5">
-                <p className="font-givonic text-sm leading-snug text-red-700">{error}</p>
+                <p className="font-manrope text-sm leading-snug text-red-700">{error}</p>
               </div>
             )}
 
             <form onSubmit={handleSubmit} noValidate className="space-y-4">
               <div>
-                <label htmlFor="identifier" className="mb-1.5 block font-givonic text-xs font-medium text-perrific-graphite">
+                <label htmlFor="identifier" className="mb-1.5 block font-manrope text-xs font-medium text-perrific-graphite">
                   Email / Username
                 </label>
                 <input
@@ -99,12 +99,12 @@ export default function LoginPage() {
                   placeholder="kamu@example.com / namapengguna"
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
-                  className="w-full rounded-[10px] border border-perrific-line bg-white px-3 py-2.5 font-givonic text-sm text-perrific-graphite placeholder:text-perrific-graphite/40 focus:border-perrific-violet focus:outline-none focus:ring-2 focus:ring-perrific-violet/20"
+                  className="w-full rounded-[10px] border border-perrific-line bg-white px-3 py-2.5 font-manrope text-sm text-perrific-graphite placeholder:text-perrific-graphite/40 focus:border-perrific-violet focus:outline-none focus:ring-2 focus:ring-perrific-violet/20"
                 />
               </div>
 
               <div>
-                <label htmlFor="password" className="mb-1.5 block font-givonic text-xs font-medium text-perrific-graphite">
+                <label htmlFor="password" className="mb-1.5 block font-manrope text-xs font-medium text-perrific-graphite">
                   Password
                 </label>
                 <div className="relative">
@@ -117,7 +117,7 @@ export default function LoginPage() {
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full rounded-[10px] border border-perrific-line bg-white px-3 py-2.5 pr-10 font-givonic text-sm text-perrific-graphite placeholder:text-perrific-graphite/40 focus:border-perrific-violet focus:outline-none focus:ring-2 focus:ring-perrific-violet/20"
+                    className="w-full rounded-[10px] border border-perrific-line bg-white px-3 py-2.5 pr-10 font-manrope text-sm text-perrific-graphite placeholder:text-perrific-graphite/40 focus:border-perrific-violet focus:outline-none focus:ring-2 focus:ring-perrific-violet/20"
                   />
                   <button
                     type="button"
@@ -137,7 +137,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-perrific-violet px-6 py-3 font-givonic text-sm font-semibold text-white hover:bg-[#E64D0A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-perrific-violet focus-visible:ring-offset-2 focus-visible:ring-offset-white active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed transition"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-perrific-violet px-6 py-3 font-manrope text-sm font-semibold text-white hover:bg-[#E64D0A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-perrific-violet focus-visible:ring-offset-2 focus-visible:ring-offset-white active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed transition"
               >
                 {submitting ? 'Memuat…' : 'Masuk'}
                 {!submitting && (
@@ -157,7 +157,7 @@ export default function LoginPage() {
               </>
             )}
 
-            <p className="mt-5 text-center font-givonic text-sm text-perrific-graphite/60">
+            <p className="mt-5 text-center font-manrope text-sm text-perrific-graphite/60">
               Belum punya akun?{' '}
               <Link to="/register" className="font-semibold text-perrific-violet hover:underline">
                 Daftar

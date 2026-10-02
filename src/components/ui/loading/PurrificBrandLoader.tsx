@@ -1,4 +1,4 @@
-import { Loader2 } from 'lucide-react';
+﻿import { Loader2 } from 'lucide-react';
 
 export interface PurrificBrandLoaderProps {
   message?: string;
@@ -34,7 +34,7 @@ export default function PurrificBrandLoader({
 
       <div className="mt-5 flex items-center gap-2">
         <Loader2 className="h-4 w-4 animate-spin text-primary" aria-hidden="true" />
-        <p className="font-givonic text-sm font-medium tracking-wide text-perrific-graphite/80">
+        <p className="font-manrope text-sm font-medium tracking-wide text-perrific-graphite/80">
           {message}
         </p>
       </div>

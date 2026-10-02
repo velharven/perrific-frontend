@@ -26,10 +26,10 @@ export default function HowItWorks() {
     {
       num: 3,
       tag: '03',
-      tabLabel: '03. Otomatis Masuk Jadwal Harian',
-      title: 'Otomatis Masuk ke Jadwal Harian',
-      desc: 'Tugas yang didelegasikan otomatis tertata sebagai time-block di menu Harian anggota dan tersinkronisasi dua arah dengan Google Calendar.',
-      badge: 'Sinkronisasi Google Calendar 2-arah real-time',
+      tabLabel: '03. Jadwalkan ke Kalender Harian',
+      title: 'Jadwalkan ke Kalender Harian',
+      desc: 'Tugas yang didelegasikan langsung tersedia di sidebar dan siap diatur ke linimasa kalender (drag & drop time-blocking) serta tersinkronisasi dua arah dengan Google Calendar.',
+      badge: 'Time-blocking kalender & sinkronisasi Google Calendar 2-arah',
       path: 'purrific.app / workspace / kalender-harian',
     },
   ];
@@ -44,11 +44,11 @@ export default function HowItWorks() {
           <span className="font-mono text-xs font-bold tracking-widest text-perrific-violet uppercase">
             Cara Kerja
           </span>
-          <h2 className="mt-2 font-givonic text-2xl sm:text-3xl lg:text-[36px] font-extrabold leading-[1.15] tracking-[-0.03em] text-perrific-graphite">
+          <h2 className="mt-2 font-manrope text-2xl sm:text-3xl lg:text-[36px] font-extrabold leading-[1.15] tracking-[-0.03em] text-perrific-graphite">
             Hanya Dalam 3 Langkah Sederhana
           </h2>
-          <p className="mt-3 font-givonic text-sm sm:text-base text-perrific-graphite/70 leading-relaxed">
-            Hubungkan pembentukan tim, penugasan di board, hingga jadwal harian anggota tanpa perlu atur ulang manual.
+          <p className="mt-3 font-manrope text-sm sm:text-base text-perrific-graphite/70 leading-relaxed">
+            Hubungkan pembentukan tim, penugasan di board, hingga penjadwalan kalender harian anggota secara visual dan fleksibel.
           </p>
 
           {/* Horizontal Step Tabs Switcher (Valley SaaS Style) */}
@@ -58,7 +58,7 @@ export default function HowItWorks() {
                 key={s.num}
                 type="button"
                 onClick={() => setActiveStep(s.num)}
-                className={`flex items-center gap-2 rounded-xl px-4 py-2 font-givonic text-xs font-bold transition-all duration-200 ${
+                className={`flex items-center gap-2 rounded-xl px-4 py-2 font-manrope text-xs font-bold transition-all duration-200 ${
                   activeStep === s.num
                     ? 'bg-white text-perrific-graphite shadow-xs border border-gray-200/80 scale-[1.01]'
                     : 'text-perrific-graphite/60 hover:text-perrific-graphite hover:bg-white/60'
@@ -79,7 +79,7 @@ export default function HowItWorks() {
           </div>
 
           {/* Current Step Narrative Highlight */}
-          <div className="mt-4 flex flex-col sm:flex-row items-center justify-center gap-2 text-xs font-givonic text-perrific-graphite/70">
+          <div className="mt-4 flex flex-col sm:flex-row items-center justify-center gap-2 text-xs font-manrope text-perrific-graphite/70">
             <span className="font-semibold text-perrific-graphite">{currentStep.title}:</span>
             <span>{currentStep.desc}</span>
           </div>
@@ -121,7 +121,7 @@ export default function HowItWorks() {
                       <div className="flex h-6 w-6 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-500 shadow-2xs">
                         <PanelLeft size={13} strokeWidth={1.5} aria-hidden="true" />
                       </div>
-                      <span className="font-givonic text-xs font-bold text-perrific-graphite">
+                      <span className="font-manrope text-xs font-bold text-perrific-graphite">
                         Purrific Workspace
                       </span>
                     </div>
@@ -141,7 +141,7 @@ export default function HowItWorks() {
                     <div className="space-y-0.5">
                       {/* Harian is active in Step 3 */}
                       <div
-                        className={`flex items-center justify-between rounded-lg px-2.5 py-1.5 font-givonic text-xs transition-colors ${
+                        className={`flex items-center justify-between rounded-lg px-2.5 py-1.5 font-manrope text-xs transition-colors ${
                           activeStep === 3
                             ? 'bg-white font-bold text-perrific-graphite border border-gray-200/80 shadow-2xs'
                             : 'font-medium text-gray-600 hover:bg-gray-100'
@@ -155,7 +155,7 @@ export default function HowItWorks() {
                           <span className="h-1.5 w-1.5 rounded-full bg-perrific-violet" />
                         )}
                       </div>
-                      <div className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 font-givonic text-xs font-medium text-gray-600 hover:bg-gray-100">
+                      <div className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 font-manrope text-xs font-medium text-gray-600 hover:bg-gray-100">
                         <FileText size={13} strokeWidth={1.5} aria-hidden="true" className="shrink-0 text-gray-400" />
                         <span>Catatan Sprint</span>
                       </div>
@@ -174,7 +174,7 @@ export default function HowItWorks() {
                     <div className="space-y-0.5">
                       {/* Team Header - Highlighted in Step 1 */}
                       <div
-                        className={`flex items-center justify-between rounded-lg px-2.5 py-1.5 font-givonic text-xs transition-colors ${
+                        className={`flex items-center justify-between rounded-lg px-2.5 py-1.5 font-manrope text-xs transition-colors ${
                           activeStep === 1
                             ? 'bg-white font-bold text-perrific-graphite border border-gray-200/80 shadow-2xs'
                             : 'font-bold text-perrific-graphite bg-gray-100/90'
@@ -195,7 +195,7 @@ export default function HowItWorks() {
 
                       {/* Sub-item: Board Kanban - Highlighted in Step 2 */}
                       <div
-                        className={`ml-4 flex items-center justify-between rounded-lg px-2.5 py-1.5 font-givonic text-xs transition-colors ${
+                        className={`ml-4 flex items-center justify-between rounded-lg px-2.5 py-1.5 font-manrope text-xs transition-colors ${
                           activeStep === 2
                             ? 'bg-white font-bold text-perrific-graphite border border-gray-200/80 shadow-2xs'
                             : 'font-medium text-gray-600 hover:bg-gray-100'
@@ -212,7 +212,7 @@ export default function HowItWorks() {
                         </span>
                       </div>
 
-                      <div className="ml-4 flex items-center gap-1.5 rounded-lg px-2.5 py-1 font-givonic text-[11px] text-gray-500">
+                      <div className="ml-4 flex items-center gap-1.5 rounded-lg px-2.5 py-1 font-manrope text-[11px] text-gray-500">
                         <Users size={12} strokeWidth={1.4} aria-hidden="true" className="shrink-0 text-gray-400" />
                         <span>4 Anggota</span>
                       </div>
@@ -227,7 +227,7 @@ export default function HowItWorks() {
                       VH
                     </div>
                     <div className="min-w-0">
-                      <p className="truncate font-givonic text-xs font-bold text-perrific-graphite leading-tight">
+                      <p className="truncate font-manrope text-xs font-bold text-perrific-graphite leading-tight">
                         VelHarven
                       </p>
                       <p className="flex items-center gap-1 text-[10px] text-emerald-600 font-medium leading-none">
@@ -249,7 +249,7 @@ export default function HowItWorks() {
                         <span className="font-mono text-[10px] font-bold text-perrific-wood uppercase tracking-wider">
                           LANGKAH 01 · SETUP TIM
                         </span>
-                        <h3 className="mt-0.5 font-givonic text-lg font-bold text-perrific-graphite">
+                        <h3 className="mt-0.5 font-manrope text-lg font-bold text-perrific-graphite">
                           Ruang Kerja: Tim Produk &amp; Engineering
                         </h3>
                       </div>
@@ -269,11 +269,11 @@ export default function HowItWorks() {
                           <span className="font-mono text-xl font-extrabold tracking-wider text-perrific-graphite bg-white px-3.5 py-1.5 rounded-lg border border-gray-200 shadow-2xs">
                             PURR-2026
                           </span>
-                          <span className="rounded-md bg-perrific-violet/10 text-perrific-violet px-2.5 py-1.5 font-givonic text-xs font-bold">
+                          <span className="rounded-md bg-perrific-violet/10 text-perrific-violet px-2.5 py-1.5 font-manrope text-xs font-bold">
                             Aktif
                           </span>
                         </div>
-                        <p className="mt-2 text-[11px] text-perrific-graphite/60 font-givonic">
+                        <p className="mt-2 text-[11px] text-perrific-graphite/60 font-manrope">
                           Bagikan kode ini ke rekan kerjamu untuk langsung bergabung tanpa menunggu konfirmasi manual.
                         </p>
                       </div>
@@ -289,7 +289,7 @@ export default function HowItWorks() {
                             { name: 'Sarah Amanda', role: 'Frontend Engineer', avatar: 'SA' },
                             { name: 'Budi Santoso', role: 'Backend Engineer', avatar: 'BS' },
                           ].map((m, idx) => (
-                            <div key={idx} className="flex items-center justify-between text-xs font-givonic">
+                            <div key={idx} className="flex items-center justify-between text-xs font-manrope">
                               <div className="flex items-center gap-2">
                                 <span className="flex h-5 w-5 items-center justify-center rounded-full bg-perrific-violet text-[9px] font-bold text-white">
                                   {m.avatar}
@@ -313,13 +313,13 @@ export default function HowItWorks() {
                         <span className="font-mono text-[10px] font-bold text-perrific-wood uppercase tracking-wider">
                           LANGKAH 02 · KANBAN BOARD
                         </span>
-                        <h3 className="mt-0.5 font-givonic text-lg font-bold text-perrific-graphite">
+                        <h3 className="mt-0.5 font-manrope text-lg font-bold text-perrific-graphite">
                           Board Kolaborasi: Sprint Peluncuran
                         </h3>
                       </div>
                       <span className="inline-flex items-center gap-1.5 font-mono text-xs font-semibold text-perrific-violet">
                         <Zap size={12} className="shrink-0" />
-                        Auto-Sync ke Kalender
+                        Terhubung ke Kalender
                       </span>
                     </div>
 
@@ -327,7 +327,7 @@ export default function HowItWorks() {
                       {/* Doing Column with Highlight Task */}
                       <div className="rounded-xl bg-gray-50/70 p-3 border border-gray-200 space-y-2.5">
                         <div className="flex items-center justify-between">
-                          <span className="font-givonic text-xs font-bold text-perrific-graphite flex items-center gap-1.5">
+                          <span className="font-manrope text-xs font-bold text-perrific-graphite flex items-center gap-1.5">
                             <span className="h-2 w-2 rounded-full bg-amber-400" />
                             Sedang Dikerjakan
                           </span>
@@ -346,13 +346,13 @@ export default function HowItWorks() {
                               Hari Ini, 15:00
                             </span>
                           </div>
-                          <h4 className="mt-2 font-givonic text-xs font-bold text-perrific-graphite leading-snug">
+                          <h4 className="mt-2 font-manrope text-xs font-bold text-perrific-graphite leading-snug">
                             Integrasi Google Calendar &amp; Real-time Socket
                           </h4>
-                          <div className="mt-2.5 flex items-center justify-between pt-2 border-t border-gray-100 text-[10px] text-gray-500 font-givonic">
+                          <div className="mt-2.5 flex items-center justify-between pt-2 border-t border-gray-100 text-[10px] text-gray-500 font-manrope">
                             <span>PJ: VelHarven</span>
-                            <span className="inline-flex items-center gap-1 text-emerald-600 font-semibold">
-                              <span>Tersinkronisasi</span>
+                            <span className="inline-flex items-center gap-1 text-perrific-violet font-semibold">
+                              <span>Siap Dijadwalkan</span>
                               <Zap size={11} className="shrink-0" />
                             </span>
                           </div>
@@ -362,7 +362,7 @@ export default function HowItWorks() {
                       {/* Done Column */}
                       <div className="rounded-xl bg-gray-50/70 p-3 border border-gray-200 space-y-2.5">
                         <div className="flex items-center justify-between">
-                          <span className="font-givonic text-xs font-bold text-perrific-graphite flex items-center gap-1.5">
+                          <span className="font-manrope text-xs font-bold text-perrific-graphite flex items-center gap-1.5">
                             <span className="h-2 w-2 rounded-full bg-emerald-500" />
                             Selesai
                           </span>
@@ -375,7 +375,7 @@ export default function HowItWorks() {
                           <span className="rounded bg-slate-100 text-slate-700 px-1.5 py-0.2 text-[9px] font-semibold">
                             Backend
                           </span>
-                          <p className="font-givonic text-xs font-medium text-perrific-graphite line-through opacity-70">
+                          <p className="font-manrope text-xs font-medium text-perrific-graphite line-through opacity-70">
                             Inisialisasi Skema Database Prisma
                           </p>
                         </div>
@@ -384,7 +384,7 @@ export default function HowItWorks() {
                           <span className="rounded bg-slate-100 text-slate-700 px-1.5 py-0.2 text-[9px] font-semibold">
                             Desain
                           </span>
-                          <p className="font-givonic text-xs font-medium text-perrific-graphite line-through opacity-70">
+                          <p className="font-manrope text-xs font-medium text-perrific-graphite line-through opacity-70">
                             Penyelarasan Warna &amp; Typography
                           </p>
                         </div>
@@ -393,15 +393,15 @@ export default function HowItWorks() {
                   </div>
                 )}
 
-                {/* VIEW FOR STEP 3: Otomatis Masuk Jadwal Harian */}
+                {/* VIEW FOR STEP 3: Jadwalkan ke Kalender Harian */}
                 {activeStep === 3 && (
                   <div className="space-y-4">
                     <div className="flex items-center justify-between pb-3 border-b border-gray-100">
                       <div>
                         <span className="font-mono text-[10px] font-bold text-perrific-wood uppercase tracking-wider">
-                          LANGKAH 03 · JADWAL HARIAN SAYA
+                          LANGKAH 03 · KALENDER HARIAN SAYA
                         </span>
-                        <h3 className="mt-0.5 font-givonic text-lg font-bold text-perrific-graphite">
+                        <h3 className="mt-0.5 font-manrope text-lg font-bold text-perrific-graphite">
                           Agenda Harian: 28 September
                         </h3>
                       </div>
@@ -416,7 +416,7 @@ export default function HowItWorks() {
                       <div className="flex items-start gap-3 rounded-xl border border-gray-200 bg-gray-50/50 p-2.5 text-xs">
                         <span className="font-mono text-xs font-bold text-gray-400 pt-0.5">09:00</span>
                         <div className="flex-1">
-                          <p className="font-givonic font-semibold text-perrific-graphite">
+                          <p className="font-manrope font-semibold text-perrific-graphite">
                             Daily Standup Team
                           </p>
                           <span className="text-[10px] text-blue-600">Google Meet</span>
@@ -428,15 +428,15 @@ export default function HowItWorks() {
                         <span className="font-mono text-xs font-extrabold text-perrific-violet pt-0.5">10:00 - 12:00</span>
                         <div className="flex-1">
                           <div className="flex items-center justify-between">
-                            <h4 className="font-givonic text-xs font-bold text-perrific-graphite">
+                            <h4 className="font-manrope text-xs font-bold text-perrific-graphite">
                               Integrasi Google Calendar &amp; Real-time Socket
                             </h4>
                             <span className="rounded bg-perrific-violet/10 text-perrific-violet text-[9px] font-bold px-2 py-0.5">
                               Dari Board Tim
                             </span>
                           </div>
-                          <p className="mt-1 text-[11px] text-perrific-graphite/60 font-givonic">
-                            Slot Waktu Fokus · Otomatis terjadwal dari penugasan board sprint
+                          <p className="mt-1 text-[11px] text-perrific-graphite/60 font-manrope">
+                            Slot Waktu Fokus · Dijadwalkan langsung dari drawer tugas tim
                           </p>
                         </div>
                       </div>
@@ -445,7 +445,7 @@ export default function HowItWorks() {
                       <div className="flex items-start gap-3 rounded-xl border border-gray-200 bg-gray-50/50 p-2.5 text-xs">
                         <span className="font-mono text-xs font-bold text-gray-400 pt-0.5">13:30</span>
                         <div className="flex-1">
-                          <p className="font-givonic font-semibold text-perrific-graphite">
+                          <p className="font-manrope font-semibold text-perrific-graphite">
                             Deep Focus: Review PR &amp; Deploy
                           </p>
                           <span className="text-[10px] text-amber-700">1.5 Jam</span>
@@ -457,7 +457,7 @@ export default function HowItWorks() {
 
                 {/* Bottom Callout in Preview */}
                 <div className="mt-4 rounded-xl bg-gray-50 p-2.5 border border-gray-200 text-center">
-                  <p className="flex items-center justify-center gap-1.5 font-givonic text-xs text-perrific-graphite/70">
+                  <p className="flex items-center justify-center gap-1.5 font-manrope text-xs text-perrific-graphite/70">
                     <Lightbulb size={14} strokeWidth={1.5} aria-hidden="true" className="shrink-0 text-amber-500" />
                     <span>
                       <strong className="text-perrific-graphite">Hasil:</strong> {currentStep.badge}

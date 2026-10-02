@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+﻿import { useCallback, useEffect, useState } from 'react';
 import { teamApi } from '@/api/teams';
 import { taskApi } from '@/api/tasks';
 import { SettingsBlock } from '@/components/ui/SettingsShell';
@@ -88,7 +88,7 @@ export default function ApprovalLists({
     }
   }
 
-  if (loading) return <p className="font-givonic text-sm text-gray-500">Memuat persetujuan…</p>;
+  if (loading) return <p className="font-manrope text-sm text-gray-500">Memuat persetujuan…</p>;
 
   const showTask = !activeTab || activeTab === 'task';
   const showAnggota = !activeTab || activeTab === 'anggota';
@@ -101,14 +101,14 @@ export default function ApprovalLists({
         desc={`${visibleTasks.length} usulan task`}
       >
         {visibleTasks.length === 0 ? (
-          <p className="font-givonic text-sm text-gray-500">Tidak ada usulan task.</p>
+          <p className="font-manrope text-sm text-gray-500">Tidak ada usulan task.</p>
         ) : (
           <ul className="divide-y divide-gray-100 overflow-hidden rounded-[10px] border border-perrific-line">
             {visibleTasks.map((t) => (
               <li key={t.id} className="flex items-center gap-3 px-3 py-2.5">
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-givonic text-sm font-semibold text-perrific-graphite">{t.title}</p>
-                  <p className="truncate font-givonic text-xs text-gray-500">
+                  <p className="truncate font-manrope text-sm font-semibold text-perrific-graphite">{t.title}</p>
+                  <p className="truncate font-manrope text-xs text-gray-500">
                     {t.project.name} · oleh {t.createdBy?.name ?? 'anggota'}
                   </p>
                 </div>
@@ -116,7 +116,7 @@ export default function ApprovalLists({
                   type="button"
                   disabled={busy === t.id}
                   onClick={() => void decideTask(t, false)}
-                  className="shrink-0 rounded-full px-3 py-1.5 font-givonic text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+                  className="shrink-0 rounded-full px-3 py-1.5 font-manrope text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-50"
                 >
                   Tolak
                 </button>
@@ -124,7 +124,7 @@ export default function ApprovalLists({
                   type="button"
                   disabled={busy === t.id}
                   onClick={() => void decideTask(t, true)}
-                  className="shrink-0 rounded-full bg-perrific-graphite px-3 py-1.5 font-givonic text-xs font-semibold text-white transition hover:brightness-110 disabled:opacity-50"
+                  className="shrink-0 rounded-full bg-perrific-graphite px-3 py-1.5 font-manrope text-xs font-semibold text-white transition hover:brightness-110 disabled:opacity-50"
                 >
                   Setujui
                 </button>
@@ -137,21 +137,21 @@ export default function ApprovalLists({
       {showAnggota && (
       <SettingsBlock title="Anggota menunggu" desc={`${requests.length} permintaan bergabung ke tim`}>
         {requests.length === 0 ? (
-          <p className="font-givonic text-sm text-gray-500">Tidak ada permintaan bergabung.</p>
+          <p className="font-manrope text-sm text-gray-500">Tidak ada permintaan bergabung.</p>
         ) : (
           <ul className="divide-y divide-gray-100 overflow-hidden rounded-[10px] border border-perrific-line">
             {requests.map((r) => (
               <li key={r.id} className="flex items-center gap-3 px-3 py-2.5">
                 <Avatar src={r.user?.avatarUrl ?? undefined} name={r.user?.name ?? '?'} size={32} alt={r.user?.name ?? 'anggota'} className="h-8 w-8 text-xs" />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-givonic text-sm font-semibold text-perrific-graphite">{r.user?.name}</p>
-                  <p className="truncate font-givonic text-xs text-gray-500">{r.user?.email}</p>
+                  <p className="truncate font-manrope text-sm font-semibold text-perrific-graphite">{r.user?.name}</p>
+                  <p className="truncate font-manrope text-xs text-gray-500">{r.user?.email}</p>
                 </div>
                 <button
                   type="button"
                   disabled={busy === r.id}
                   onClick={() => void decideRequest(r, false)}
-                  className="shrink-0 rounded-full px-3 py-1.5 font-givonic text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+                  className="shrink-0 rounded-full px-3 py-1.5 font-manrope text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-50"
                 >
                   Tolak
                 </button>
@@ -159,7 +159,7 @@ export default function ApprovalLists({
                   type="button"
                   disabled={busy === r.id}
                   onClick={() => void decideRequest(r, true)}
-                  className="shrink-0 rounded-full bg-perrific-graphite px-3 py-1.5 font-givonic text-xs font-semibold text-white transition hover:brightness-110 disabled:opacity-50"
+                  className="shrink-0 rounded-full bg-perrific-graphite px-3 py-1.5 font-manrope text-xs font-semibold text-white transition hover:brightness-110 disabled:opacity-50"
                 >
                   Terima
                 </button>

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+﻿import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { AlertTriangle } from 'lucide-react';
 
@@ -65,13 +65,13 @@ export default function ConfirmModal({
           <div className="min-w-0">
             <h2
               id="confirm-modal-title"
-              className="font-givonic text-base font-extrabold text-perrific-graphite"
+              className="font-manrope text-base font-extrabold text-perrific-graphite"
             >
               {title}
             </h2>
             <p
               id="confirm-modal-message"
-              className="mt-1 font-givonic text-sm leading-relaxed text-perrific-graphite/60"
+              className="mt-1 font-manrope text-sm leading-relaxed text-perrific-graphite/60"
             >
               {message}
             </p>
@@ -83,7 +83,7 @@ export default function ConfirmModal({
             type="button"
             onClick={onCancel}
             disabled={busy}
-            className="rounded-full px-4 py-2 font-givonic text-sm font-semibold text-gray-600 transition hover:bg-gray-100 disabled:opacity-50"
+            className="rounded-full px-4 py-2 font-manrope text-sm font-semibold text-gray-600 transition hover:bg-gray-100 disabled:opacity-50"
           >
             {cancelLabel}
           </button>
@@ -91,7 +91,7 @@ export default function ConfirmModal({
             type="button"
             onClick={onConfirm}
             disabled={busy}
-            className="rounded-full bg-red-600 px-4 py-2 font-givonic text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-50"
+            className="rounded-full bg-red-600 px-4 py-2 font-manrope text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-50"
           >
             {busy ? 'Menghapus…' : confirmLabel}
           </button>

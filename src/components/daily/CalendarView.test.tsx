@@ -64,8 +64,53 @@ vi.mock("@/api/calendar", () => ({
   },
 }));
 vi.mock("@/components/ui/Toast", () => ({ showToast: vi.fn() }));
-vi.mock("./CalendarSidebar", () => ({ default: () => null }));
-vi.mock("./CalendarCardSettings", () => ({ default: () => null }));
+vi.mock("./CalendarSidebar", () => ({
+  default: ({
+    onClose,
+    onScheduleItem,
+  }: {
+    onClose?: () => void;
+    onScheduleItem?: (payload: any) => void;
+  }) => (
+    <div data-testid="calendar-sidebar">
+      {onClose && <button onClick={onClose}>Tutup Sidebar</button>}
+      {onScheduleItem && (
+        <button
+          onClick={() =>
+            onScheduleItem({
+              source: "item",
+              id: "unsched-1",
+              title: "Tugas Baru",
+              targetDate: new Date("2026-09-30T12:00:00"),
+              startTime: "2026-09-30T10:00:00.000Z",
+              endTime: "2026-09-30T11:00:00.000Z",
+            })
+          }
+        >
+          Mock Schedule Item
+        </button>
+      )}
+    </div>
+  ),
+}));
+vi.mock("./CalendarCardSettings", () => ({
+  default: ({
+    onClose,
+    onDateChanged,
+  }: {
+    onClose?: () => void;
+    onDateChanged?: (d: Date) => void;
+  }) => (
+    <div data-testid="calendar-card-settings">
+      {onClose && <button onClick={onClose}>Tutup Settings</button>}
+      {onDateChanged && (
+        <button onClick={() => onDateChanged(new Date("2026-09-30T12:00:00"))}>
+          Mock Pindah Tanggal
+        </button>
+      )}
+    </div>
+  ),
+}));
 
 const fixture = (overrides: Partial<DailyActivity> = {}): DailyActivity => ({
   id: "activity-1",
@@ -1692,6 +1737,202 @@ describe("Notion-style lifecycle sync", () => {
           scope: "ALL_EVENTS",
         }),
       );
+    });
+  });
+
+  describe("Responsive Mobile & Tablet Calendar Experience", () => {
+    it("menampilkan tombol toggle Belum Terjadwal beserta badge count dan membuka drawer saat diklik", async () => {
+      const unscheduledAct: DailyActivity = {
+        id: "unsched-1",
+        userId: "user-1",
+        title: "Tugas santai",
+        date: "2026-09-29T00:00:00Z",
+        startTime: null,
+        endTime: null,
+        allDay: false,
+        type: "CUSTOM",
+        status: "PENDING",
+        order: 0,
+        checklistItems: [],
+      };
+
+      render(
+        <CalendarView
+          {...props}
+          selectedDate={new Date("2026-09-29T00:00:00+07:00")}
+          activities={[unscheduledAct]}
+        />,
+      );
+
+      // Pastikan tombol Belum Terjadwal ada di layar
+      const toggleBtn = screen.getByRole("button", { name: /Belum Terjadwal/i });
+      expect(toggleBtn).toBeTruthy();
+      expect(toggleBtn.textContent).toContain("1"); // badge count
+
+      // Klik tombol untuk membuka drawer
+      fireEvent.click(toggleBtn);
+
+      // Drawer harus merender CalendarSidebar
+      const sidebars = screen.getAllByTestId("calendar-sidebar");
+      expect(sidebars.length).toBeGreaterThanOrEqual(1);
+
+      // Klik tombol tutup sidebar di dalam drawer
+      const closeBtn = screen.getByRole("button", { name: "Tutup Sidebar" });
+      fireEvent.click(closeBtn);
+    });
+
+    it("merender strip navigasi 7 hari pada tampilan Hari dan memanggil onSelectDate saat hari diklik", async () => {
+      const onSelectDateMock = vi.fn();
+      render(
+        <CalendarView
+          {...props}
+          onSelectDate={onSelectDateMock}
+          selectedDate={new Date("2026-09-29T00:00:00+07:00")}
+          activities={[]}
+        />,
+      );
+
+      // Ubah tampilan ke mode Hari via menu dropdown
+      const modeBtn = screen.getByRole("button", { name: "Minggu" });
+      fireEvent.click(modeBtn);
+
+      const dayMenuItem = screen.getByRole("menuitem", { name: /Hari/i });
+      fireEvent.click(dayMenuItem);
+
+      // Verifikasi judul hari terpilih muncul (di toolbar dan header hari)
+      expect(screen.getAllByText(/Selasa, 29 September 2026/i).length).toBeGreaterThanOrEqual(1);
+
+      // Klik salah satu tanggal pada strip navigasi (misal tanggal 28 atau 30)
+      const dayButtons = screen.getAllByRole("button").filter(
+        (b) => b.textContent?.includes("Sen") || b.textContent?.includes("Rab"),
+      );
+      expect(dayButtons.length).toBeGreaterThan(0);
+
+      fireEvent.click(dayButtons[0]);
+      expect(onSelectDateMock).toHaveBeenCalled();
+    });
+
+    it("membuka modal bottom-sheet pengaturan saat kartu kalender diklik dan dapat ditutup", async () => {
+      const scheduledAct: DailyActivity = {
+        id: "sched-1",
+        userId: "user-1",
+        title: "Meeting Penting",
+        date: "2026-09-29T00:00:00+07:00",
+        startTime: "2026-09-29T09:00:00+07:00",
+        endTime: "2026-09-29T10:00:00+07:00",
+        allDay: false,
+        type: "CUSTOM",
+        status: "PENDING",
+        order: 0,
+        checklistItems: [],
+      };
+
+      render(
+        <CalendarView
+          {...props}
+          selectedDate={new Date("2026-09-29T00:00:00+07:00")}
+          activities={[scheduledAct]}
+        />,
+      );
+
+      // Klik kartu kegiatan
+      const card = screen.getByText("Meeting Penting");
+      fireEvent.click(card);
+
+      // Modal bottom-sheet settings harus muncul
+      const settingsList = screen.getAllByTestId("calendar-card-settings");
+      expect(settingsList.length).toBeGreaterThanOrEqual(1);
+
+      // Klik tombol tutup pengaturan
+      const closeSettingsBtn = screen.getAllByRole("button", { name: "Tutup Settings" });
+      fireEvent.click(closeSettingsBtn[0]);
+    });
+
+    it("menjadwalkan item dari sidebar via onScheduleItem dan beralih ke tanggal target", async () => {
+      const onSelectDateMock = vi.fn();
+      const unscheduledAct: DailyActivity = {
+        id: "unsched-1",
+        userId: "user-1",
+        title: "Tugas Baru",
+        date: "2026-09-29T00:00:00.000Z",
+        startTime: null,
+        endTime: null,
+        type: "TASK",
+        status: "PENDING",
+        order: 0,
+        checklistItems: [],
+      };
+
+      mocks.updateActivity.mockResolvedValueOnce({
+        ...unscheduledAct,
+        date: "2026-09-30T00:00:00.000Z",
+        startTime: "2026-09-30T10:00:00.000Z",
+        endTime: "2026-09-30T11:00:00.000Z",
+      });
+
+      render(
+        <CalendarView
+          {...props}
+          selectedDate={new Date("2026-09-29T00:00:00+07:00")}
+          onSelectDate={onSelectDateMock}
+          activities={[unscheduledAct]}
+        />,
+      );
+
+      // Trigger schedule item dari mock sidebar
+      const scheduleButtons = screen.getAllByRole("button", { name: "Mock Schedule Item" });
+      expect(scheduleButtons.length).toBeGreaterThan(0);
+
+      await act(async () => {
+        fireEvent.click(scheduleButtons[0]);
+        await Promise.resolve();
+      });
+
+      expect(mocks.updateActivity).toHaveBeenCalledWith(
+        "unsched-1",
+        expect.objectContaining({
+          date: expect.any(String),
+          startTime: expect.any(String),
+          endTime: expect.any(String),
+        }),
+      );
+      expect(onSelectDateMock).toHaveBeenCalledWith(expect.any(Date));
+    });
+
+    it("beralih ke tanggal baru saat onDateChanged dipanggil dari pengaturan kartu kegiatan", async () => {
+      const onSelectDateMock = vi.fn();
+      const scheduledAct: DailyActivity = {
+        id: "sched-move-1",
+        userId: "user-1",
+        title: "Event Pindah Hari",
+        date: "2026-09-29T00:00:00+07:00",
+        startTime: "2026-09-29T09:00:00+07:00",
+        endTime: "2026-09-29T10:00:00+07:00",
+        allDay: false,
+        type: "CUSTOM",
+        status: "PENDING",
+        order: 0,
+        checklistItems: [],
+      };
+
+      render(
+        <CalendarView
+          {...props}
+          selectedDate={new Date("2026-09-29T00:00:00+07:00")}
+          onSelectDate={onSelectDateMock}
+          activities={[scheduledAct]}
+        />,
+      );
+
+      // Buka modal settings dengan klik kartu
+      fireEvent.click(screen.getByText("Event Pindah Hari"));
+
+      // Klik tombol mock pindah tanggal
+      const moveButtons = screen.getAllByRole("button", { name: "Mock Pindah Tanggal" });
+      expect(moveButtons.length).toBeGreaterThan(0);
+
+      fireEvent.click(moveButtons[0]);
+      expect(onSelectDateMock).toHaveBeenCalledWith(expect.any(Date));
     });
   });
 });

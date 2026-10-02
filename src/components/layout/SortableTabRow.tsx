@@ -21,13 +21,14 @@ export default function SortableTabRow({
   children: ReactNode;
 }) {
   const { listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, disabled });
+  const verticalTransform = transform ? { ...transform, x: 0 } : null;
   const style: CSSProperties = {
-    transform: CSS.Transform.toString(transform),
+    transform: CSS.Translate.toString(verticalTransform),
     transition,
     opacity: isDragging ? 0.45 : undefined,
   };
   const interactiveProps = disabled ? {} : listeners;
-  const cls = disabled ? className : `${className} cursor-grab active:cursor-grabbing`;
+  const cls = `w-full ${disabled ? className : `${className} cursor-grab active:cursor-grabbing`}`;
   if (as === 'li') {
     return (
       <li ref={setNodeRef} style={style} className={cls} {...interactiveProps}>

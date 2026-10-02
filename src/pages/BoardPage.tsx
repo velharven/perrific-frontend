@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { projectApi } from '@/api/projects';
 import { taskApi } from '@/api/tasks';
@@ -407,7 +407,7 @@ function BoardPageInner() {
           <button
             type="button"
             onClick={() => setCreateOpen(true)}
-            className="shrink-0 rounded-full bg-perrific-violet px-4 py-2 font-givonic text-xs font-semibold text-white transition hover:brightness-110"
+            className="shrink-0 rounded-full bg-perrific-violet px-4 py-2 font-manrope text-xs font-semibold text-white transition hover:brightness-110"
           >
             + Task baru
           </button>
@@ -431,7 +431,7 @@ function BoardPageInner() {
               aria-expanded={filterFlyout === 'priority'}
               onMouseEnter={() => openFlyout('priority')}
               onClick={() => setFilterFlyout((v) => (v === 'priority' ? null : 'priority'))}
-              className={`flex w-full items-center justify-between px-3 py-2 text-left font-givonic text-xs font-semibold transition hover:bg-gray-100 ${
+              className={`flex w-full items-center justify-between px-3 py-2 text-left font-manrope text-xs font-semibold transition hover:bg-gray-100 ${
                 filterPriority ? 'text-perrific-violet' : 'text-perrific-graphite'
               }`}
             >
@@ -453,7 +453,7 @@ function BoardPageInner() {
                   const q = priorityMenuQuery.trim().toLowerCase();
                   const opts = FILTER_PRIORITIES.filter((o) => !q || o.label.toLowerCase().includes(q));
                   if (opts.length === 0) {
-                    return <p className="px-3 py-2 font-givonic text-xs text-gray-400">Tidak ditemukan.</p>;
+                    return <p className="px-3 py-2 font-manrope text-xs text-gray-400">Tidak ditemukan.</p>;
                   }
                   return opts.map((o) => (
                     <button
@@ -462,7 +462,7 @@ function BoardPageInner() {
                       role="menuitemradio"
                       aria-checked={filterPriority === o.v}
                       onClick={() => setFilterPriority(o.v)}
-                      className={`flex w-full items-center justify-between px-3 py-2 text-left font-givonic text-xs font-semibold transition hover:bg-gray-100 ${
+                      className={`flex w-full items-center justify-between px-3 py-2 text-left font-manrope text-xs font-semibold transition hover:bg-gray-100 ${
                         filterPriority === o.v ? 'text-perrific-violet' : 'text-perrific-graphite'
                       }`}
                     >
@@ -478,7 +478,7 @@ function BoardPageInner() {
                     onChange={(e) => setPriorityMenuQuery(e.target.value)}
                     placeholder="Cari prioritas…"
                     aria-label="Cari prioritas"
-                    className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 font-givonic text-xs focus:border-perrific-violet focus:outline-none"
+                    className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 font-manrope text-xs focus:border-perrific-violet focus:outline-none"
                   />
                 </div>
               </div>
@@ -491,7 +491,7 @@ function BoardPageInner() {
               aria-expanded={filterFlyout === 'assignee'}
               onMouseEnter={() => openFlyout('assignee')}
               onClick={() => setFilterFlyout((v) => (v === 'assignee' ? null : 'assignee'))}
-              className={`flex w-full items-center justify-between px-3 py-2 text-left font-givonic text-xs font-semibold transition hover:bg-gray-100 ${
+              className={`flex w-full items-center justify-between px-3 py-2 text-left font-manrope text-xs font-semibold transition hover:bg-gray-100 ${
                 filterAssignee !== 'all' ? 'text-perrific-violet' : 'text-perrific-graphite'
               }`}
             >
@@ -519,7 +519,7 @@ function BoardPageInner() {
                     role="menuitemradio"
                     aria-checked={filterAssignee === o.v}
                     onClick={() => setFilterAssignee(o.v)}
-                    className={`flex w-full items-center justify-between px-3 py-2 text-left font-givonic text-xs font-semibold transition hover:bg-gray-100 ${
+                    className={`flex w-full items-center justify-between px-3 py-2 text-left font-manrope text-xs font-semibold transition hover:bg-gray-100 ${
                       filterAssignee === o.v ? 'text-perrific-violet' : 'text-perrific-graphite'
                     }`}
                   >
@@ -537,7 +537,7 @@ function BoardPageInner() {
                         (m.user?.email ?? '').toLowerCase().includes(q),
                     );
                     if (opts.length === 0) {
-                      return <p className="px-3 py-2 font-givonic text-xs text-gray-400">User tidak ditemukan.</p>;
+                      return <p className="px-3 py-2 font-manrope text-xs text-gray-400">User tidak ditemukan.</p>;
                     }
                     return opts.map((m) => {
                       const label = m.user?.name ?? m.user?.email ?? m.userId;
@@ -559,7 +559,7 @@ function BoardPageInner() {
                             alt={label}
                             className="h-5 w-5 shrink-0 text-[9px]"
                           />
-                          <span className="min-w-0 flex-1 truncate font-givonic text-xs font-semibold text-gray-600">
+                          <span className="min-w-0 flex-1 truncate font-manrope text-xs font-semibold text-gray-600">
                             {label}
                           </span>
                           {filterAssignee === m.userId && <span aria-hidden="true">✓</span>}
@@ -575,7 +575,7 @@ function BoardPageInner() {
                     onChange={(e) => setAssigneeMenuQuery(e.target.value)}
                     placeholder="Cari user…"
                     aria-label="Cari user assignee"
-                    className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 font-givonic text-xs focus:border-perrific-violet focus:outline-none"
+                    className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 font-manrope text-xs focus:border-perrific-violet focus:outline-none"
                   />
                 </div>
               </div>
@@ -588,7 +588,7 @@ function BoardPageInner() {
               aria-expanded={filterFlyout === 'role'}
               onMouseEnter={() => openFlyout('role')}
               onClick={() => setFilterFlyout((v) => (v === 'role' ? null : 'role'))}
-              className={`flex w-full items-center justify-between px-3 py-2 text-left font-givonic text-xs font-semibold transition hover:bg-gray-100 ${
+              className={`flex w-full items-center justify-between px-3 py-2 text-left font-manrope text-xs font-semibold transition hover:bg-gray-100 ${
                 filterRole !== 'all' ? 'text-perrific-violet' : 'text-perrific-graphite'
               }`}
             >
@@ -610,7 +610,7 @@ function BoardPageInner() {
                   const q = roleMenuQuery.trim().toLowerCase();
                   const opts = FILTER_ROLES.filter((o) => !q || o.label.toLowerCase().includes(q));
                   if (opts.length === 0) {
-                    return <p className="px-3 py-2 font-givonic text-xs text-gray-400">Tidak ditemukan.</p>;
+                    return <p className="px-3 py-2 font-manrope text-xs text-gray-400">Tidak ditemukan.</p>;
                   }
                   return opts.map((o) => (
                     <button
@@ -619,7 +619,7 @@ function BoardPageInner() {
                       role="menuitemradio"
                       aria-checked={filterRole === o.v}
                       onClick={() => setFilterRole(o.v)}
-                      className={`flex w-full items-center justify-between px-3 py-2 text-left font-givonic text-xs font-semibold transition hover:bg-gray-100 ${
+                      className={`flex w-full items-center justify-between px-3 py-2 text-left font-manrope text-xs font-semibold transition hover:bg-gray-100 ${
                         filterRole === o.v ? 'text-perrific-violet' : 'text-perrific-graphite'
                       }`}
                     >
@@ -635,7 +635,7 @@ function BoardPageInner() {
                     onChange={(e) => setRoleMenuQuery(e.target.value)}
                     placeholder="Cari role…"
                     aria-label="Cari role"
-                    className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 font-givonic text-xs focus:border-perrific-violet focus:outline-none"
+                    className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 font-manrope text-xs focus:border-perrific-violet focus:outline-none"
                   />
                 </div>
               </div>
@@ -648,7 +648,7 @@ function BoardPageInner() {
               aria-expanded={filterFlyout === 'createdBy'}
               onMouseEnter={() => openFlyout('createdBy')}
               onClick={() => setFilterFlyout((v) => (v === 'createdBy' ? null : 'createdBy'))}
-              className={`flex w-full items-center justify-between px-3 py-2 text-left font-givonic text-xs font-semibold transition hover:bg-gray-100 ${
+              className={`flex w-full items-center justify-between px-3 py-2 text-left font-manrope text-xs font-semibold transition hover:bg-gray-100 ${
                 filterCreatedBy !== 'all' ? 'text-perrific-violet' : 'text-perrific-graphite'
               }`}
             >
@@ -675,7 +675,7 @@ function BoardPageInner() {
                   role="menuitemradio"
                   aria-checked={filterCreatedBy === 'all'}
                   onClick={() => setFilterCreatedBy('all')}
-                  className={`flex w-full items-center justify-between px-3 py-2 text-left font-givonic text-xs font-semibold transition hover:bg-gray-100 ${
+                  className={`flex w-full items-center justify-between px-3 py-2 text-left font-manrope text-xs font-semibold transition hover:bg-gray-100 ${
                     filterCreatedBy === 'all' ? 'text-perrific-violet' : 'text-perrific-graphite'
                   }`}
                 >
@@ -693,7 +693,7 @@ function BoardPageInner() {
                         (m.user?.email ?? '').toLowerCase().includes(q),
                     );
                     if (opts.length === 0) {
-                      return <p className="px-3 py-2 font-givonic text-xs text-gray-400">User tidak ditemukan.</p>;
+                      return <p className="px-3 py-2 font-manrope text-xs text-gray-400">User tidak ditemukan.</p>;
                     }
                     return opts.map((m) => {
                       const label = m.user?.name ?? m.user?.email ?? m.userId;
@@ -715,7 +715,7 @@ function BoardPageInner() {
                           alt={label}
                           className="h-5 w-5 shrink-0 text-[9px]"
                         />
-                        <span className="min-w-0 flex-1 truncate font-givonic text-xs font-semibold text-gray-600">{label}</span>
+                        <span className="min-w-0 flex-1 truncate font-manrope text-xs font-semibold text-gray-600">{label}</span>
                         {filterCreatedBy === m.userId && <span aria-hidden="true">✓</span>}
                       </button>
                     );
@@ -729,7 +729,7 @@ function BoardPageInner() {
                     onChange={(e) => setCreatedByMenuQuery(e.target.value)}
                     placeholder="Cari user…"
                     aria-label="Cari user pembuat"
-                    className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 font-givonic text-xs focus:border-perrific-violet focus:outline-none"
+                    className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 font-manrope text-xs focus:border-perrific-violet focus:outline-none"
                   />
                 </div>
               </div>
@@ -744,7 +744,7 @@ function BoardPageInner() {
                   setFilterMenuOpen(false);
                   setFilterFlyout(null);
                 }}
-                className="w-full rounded-lg bg-gray-100 px-3 py-1.5 font-givonic text-xs font-semibold text-gray-600 hover:bg-gray-200"
+                className="w-full rounded-lg bg-gray-100 px-3 py-1.5 font-manrope text-xs font-semibold text-gray-600 hover:bg-gray-200"
               >
                 Reset filter
               </button>
@@ -787,7 +787,7 @@ function BoardPageInner() {
             aria-haspopup="menu"
             aria-expanded={filterMenuOpen}
             aria-label="Filter task"
-            className={`flex shrink-0 items-center gap-2 rounded-full px-5 py-2.5 font-givonic text-sm font-semibold transition focus:outline-none ${
+            className={`flex shrink-0 items-center gap-2 rounded-full px-5 py-2.5 font-manrope text-sm font-semibold transition focus:outline-none ${
               filterOptionCount > 0
                 ? 'bg-perrific-graphite text-white'
                 : 'text-gray-800 hover:bg-gray-200 hover:text-black'
@@ -796,7 +796,7 @@ function BoardPageInner() {
             <Filter size={15} strokeWidth={1.6} aria-hidden="true" />
             Filter
             {filterOptionCount > 0 && (
-              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-white px-1.5 font-givonic text-[11px] font-bold text-perrific-graphite">
+              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-white px-1.5 font-manrope text-[11px] font-bold text-perrific-graphite">
                 {filterOptionCount}
               </span>
             )}
@@ -808,7 +808,7 @@ function BoardPageInner() {
               onChange={(e) => setFilterSearch(e.target.value)}
               placeholder="Cari task…"
               aria-label="Cari task"
-              className="w-full rounded-full bg-gray-100 py-2.5 pl-10 pr-4 font-givonic text-sm text-gray-800 placeholder:text-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-perrific-violet/30"
+              className="w-full rounded-full bg-gray-100 py-2.5 pl-10 pr-4 font-manrope text-sm text-gray-800 placeholder:text-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-perrific-violet/30"
             />
           </div>
         </div>
@@ -817,7 +817,7 @@ function BoardPageInner() {
       {createOpen && (
         <ModalShell label="Task baru" onClose={() => setCreateOpen(false)} wide>
           <div className="relative">
-            <p className="text-center font-givonic text-lg font-bold text-perrific-graphite">Task baru</p>
+            <p className="text-center font-manrope text-lg font-bold text-perrific-graphite">Task baru</p>
             <button
               type="button"
               onClick={() => setCreateOpen(false)}
@@ -831,7 +831,7 @@ function BoardPageInner() {
             <div className="grid gap-4 sm:grid-cols-[1fr_220px]">
               <div className="min-w-0 space-y-3">
                 <div>
-                  <label htmlFor="task-title" className="mb-1.5 block font-givonic text-xs font-medium text-perrific-graphite">
+                  <label htmlFor="task-title" className="mb-1.5 block font-manrope text-xs font-medium text-perrific-graphite">
                     Judul
                   </label>
                   <input
@@ -841,11 +841,11 @@ function BoardPageInner() {
                     onChange={(e) => setTitle(e.target.value)}
                     placeholder="Subject"
                     maxLength={120}
-                    className="w-full rounded-xl border border-gray-200 px-3 py-2 font-givonic text-sm focus:border-perrific-violet focus:outline-none"
+                    className="w-full rounded-xl border border-gray-200 px-3 py-2 font-manrope text-sm focus:border-perrific-violet focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label htmlFor="task-desc" className="mb-1.5 block font-givonic text-xs font-medium text-perrific-graphite">
+                  <label htmlFor="task-desc" className="mb-1.5 block font-manrope text-xs font-medium text-perrific-graphite">
                     Deskripsi
                   </label>
                   <textarea
@@ -854,12 +854,12 @@ function BoardPageInner() {
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="Tambahkan deskripsi agar anggota lain paham task ini"
                     rows={6}
-                    className="w-full rounded-xl border border-gray-200 px-3 py-2 font-givonic text-sm focus:border-perrific-violet focus:outline-none"
+                    className="w-full rounded-xl border border-gray-200 px-3 py-2 font-manrope text-sm focus:border-perrific-violet focus:outline-none"
                   />
                 </div>
                 <div className="flex gap-2">
                   <div className="min-w-0 flex-1">
-                    <p className="mb-1.5 font-givonic text-xs font-medium text-perrific-graphite">
+                    <p className="mb-1.5 font-manrope text-xs font-medium text-perrific-graphite">
                       Prioritas
                     </p>
                     <div>
@@ -873,7 +873,7 @@ function BoardPageInner() {
                         aria-haspopup="menu"
                         aria-expanded={priorityMenuOpen}
                         aria-label="Prioritas"
-                        className="flex w-full items-center justify-between rounded-xl bg-gray-200 py-2.5 pl-3 pr-3 font-givonic text-xs font-bold tracking-widest text-perrific-graphite focus:outline-none cursor-pointer"
+                        className="flex w-full items-center justify-between rounded-xl bg-gray-200 py-2.5 pl-3 pr-3 font-manrope text-xs font-bold tracking-widest text-perrific-graphite focus:outline-none cursor-pointer"
                       >
                         {priority}
                         <ChevronDown
@@ -907,7 +907,7 @@ function BoardPageInner() {
                                 setPriority(o.v);
                                 setPriorityMenuOpen(false);
                               }}
-                              className={`flex w-full items-center justify-between px-3 py-2 text-left font-givonic text-xs font-bold tracking-widest transition hover:bg-gray-100 cursor-pointer ${
+                              className={`flex w-full items-center justify-between px-3 py-2 text-left font-manrope text-xs font-bold tracking-widest transition hover:bg-gray-100 cursor-pointer ${
                                 priority === o.v ? 'text-perrific-violet' : 'text-perrific-graphite'
                               }`}
                             >
@@ -920,7 +920,7 @@ function BoardPageInner() {
                     </div>
                   </div>
                   <div className="min-w-0 flex-1">
-                    <label htmlFor="task-due" className="mb-1.5 block font-givonic text-xs font-medium text-perrific-graphite">
+                    <label htmlFor="task-due" className="mb-1.5 block font-manrope text-xs font-medium text-perrific-graphite">
                       Deadline
                     </label>
                     <input
@@ -928,7 +928,7 @@ function BoardPageInner() {
                       type="date"
                       value={dueDate}
                       onChange={(e) => setDueDate(e.target.value)}
-                      className="w-full rounded-xl border border-gray-200 px-2 py-2 font-givonic text-xs focus:border-perrific-violet focus:outline-none"
+                      className="w-full rounded-xl border border-gray-200 px-2 py-2 font-manrope text-xs focus:border-perrific-violet focus:outline-none"
                     />
                   </div>
                 </div>
@@ -945,7 +945,7 @@ function BoardPageInner() {
                     aria-haspopup="menu"
                     aria-expanded={statusMenuOpen}
                     aria-label="Kolom awal"
-                    className="flex w-full items-center justify-between rounded-xl bg-gray-200 py-2.5 pl-3 pr-3 font-givonic text-xs font-bold tracking-widest text-perrific-graphite focus:outline-none cursor-pointer"
+                    className="flex w-full items-center justify-between rounded-xl bg-gray-200 py-2.5 pl-3 pr-3 font-manrope text-xs font-bold tracking-widest text-perrific-graphite focus:outline-none cursor-pointer"
                   >
                     {(columns.find((c) => c.id === status)?.name ?? 'Pilih kolom').toUpperCase()}
                     <ChevronDown
@@ -972,7 +972,7 @@ function BoardPageInner() {
                             setStatus(o.id);
                             setStatusMenuOpen(false);
                           }}
-                          className={`flex w-full items-center justify-between px-3 py-2 text-left font-givonic text-xs font-bold tracking-widest transition hover:bg-gray-100 ${
+                          className={`flex w-full items-center justify-between px-3 py-2 text-left font-manrope text-xs font-bold tracking-widest transition hover:bg-gray-100 ${
                             status === o.id ? 'text-perrific-violet' : 'text-perrific-graphite'
                           }`}
                         >
@@ -986,7 +986,7 @@ function BoardPageInner() {
                 <div ref={assignWrapRef}>
                   <p className="font-mono text-[11px] tracking-widest text-perrific-graphite/50">ASSIGN</p>
                   {assigneeIds.length === 0 ? (
-                    <p className="mt-1 font-givonic text-xs text-perrific-graphite">
+                    <p className="mt-1 font-manrope text-xs text-perrific-graphite">
                       <button
                         type="button"
                         onClick={() => {
@@ -1017,12 +1017,12 @@ function BoardPageInner() {
                             className="flex items-center gap-1 rounded-full bg-gray-100 py-0.5 pl-0.5 pr-1"
                           >
                             <Avatar src={m?.user?.avatarUrl} name={label} size={20} alt={label} className="h-5 w-5 text-[9px]" />
-                            <span className="max-w-[90px] truncate font-givonic text-[11px] text-gray-600">{label}</span>
+                            <span className="max-w-[90px] truncate font-manrope text-[11px] text-gray-600">{label}</span>
                             <button
                               type="button"
                               onClick={() => setAssigneeIds((prev) => prev.filter((x) => x !== id))}
                               aria-label={`Hapus ${label}`}
-                              className="rounded-full px-1 font-givonic text-[11px] text-gray-400 hover:bg-gray-200 hover:text-red-600"
+                              className="rounded-full px-1 font-manrope text-[11px] text-gray-400 hover:bg-gray-200 hover:text-red-600"
                             >
                               ×
                             </button>
@@ -1035,7 +1035,7 @@ function BoardPageInner() {
                           setAssignQuery('');
                           setAssignMenuOpen(true);
                         }}
-                        className="rounded-full border border-dashed border-gray-300 px-2 py-0.5 font-givonic text-[11px] font-semibold text-gray-500 transition hover:border-perrific-violet hover:text-perrific-violet"
+                        className="rounded-full border border-dashed border-gray-300 px-2 py-0.5 font-manrope text-[11px] font-semibold text-gray-500 transition hover:border-perrific-violet hover:text-perrific-violet"
                       >
                         + Add Assign
                       </button>
@@ -1059,7 +1059,7 @@ function BoardPageInner() {
                             }}
                             placeholder="Cari anggota…"
                             aria-label="Cari anggota"
-                            className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 font-givonic text-xs focus:border-perrific-violet focus:outline-none"
+                            className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 font-manrope text-xs focus:border-perrific-violet focus:outline-none"
                           />
                         </div>
                         <div className="nice-scroll max-h-44 overflow-y-auto">
@@ -1073,7 +1073,7 @@ function BoardPageInner() {
                                   (m.user?.email ?? '').toLowerCase().includes(q)),
                             );
                             if (opts.length === 0) {
-                              return <p className="px-3 py-2 font-givonic text-xs text-gray-400">Belum ada anggota.</p>;
+                              return <p className="px-3 py-2 font-manrope text-xs text-gray-400">Belum ada anggota.</p>;
                             }
                             return opts.map((m) => {
                               const label = m.user?.name ?? m.user?.email ?? m.userId;
@@ -1094,7 +1094,7 @@ function BoardPageInner() {
                                     alt={label}
                                     className="h-6 w-6 text-[10px]"
                                   />
-                                  <span className="min-w-0 flex-1 truncate font-givonic text-xs text-gray-600">{label}</span>
+                                  <span className="min-w-0 flex-1 truncate font-manrope text-xs text-gray-600">{label}</span>
                                 </button>
                               );
                             });
@@ -1105,7 +1105,7 @@ function BoardPageInner() {
                 </div>
                 <div>
                   <div className="flex items-center justify-between bg-gray-100 px-2 py-1.5">
-                    <p className="font-givonic text-xs font-bold text-perrific-graphite">
+                    <p className="font-manrope text-xs font-bold text-perrific-graphite">
                       {pendingFiles.length} Attachments
                     </p>
                     <button
@@ -1113,7 +1113,7 @@ function BoardPageInner() {
                       onClick={() => fileInputRef.current?.click()}
                       aria-label="Tambah lampiran"
                       title="Tambah lampiran"
-                      className="flex h-5 w-5 items-center justify-center rounded-full border border-dashed border-gray-300 font-givonic text-sm font-bold leading-none text-gray-500 transition hover:border-perrific-violet hover:text-perrific-violet"
+                      className="flex h-5 w-5 items-center justify-center rounded-full border border-dashed border-gray-300 font-manrope text-sm font-bold leading-none text-gray-500 transition hover:border-perrific-violet hover:text-perrific-violet"
                     >
                       +
                     </button>
@@ -1122,12 +1122,12 @@ function BoardPageInner() {
                     <ul className="mt-1 space-y-1">
                       {pendingFiles.map((f, i) => (
                         <li key={`${f.filename}-${i}`} className="flex items-center justify-between gap-2 text-xs">
-                          <span className="truncate font-givonic text-gray-600">{f.filename}</span>
+                          <span className="truncate font-manrope text-gray-600">{f.filename}</span>
                           <button
                             type="button"
                             onClick={() => setPendingFiles((prev) => prev.filter((_, j) => j !== i))}
                             aria-label={`Hapus ${f.filename}`}
-                            className="shrink-0 rounded px-1 font-givonic text-xs text-red-600 hover:bg-red-50"
+                            className="shrink-0 rounded px-1 font-manrope text-xs text-red-600 hover:bg-red-50"
                           >
                             ×
                           </button>
@@ -1138,7 +1138,7 @@ function BoardPageInner() {
                   {pendingFiles.length === 0 && (
                     <label
                       htmlFor="task-files"
-                      className="mt-1 block cursor-pointer rounded-lg border border-dashed border-gray-300 px-3 py-3 text-center font-givonic text-xs text-gray-400 transition hover:border-perrific-violet hover:text-perrific-violet"
+                      className="mt-1 block cursor-pointer rounded-lg border border-dashed border-gray-300 px-3 py-3 text-center font-manrope text-xs text-gray-400 transition hover:border-perrific-violet hover:text-perrific-violet"
                     >
                       Drop attachments here / klik untuk pilih
                     </label>
@@ -1158,14 +1158,14 @@ function BoardPageInner() {
               </div>
             </div>
             {!isAdmin && (
-              <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-center font-givonic text-[11px] text-amber-700">
+              <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-center font-manrope text-[11px] text-amber-700">
                 Task yang kamu buat perlu persetujuan admin sebelum bisa dipindah.
               </p>
             )}
             <button
               type="submit"
               disabled={creating || !title.trim()}
-              className="mt-4 w-full rounded-lg bg-perrific-violet px-4 py-2.5 font-givonic text-xs font-bold tracking-widest text-white transition hover:bg-[#E64D0A] disabled:opacity-50"
+              className="mt-4 w-full rounded-lg bg-perrific-violet px-4 py-2.5 font-manrope text-xs font-bold tracking-widest text-white transition hover:bg-[#E64D0A] disabled:opacity-50"
             >
               {creating ? 'Membuat…' : 'Buat'}
             </button>

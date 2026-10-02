@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   ActivityIcon,
@@ -151,7 +151,7 @@ export default function ColumnMenu({
           maxLength={80}
           aria-label="Nama properti"
           placeholder="Nama properti"
-          className="min-w-0 flex-1 rounded-xl bg-gray-100/80 px-2.5 py-1.5 font-givonic text-sm font-semibold text-perrific-graphite focus:bg-gray-100 focus:outline-none"
+          className="min-w-0 flex-1 rounded-xl bg-gray-100/80 px-2.5 py-1.5 font-manrope text-sm font-semibold text-perrific-graphite focus:bg-gray-100 focus:outline-none"
         />
       </div>
 
@@ -159,7 +159,7 @@ export default function ColumnMenu({
 
       {/* Header: Pilih jenis */}
       <div className="flex items-center justify-between px-3 pb-1 pt-2">
-        <p className="font-givonic text-xs font-semibold text-gray-500">
+        <p className="font-manrope text-xs font-semibold text-gray-500">
           Pilih jenis
         </p>
       </div>
@@ -177,7 +177,7 @@ export default function ColumnMenu({
                 role="menuitemradio"
                 aria-checked={isCurrent}
                 onClick={() => pickType(typeItem.type)}
-                className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 font-givonic text-xs transition ${
+                className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 font-manrope text-xs transition ${
                   isCurrent
                     ? 'bg-perrific-violet/10 font-semibold text-perrific-violet'
                     : 'text-perrific-graphite hover:bg-gray-50'
@@ -209,7 +209,7 @@ export default function ColumnMenu({
                 role="menuitemradio"
                 aria-checked={isCurrent}
                 onClick={() => pickType(typeItem.type)}
-                className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 font-givonic text-xs transition ${
+                className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 font-manrope text-xs transition ${
                   isCurrent
                     ? 'bg-perrific-violet/10 font-semibold text-perrific-violet'
                     : 'text-perrific-graphite hover:bg-gray-50'
@@ -239,7 +239,7 @@ export default function ColumnMenu({
           onClose();
           t.removeColumn(col.id);
         }}
-        className="flex w-full items-center gap-2.5 px-3 py-2 font-givonic text-xs font-medium text-red-600 transition hover:bg-red-50"
+        className="flex w-full items-center gap-2.5 px-3 py-2 font-manrope text-xs font-medium text-red-600 transition hover:bg-red-50"
       >
         Hapus properti
       </button>

@@ -1,6 +1,6 @@
-import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+﻿import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/store/auth';
 import { useSocket } from '@/store/socket';
 import { teamApi } from '@/api/teams';
@@ -9,6 +9,7 @@ import { NOTES_CHANGED_EVENT, notifyNotesChanged } from '@/pages/NotePage';
 import UsernameModal from '@/components/auth/UsernameModal';
 import SortableTabRow from './SortableTabRow';
 import DropIndicator from './DropIndicator';
+import FloatingMobileBurger from './FloatingMobileBurger';
 import {
   DndContext,
   DragOverlay,
@@ -18,6 +19,7 @@ import {
   closestCenter,
   useSensor,
   useSensors,
+  type Modifier,
   type CollisionDetection,
   type DragEndEvent,
   type DragOverEvent,
@@ -28,6 +30,11 @@ import {
   verticalListSortingStrategy,
   sortableKeyboardCoordinates,
 } from '@dnd-kit/sortable';
+
+const restrictToVerticalAxis: Modifier = ({ transform }) => ({
+  ...transform,
+  x: 0,
+});
 import {
   useNavLabels,
   useSyncedMap,
@@ -75,7 +82,6 @@ import {
   Eye,
   KeyRound,
   Calendar,
-  Menu,
   Loader2,
   Bell,
 } from 'lucide-react';
@@ -181,7 +187,7 @@ export function renderTeamBadgeHelper(
   const ch = ((draftName ?? team.name).trim().slice(0, 2) || '?').toUpperCase();
   return (
     <span
-      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-perrific-violet/20 bg-perrific-violet/10 font-givonic text-[10px] font-bold text-perrific-violet"
+      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-perrific-violet/20 bg-perrific-violet/10 font-manrope text-[10px] font-bold text-perrific-violet"
       aria-hidden="true"
     >
       {ch}
@@ -1372,7 +1378,7 @@ function SidebarContent({
   // Baris tab PRIVAT — dipakai di nav utama & daftar arsip (fitur identik:
   // klik navigasi, ⋮, double-click rename, klik kanan).
   const navRowClass = (isActive: boolean) =>
-    `flex items-center justify-center rounded-lg px-3 py-2 font-givonic text-sm transition-colors duration-200 ${
+    `flex items-center justify-center rounded-lg px-3 py-2 font-manrope text-sm transition-colors duration-200 ${
       isActive
         ? 'bg-perrific-violet/10 font-semibold text-perrific-red'
         : 'font-medium text-gray-600 hover:bg-gray-100 hover:text-perrific-graphite'
@@ -1473,7 +1479,7 @@ function SidebarContent({
   const renderTeamRow = (team: Team) => {
     const hint = itemDropHint('teams', team.id);
     const teamRowClass = (isActive: boolean) =>
-      `flex items-center justify-center rounded-lg px-3 py-2 font-givonic text-sm transition-colors duration-200 ${
+      `flex items-center justify-center rounded-lg px-3 py-2 font-manrope text-sm transition-colors duration-200 ${
         isActive
           ? 'bg-gray-100 font-semibold text-perrific-graphite'
           : 'font-medium text-gray-600 hover:bg-gray-100 hover:text-perrific-graphite'
@@ -1820,7 +1826,15 @@ function SidebarContent({
         </div>
       )}
       <div className={`nice-scroll flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-clip pb-2 pt-2 ${collapsed ? 'no-bar' : ''}`}>
-      <DndContext sensors={sensors} collisionDetection={sidebarCollision} onDragStart={handleSidebarDragStart} onDragOver={handleSidebarDragOver} onDragEnd={handleSidebarDragEnd} onDragCancel={handleSidebarDragCancel}>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={sidebarCollision}
+        modifiers={[restrictToVerticalAxis]}
+        onDragStart={handleSidebarDragStart}
+        onDragOver={handleSidebarDragOver}
+        onDragEnd={handleSidebarDragEnd}
+        onDragCancel={handleSidebarDragCancel}
+      >
       {presetSections.includes('privat') && (
         <div style={{ order: sectionOrder.indexOf('privat') }} className={sectionOrder[0] === 'privat' ? '' : 'mt-6'}>
           <div
@@ -1862,7 +1876,7 @@ function SidebarContent({
         </button>
       </div>
       {!collapsed && createError && (
-        <p role="alert" className="px-6 pt-1 font-givonic text-[11px] text-red-600">
+        <p role="alert" className="px-6 pt-1 font-manrope text-[11px] text-red-600">
           {createError}
         </p>
       )}
@@ -1913,14 +1927,14 @@ function SidebarContent({
         {visibleTeams.length === 0 ? (
           !collapsed && (
             <div className="mt-2 rounded-lg border border-dashed border-gray-300 px-3 py-4 text-center">
-              <p className="font-givonic text-xs text-perrific-graphite/50">
+              <p className="font-manrope text-xs text-perrific-graphite/50">
                 {archivedTeams.length > 0 ? 'Semua tim diarsipkan' : 'Belum ada tim'}
               </p>
               {archivedTeams.length === 0 ? (
                 <button
                   type="button"
                   onClick={handleQuickAddTeam}
-                  className="mt-1 inline-flex items-center justify-center font-givonic text-xs font-semibold text-perrific-violet hover:underline"
+                  className="mt-1 inline-flex items-center justify-center font-manrope text-xs font-semibold text-perrific-violet hover:underline"
                 >
                   + Buat tim
                 </button>
@@ -1928,13 +1942,13 @@ function SidebarContent({
                 <button
                   type="button"
                   onClick={onOpenArchive}
-                  className="mt-1 inline-flex items-center justify-center font-givonic text-xs font-semibold text-perrific-violet hover:underline"
+                  className="mt-1 inline-flex items-center justify-center font-manrope text-xs font-semibold text-perrific-violet hover:underline"
                 >
                   Lihat arsip
                 </button>
               )}
               {teamError && (
-                <p role="alert" className="mt-2 font-givonic text-[11px] text-red-600">
+                <p role="alert" className="mt-2 font-manrope text-[11px] text-red-600">
                   {teamError}
                 </p>
               )}
@@ -1943,7 +1957,7 @@ function SidebarContent({
         ) : (
           <>
           {!collapsed && teamError && (
-            <p role="alert" className="mt-1 px-3 font-givonic text-[11px] text-red-600">
+            <p role="alert" className="mt-1 px-3 font-manrope text-[11px] text-red-600">
               {teamError}
             </p>
           )}
@@ -1993,11 +2007,11 @@ function SidebarContent({
           {organizations.length === 0 ? (
             !collapsed && (
               <div className="mt-2 rounded-lg border border-dashed border-gray-300 px-3 py-4 text-center">
-                <p className="font-givonic text-xs text-perrific-graphite/50">Belum ada organisasi</p>
+                <p className="font-manrope text-xs text-perrific-graphite/50">Belum ada organisasi</p>
                 <button
                   type="button"
                   onClick={() => setCreateOrgOpen(true)}
-                  className="mt-1 inline-flex items-center justify-center font-givonic text-xs font-semibold text-perrific-violet hover:underline"
+                  className="mt-1 inline-flex items-center justify-center font-manrope text-xs font-semibold text-perrific-violet hover:underline"
                 >
                   + Buat organisasi
                 </button>
@@ -2051,7 +2065,7 @@ function SidebarContent({
           {teamDialog === 'pilih' ? (
             <div>
               <div className="mb-1 flex items-center justify-between px-1">
-                <p className="font-givonic text-sm font-bold text-perrific-graphite">Tim baru</p>
+                <p className="font-manrope text-sm font-bold text-perrific-graphite">Tim baru</p>
                 <button
                   type="button"
                   onClick={closeTeamDialog}
@@ -2061,7 +2075,7 @@ function SidebarContent({
                   <X size={14} strokeWidth={1.6} aria-hidden="true" />
                 </button>
               </div>
-              <p className="px-1 pb-2 font-givonic text-xs text-perrific-graphite/50">Pilih cara membuat atau gabung tim.</p>
+              <p className="px-1 pb-2 font-manrope text-xs text-perrific-graphite/50">Pilih cara membuat atau gabung tim.</p>
               <div className="space-y-1">
                 <button
                   type="button"
@@ -2072,10 +2086,10 @@ function SidebarContent({
                     <Plus size={15} strokeWidth={1.6} aria-hidden="true" />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block font-givonic text-sm font-semibold text-perrific-graphite">
+                    <span className="block font-manrope text-sm font-semibold text-perrific-graphite">
                       Buat tim baru
                     </span>
-                    <span className="block truncate font-givonic text-xs text-perrific-graphite/50">
+                    <span className="block truncate font-manrope text-xs text-perrific-graphite/50">
                       Atur nama, foto, dan anggota tim
                     </span>
                   </span>
@@ -2089,10 +2103,10 @@ function SidebarContent({
                     <KeyRound size={15} strokeWidth={1.6} aria-hidden="true" />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block font-givonic text-sm font-semibold text-perrific-graphite">
+                    <span className="block font-manrope text-sm font-semibold text-perrific-graphite">
                       Masuk tim dengan kode
                     </span>
-                    <span className="block truncate font-givonic text-xs text-perrific-graphite/50">
+                    <span className="block truncate font-manrope text-xs text-perrific-graphite/50">
                       Gabung pakai kode 8 karakter
                     </span>
                   </span>
@@ -2105,7 +2119,7 @@ function SidebarContent({
                 <button
                   type="button"
                   onClick={openTeamDialog}
-                  className="font-givonic text-xs font-semibold text-perrific-violet hover:underline"
+                  className="font-manrope text-xs font-semibold text-perrific-violet hover:underline"
                 >
                   ← Kembali
                 </button>
@@ -2118,8 +2132,8 @@ function SidebarContent({
                   <X size={14} strokeWidth={1.6} aria-hidden="true" />
                 </button>
               </div>
-              <p className="px-1 font-givonic text-sm font-bold text-perrific-graphite">Masuk tim</p>
-              <p className="px-1 pb-2 font-givonic text-xs text-perrific-graphite/50">
+              <p className="px-1 font-manrope text-sm font-bold text-perrific-graphite">Masuk tim</p>
+              <p className="px-1 pb-2 font-manrope text-xs text-perrific-graphite/50">
                 Minta kode 8 karakter ke admin tim, lalu masukkan di bawah ini.
               </p>
               <form
@@ -2141,7 +2155,7 @@ function SidebarContent({
                   className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-center font-mono text-lg tracking-[0.2em] text-perrific-graphite placeholder:text-gray-300 focus:border-perrific-violet focus:bg-white focus:outline-none"
                 />
                 {joinError && (
-                  <p role="alert" className="font-givonic text-xs text-red-600">
+                  <p role="alert" className="font-manrope text-xs text-red-600">
                     {joinError}
                   </p>
                 )}
@@ -2150,14 +2164,14 @@ function SidebarContent({
                     type="button"
                     onClick={() => !joining && setTeamDialog(null)}
                     disabled={joining}
-                    className="rounded-full px-4 py-2 font-givonic text-xs font-semibold text-gray-600 transition hover:bg-gray-100 disabled:opacity-50"
+                    className="rounded-full px-4 py-2 font-manrope text-xs font-semibold text-gray-600 transition hover:bg-gray-100 disabled:opacity-50"
                   >
                     Batal
                   </button>
                   <button
                     type="submit"
                     disabled={joining || joinCode.trim().length === 0}
-                    className="rounded-full bg-perrific-violet px-4 py-2 font-givonic text-xs font-semibold text-white transition hover:brightness-110 disabled:opacity-50"
+                    className="rounded-full bg-perrific-violet px-4 py-2 font-manrope text-xs font-semibold text-white transition hover:brightness-110 disabled:opacity-50"
                   >
                     {joining ? 'Masuk…' : 'Masuk'}
                   </button>
@@ -2193,7 +2207,7 @@ function SidebarContent({
           {favoritEntries.length === 0 && favoritTeams.length === 0 ? (
             !collapsed && (
             <div className="mt-2 rounded-lg border border-dashed border-gray-300 px-3 py-4 text-center">
-              <p className="font-givonic text-xs text-perrific-graphite/50">
+              <p className="font-manrope text-xs text-perrific-graphite/50">
                 Belum ada favorit.<br />
                 Tandai tab dengan bintang.
               </p>
@@ -2248,7 +2262,7 @@ function SidebarContent({
           {shortcutRows.length === 0 ? (
             !collapsed && (
             <div className="mt-2 rounded-lg border border-dashed border-gray-300 px-3 py-4 text-center">
-              <p className="font-givonic text-xs text-perrific-graphite/50">Belum ada shortcut.</p>
+              <p className="font-manrope text-xs text-perrific-graphite/50">Belum ada shortcut.</p>
             </div>
             )
           ) : (
@@ -2284,7 +2298,7 @@ function SidebarContent({
                 >
                   {r.missing ? (
                     <span
-                      className="flex items-center rounded-lg px-3 py-2 font-givonic text-sm text-perrific-graphite/40"
+                      className="flex items-center rounded-lg px-3 py-2 font-manrope text-sm text-perrific-graphite/40"
                       title="Target sudah tidak tersedia"
                     >
                       <span className="min-w-0 flex-1 truncate">{r.label}</span>
@@ -2366,17 +2380,17 @@ function SidebarContent({
       )}
       {sectionOrder.length === 0 && !collapsed && (
         <div className="mx-3 mt-2 rounded-lg border border-dashed border-gray-300 px-3 py-4 text-center">
-          <p className="font-givonic text-xs text-perrific-graphite/50">
+          <p className="font-manrope text-xs text-perrific-graphite/50">
             Semua bagian disembunyikan.<br />
             Tambahkan lagi lewat Edit sidebar.
           </p>
         </div>
       )}
-      <DragOverlay adjustScale={false} dropAnimation={null}>
+      <DragOverlay adjustScale={false} dropAnimation={null} modifiers={[restrictToVerticalAxis]}>
         {draggedTabInfo ? (
-          <div className="pointer-events-none inline-flex max-w-[220px] items-center gap-2 rounded-lg border border-perrific-violet/30 bg-white/95 px-3 py-1.5 text-perrific-graphite opacity-90 shadow-[0_6px_18px_rgba(0,0,0,0.12)] backdrop-blur-sm">
+          <div className="pointer-events-none flex w-[232px] items-center gap-2.5 rounded-lg border border-perrific-violet/40 bg-white px-3 py-2 text-sm text-perrific-graphite opacity-95 shadow-[0_8px_20px_rgba(0,0,0,0.12)] ring-1 ring-perrific-violet/20">
             {draggedTabInfo.icon}
-            <span className="min-w-0 flex-1 truncate font-givonic text-sm font-medium">
+            <span className="min-w-0 flex-1 truncate font-manrope text-sm font-medium">
               {draggedTabInfo.title}
             </span>
           </div>
@@ -2392,7 +2406,7 @@ function SidebarContent({
             onClick={onOpenEdit}
             title="Edit sidebar"
             aria-label="Edit sidebar"
-            className="mb-1 flex w-full items-center gap-2.5 rounded-lg px-3 py-2 font-givonic text-sm font-medium text-gray-600 transition-colors duration-200 hover:bg-gray-100 hover:text-perrific-graphite"
+            className="mb-1 flex w-full items-center gap-2.5 rounded-lg px-3 py-2 font-manrope text-sm font-medium text-gray-600 transition-colors duration-200 hover:bg-gray-100 hover:text-perrific-graphite"
           >
             <Pencil size={16} strokeWidth={1.6} />
             <span>Edit sidebar</span>
@@ -2403,7 +2417,7 @@ function SidebarContent({
             <div className="flex items-center gap-2.5 px-3 py-3">
               <Avatar src={user?.avatarUrl} name={user?.name} size={36} className="h-9 w-9" alt={`${user?.name ?? 'User'} avatar`} />
               <span className="min-w-0 flex-1">
-                <span className="block truncate font-givonic text-sm font-semibold text-perrific-graphite">
+                <span className="block truncate font-manrope text-sm font-semibold text-perrific-graphite">
                   {user?.name}
                 </span>
                 <span className="block truncate font-mono text-[11px] text-perrific-graphite/50">
@@ -2419,7 +2433,7 @@ function SidebarContent({
                 setMenuOpen(false);
                 navigate('/settings');
               }}
-              className="flex w-full items-center gap-2.5 px-3 py-2.5 font-givonic text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
+              className="flex w-full items-center gap-2.5 px-3 py-2.5 font-manrope text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
             >
               <Settings size={16} strokeWidth={1.6} />
               Pengaturan
@@ -2431,7 +2445,7 @@ function SidebarContent({
                 setMenuOpen(false);
                 setTrashOpen(true);
               }}
-              className="flex w-full items-center gap-2.5 px-3 py-2.5 font-givonic text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
+              className="flex w-full items-center gap-2.5 px-3 py-2.5 font-manrope text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
             >
               <Trash2 size={16} strokeWidth={1.6} />
               <span className="min-w-0 flex-1 text-left">Sampah</span>
@@ -2445,7 +2459,7 @@ function SidebarContent({
               type="button"
               role="menuitem"
               onClick={handleLogout}
-              className="flex w-full items-center gap-2.5 px-3 py-2.5 font-givonic text-sm font-medium text-red-600 transition hover:bg-red-50"
+              className="flex w-full items-center gap-2.5 px-3 py-2.5 font-manrope text-sm font-medium text-red-600 transition hover:bg-red-50"
             >
               <LogOut size={16} strokeWidth={1.6} />
               Keluar
@@ -2466,7 +2480,7 @@ function SidebarContent({
               collapsed ? 'ml-0 max-w-0 opacity-0' : 'ml-2.5 max-w-[220px] opacity-100'
             }`}
           >
-            <span className="block truncate font-givonic text-sm font-semibold text-perrific-graphite">
+            <span className="block truncate font-manrope text-sm font-semibold text-perrific-graphite">
               {user?.name}
             </span>
             <span className="block truncate font-mono text-[11px] text-perrific-graphite/50">
@@ -2500,7 +2514,7 @@ function SidebarContent({
         >
           <div className="w-full max-w-sm rounded-2xl border border-gray-200 bg-white p-4 shadow-[0_16px_48px_rgba(26,26,30,0.2)]">
             <div className="mb-1 flex items-center justify-between px-1">
-              <p className="font-givonic text-sm font-bold text-perrific-graphite">Buat baru di Privat</p>
+              <p className="font-manrope text-sm font-bold text-perrific-graphite">Buat baru di Privat</p>
               <button
                 type="button"
                 onClick={() => setTemplatePickerOpen(false)}
@@ -2510,7 +2524,7 @@ function SidebarContent({
                 <X size={14} strokeWidth={1.6} />
               </button>
             </div>
-            <p className="px-1 pb-2 font-givonic text-xs text-perrific-graphite/50">Pilih template untuk tab privat barumu.</p>
+            <p className="px-1 pb-2 font-manrope text-xs text-perrific-graphite/50">Pilih template untuk tab privat barumu.</p>
             <div className="space-y-1">
               <button
                 type="button"
@@ -2522,8 +2536,8 @@ function SidebarContent({
                   <FileText size={15} strokeWidth={1.6} />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block font-givonic text-sm font-semibold text-perrific-graphite">Note</span>
-                  <span className="block truncate font-givonic text-xs text-perrific-graphite/50">Halaman kosong untuk catatan bebas</span>
+                  <span className="block font-manrope text-sm font-semibold text-perrific-graphite">Note</span>
+                  <span className="block truncate font-manrope text-xs text-perrific-graphite/50">Halaman kosong untuk catatan bebas</span>
                 </span>
               </button>
               <button
@@ -2536,13 +2550,13 @@ function SidebarContent({
                   <Calendar size={15} strokeWidth={1.6} />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block font-givonic text-sm font-semibold text-perrific-graphite">Aktivitas harian</span>
-                  <span className="block truncate font-givonic text-xs text-perrific-graphite/50">Buat untuk hari ini, buka di Harian</span>
+                  <span className="block font-manrope text-sm font-semibold text-perrific-graphite">Aktivitas harian</span>
+                  <span className="block truncate font-manrope text-xs text-perrific-graphite/50">Buat untuk hari ini, buka di Harian</span>
                 </span>
               </button>
             </div>
             {createError && (
-              <p role="alert" className="px-1 pt-2 font-givonic text-xs text-red-600">
+              <p role="alert" className="px-1 pt-2 font-manrope text-xs text-red-600">
                 {createError}
               </p>
             )}
@@ -2563,7 +2577,7 @@ function SidebarContent({
         >
           <div className="nice-scroll max-h-[70vh] w-full max-w-sm overflow-y-auto rounded-2xl border border-gray-200 bg-white p-4 shadow-[0_16px_48px_rgba(26,26,30,0.2)]">
             <div className="mb-2 flex items-center justify-between px-1">
-              <p className="font-givonic text-sm font-bold text-perrific-graphite">Tambah shortcut</p>
+              <p className="font-manrope text-sm font-bold text-perrific-graphite">Tambah shortcut</p>
               <button
                 type="button"
                 onClick={() => setShortcutPickerOpen(false)}
@@ -2605,7 +2619,7 @@ function SidebarContent({
                           addShortcut({ kind: o.kind, ref: o.ref });
                           setShortcutPickerOpen(false);
                         }}
-                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left font-givonic text-sm text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
+                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left font-manrope text-sm text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
                       >
                         <Plus size={13} strokeWidth={1.6} className="shrink-0 text-gray-400" />
                         <span className="min-w-0 flex-1 truncate">{o.label}</span>
@@ -2659,7 +2673,7 @@ function SidebarContent({
                   else if (ctxMenu.kind === 'team') setTeamIcon(ctxMenu.team.id, null);
                   setCtxMenu(null);
                 }}
-                className="mt-1.5 w-full rounded-lg px-2 py-1.5 text-left font-givonic text-xs text-perrific-graphite/60 transition hover:bg-gray-100"
+                className="mt-1.5 w-full rounded-lg px-2 py-1.5 text-left font-manrope text-xs text-perrific-graphite/60 transition hover:bg-gray-100"
               >
                 Kembalikan bawaan
               </button>
@@ -2693,7 +2707,7 @@ function SidebarContent({
                   }
                   setCtxMenu(null);
                 }}
-                className="flex w-full items-center gap-2.5 px-3 py-2.5 font-givonic text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
+                className="flex w-full items-center gap-2.5 px-3 py-2.5 font-manrope text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
               >
                 <Pencil size={14} strokeWidth={1.6} />
                 Ubah nama
@@ -2705,7 +2719,7 @@ function SidebarContent({
                 type="button"
                 role="menuitem"
                 onClick={() => setCtxMenu({ ...ctxMenu, view: 'icons' })}
-                className="flex w-full items-center gap-2.5 px-3 py-2.5 font-givonic text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
+                className="flex w-full items-center gap-2.5 px-3 py-2.5 font-manrope text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
               >
                 <Smile size={14} strokeWidth={1.6} />
                 Ganti ikon
@@ -2721,7 +2735,7 @@ function SidebarContent({
                       setCtxMenu(null);
                       openEditTeamDesc(target);
                     }}
-                    className="flex w-full items-center gap-2.5 px-3 py-2.5 font-givonic text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
+                    className="flex w-full items-center gap-2.5 px-3 py-2.5 font-manrope text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
                   >
                     <AlignLeft size={14} strokeWidth={1.6} />
                     Edit deskripsi
@@ -2734,7 +2748,7 @@ function SidebarContent({
                       setCtxMenu(null);
                       teamAvatarInputRef.current?.click();
                     }}
-                    className="flex w-full items-center gap-2.5 px-3 py-2.5 font-givonic text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
+                    className="flex w-full items-center gap-2.5 px-3 py-2.5 font-manrope text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
                   >
                     <ImageIcon size={14} strokeWidth={1.6} />
                     Ganti gambar
@@ -2748,7 +2762,7 @@ function SidebarContent({
                         setCtxMenu(null);
                         void handleRemoveTeamAvatar(target);
                       }}
-                      className="flex w-full items-center gap-2.5 px-3 py-2.5 font-givonic text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
+                      className="flex w-full items-center gap-2.5 px-3 py-2.5 font-manrope text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
                     >
                       <X size={14} strokeWidth={1.6} />
                       Hapus gambar
@@ -2766,7 +2780,7 @@ function SidebarContent({
                   if (menuMoveTarget.section === 'privat') movePrivatMenu(menuMoveTarget.key, -1);
                   else move(menuMoveTarget.section, menuMoveTarget.listKeys, menuMoveTarget.key, -1);
                 }}
-                className="flex w-full items-center gap-2.5 px-3 py-2.5 font-givonic text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-gray-600"
+                className="flex w-full items-center gap-2.5 px-3 py-2.5 font-manrope text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-gray-600"
               >
                 <ArrowUp size={14} strokeWidth={1.6} />
                 Naik
@@ -2781,7 +2795,7 @@ function SidebarContent({
                   if (menuMoveTarget.section === 'privat') movePrivatMenu(menuMoveTarget.key, 1);
                   else move(menuMoveTarget.section, menuMoveTarget.listKeys, menuMoveTarget.key, 1);
                 }}
-                className="flex w-full items-center gap-2.5 px-3 py-2.5 font-givonic text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-gray-600"
+                className="flex w-full items-center gap-2.5 px-3 py-2.5 font-manrope text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-gray-600"
               >
                 <ArrowDown size={14} strokeWidth={1.6} />
                 Turun
@@ -2802,7 +2816,7 @@ function SidebarContent({
                         }
                         setCtxMenu(null);
                       }}
-                      className="flex w-full items-center gap-2.5 px-3 py-2.5 font-givonic text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
+                      className="flex w-full items-center gap-2.5 px-3 py-2.5 font-manrope text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
                     >
                       <Eye size={14} strokeWidth={1.6} />
                       Keluarkan dari arsip
@@ -2827,7 +2841,7 @@ function SidebarContent({
                         }
                         setCtxMenu(null);
                       }}
-                      className="flex w-full items-center gap-2.5 px-3 py-2.5 font-givonic text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
+                      className="flex w-full items-center gap-2.5 px-3 py-2.5 font-manrope text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
                     >
                       <Archive size={14} strokeWidth={1.6} />
                       Arsipkan
@@ -2840,7 +2854,7 @@ function SidebarContent({
                       toggleStar(ctxMenu.to);
                       setCtxMenu(null);
                     }}
-                    className="flex w-full items-center gap-2.5 px-3 py-2.5 font-givonic text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
+                    className="flex w-full items-center gap-2.5 px-3 py-2.5 font-manrope text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
                   >
                     <Star
                       size={14}
@@ -2866,7 +2880,7 @@ function SidebarContent({
                           else addShortcut(target);
                           setCtxMenu(null);
                         }}
-                        className="flex w-full items-center gap-2.5 px-3 py-2.5 font-givonic text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
+                        className="flex w-full items-center gap-2.5 px-3 py-2.5 font-manrope text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
                       >
                         <Link2 size={14} strokeWidth={1.6} />
                         {pinned ? 'Hapus shortcut' : 'Tambahkan ke shortcut'}
@@ -2881,7 +2895,7 @@ function SidebarContent({
                         type="button"
                         role="menuitem"
                         onClick={() => handleDeleteNote(note)}
-                        className="flex w-full items-center gap-2.5 px-3 py-2.5 font-givonic text-sm font-medium text-red-600 transition hover:bg-red-50"
+                        className="flex w-full items-center gap-2.5 px-3 py-2.5 font-manrope text-sm font-medium text-red-600 transition hover:bg-red-50"
                       >
                         <Trash2 size={14} strokeWidth={1.6} />
                         Hapus Tab
@@ -2896,7 +2910,7 @@ function SidebarContent({
                       type="button"
                       role="menuitem"
                       onClick={() => handleUnarchiveTeam(ctxMenu.team)}
-                      className="flex w-full items-center gap-2.5 px-3 py-2.5 font-givonic text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
+                      className="flex w-full items-center gap-2.5 px-3 py-2.5 font-manrope text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
                     >
                       <Eye size={14} strokeWidth={1.6} />
                       Keluarkan dari arsip
@@ -2906,7 +2920,7 @@ function SidebarContent({
                       type="button"
                       role="menuitem"
                       onClick={() => handleArchiveTeam(ctxMenu.team)}
-                      className="flex w-full items-center gap-2.5 px-3 py-2.5 font-givonic text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
+                      className="flex w-full items-center gap-2.5 px-3 py-2.5 font-manrope text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
                     >
                       <Archive size={14} strokeWidth={1.6} />
                       Arsipkan
@@ -2919,7 +2933,7 @@ function SidebarContent({
                       toggleStar(ctxMenu.team.id);
                       setCtxMenu(null);
                     }}
-                    className="flex w-full items-center gap-2.5 px-3 py-2.5 font-givonic text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
+                    className="flex w-full items-center gap-2.5 px-3 py-2.5 font-manrope text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
                   >
                     <Star
                       size={14}
@@ -2936,7 +2950,7 @@ function SidebarContent({
                       else addShortcut({ kind: 'team', ref: ctxMenu.team.id });
                       setCtxMenu(null);
                     }}
-                    className="flex w-full items-center gap-2.5 px-3 py-2.5 font-givonic text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
+                    className="flex w-full items-center gap-2.5 px-3 py-2.5 font-manrope text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-perrific-graphite"
                   >
                     <Link2 size={14} strokeWidth={1.6} />
                     {isPinned('team', ctxMenu.team.id) ? 'Hapus shortcut' : 'Tambahkan ke shortcut'}
@@ -2946,7 +2960,7 @@ function SidebarContent({
                       type="button"
                       role="menuitem"
                       onClick={() => handleDeleteTeam(ctxMenu.team)}
-                      className="flex w-full items-center gap-2.5 px-3 py-2.5 font-givonic text-sm font-medium text-red-600 transition hover:bg-red-50"
+                      className="flex w-full items-center gap-2.5 px-3 py-2.5 font-manrope text-sm font-medium text-red-600 transition hover:bg-red-50"
                     >
                       <Trash2 size={14} strokeWidth={1.6} />
                       Hapus tim
@@ -2962,7 +2976,7 @@ function SidebarContent({
                       removeShortcut(ctxMenu.shortcutId);
                       setCtxMenu(null);
                     }}
-                    className="flex w-full items-center gap-2.5 px-3 py-2.5 font-givonic text-sm font-medium text-red-600 transition hover:bg-red-50"
+                    className="flex w-full items-center gap-2.5 px-3 py-2.5 font-manrope text-sm font-medium text-red-600 transition hover:bg-red-50"
                   >
                     <Trash2 size={14} strokeWidth={1.6} />
                     Hapus shortcut
@@ -2976,7 +2990,7 @@ function SidebarContent({
       {trashOpen && (
         <ModalShell label="Sampah" zClass="z-40" onClose={() => setTrashOpen(false)}>
           <div className="mb-1 flex items-center justify-between px-1">
-            <p className="font-givonic text-sm font-bold text-perrific-graphite">
+            <p className="font-manrope text-sm font-bold text-perrific-graphite">
               Sampah
               {trashItems.length > 0 && (
                 <span className="ml-1.5 rounded-full bg-gray-100 px-2 py-0.5 font-mono text-[11px] font-medium text-perrific-graphite/60">
@@ -2989,7 +3003,7 @@ function SidebarContent({
                 <button
                   type="button"
                   onClick={() => setConfirmEmptyTrash(true)}
-                  className="rounded-lg px-2 py-1 font-givonic text-xs font-semibold text-red-500 hover:bg-red-50"
+                  className="rounded-lg px-2 py-1 font-manrope text-xs font-semibold text-red-500 hover:bg-red-50"
                 >
                   Kosongkan
                 </button>
@@ -3006,7 +3020,7 @@ function SidebarContent({
             </div>
           </div>
           {trashItems.length === 0 ? (
-            <p className="px-1 py-6 text-center font-givonic text-xs text-perrific-graphite/50">
+            <p className="px-1 py-6 text-center font-manrope text-xs text-perrific-graphite/50">
               Sampah kosong.
             </p>
           ) : (
@@ -3023,7 +3037,7 @@ function SidebarContent({
                 return (
                   <li
                     key={`${item.kind}:${item.id}`}
-                    className="flex items-center gap-2 rounded-lg px-3 py-2 font-givonic text-sm text-gray-600"
+                    className="flex items-center gap-2 rounded-lg px-3 py-2 font-manrope text-sm text-gray-600"
                   >
                     <span className="min-w-0 flex-1 truncate">
                       <NavLink
@@ -3045,7 +3059,7 @@ function SidebarContent({
                       onClick={() => restoreTrash(item.kind, item.id)}
                       title="Kembalikan"
                       aria-label={`Kembalikan ${item.title}`}
-                      className="shrink-0 font-givonic text-[11px] font-semibold text-perrific-violet hover:underline"
+                      className="shrink-0 font-manrope text-[11px] font-semibold text-perrific-violet hover:underline"
                     >
                       Kembalikan
                     </button>
@@ -3054,7 +3068,7 @@ function SidebarContent({
                       onClick={() => handlePurgeItem(item.kind, item.id, item.title)}
                       title="Hapus permanen"
                       aria-label={`Hapus permanen ${item.title}`}
-                      className="shrink-0 font-givonic text-[11px] font-semibold text-red-500 hover:text-red-700 hover:underline"
+                      className="shrink-0 font-manrope text-[11px] font-semibold text-red-500 hover:text-red-700 hover:underline"
                     >
                       Hapus
                     </button>
@@ -3117,10 +3131,10 @@ function SidebarContent({
         >
           <div className="mb-1 flex items-center justify-between px-1">
             <div className="min-w-0">
-              <p className="font-givonic text-sm font-bold text-perrific-graphite">
+              <p className="font-manrope text-sm font-bold text-perrific-graphite">
                 Edit deskripsi tim
               </p>
-              <p className="truncate font-givonic text-xs text-perrific-graphite/50">
+              <p className="truncate font-manrope text-xs text-perrific-graphite/50">
                 {editingDescTeam.name}
               </p>
             </div>
@@ -3149,7 +3163,7 @@ function SidebarContent({
                 placeholder="Tulis deskripsi singkat tim (kosongkan untuk menghapus)…"
                 maxLength={500}
                 aria-label="Deskripsi tim"
-                className="w-full resize-none rounded-xl border border-gray-200 bg-white px-3 py-2.5 font-givonic text-sm text-perrific-graphite placeholder:text-gray-400 focus:border-perrific-violet focus:outline-none focus:ring-2 focus:ring-perrific-violet/20"
+                className="w-full resize-none rounded-xl border border-gray-200 bg-white px-3 py-2.5 font-manrope text-sm text-perrific-graphite placeholder:text-gray-400 focus:border-perrific-violet focus:outline-none focus:ring-2 focus:ring-perrific-violet/20"
               />
               <p className="mt-1 text-right font-mono text-[11px] text-gray-400">
                 {teamDescDraft.length}/500
@@ -3160,14 +3174,14 @@ function SidebarContent({
                 type="button"
                 onClick={() => !savingTeamDesc && setEditingDescTeam(null)}
                 disabled={savingTeamDesc}
-                className="rounded-full px-4 py-2 font-givonic text-xs font-semibold text-gray-600 transition hover:bg-gray-100 disabled:opacity-50"
+                className="rounded-full px-4 py-2 font-manrope text-xs font-semibold text-gray-600 transition hover:bg-gray-100 disabled:opacity-50"
               >
                 Batal
               </button>
               <button
                 type="submit"
                 disabled={savingTeamDesc}
-                className="rounded-full bg-perrific-violet px-4 py-2 font-givonic text-xs font-semibold text-white transition hover:brightness-110 disabled:opacity-50"
+                className="rounded-full bg-perrific-violet px-4 py-2 font-manrope text-xs font-semibold text-white transition hover:brightness-110 disabled:opacity-50"
               >
                 {savingTeamDesc ? 'Menyimpan…' : 'Simpan'}
               </button>
@@ -3401,8 +3415,6 @@ export default function AppLayout() {
   }, [location.pathname]);
 
   function toggleCollapsed() {
-    // Matikan animasi sesaat agar rail langsung jepret tanpa transisi 200ms.
-    document.documentElement.classList.add('no-anim');
     setCollapsed((v) => {
       try {
         localStorage.setItem('purrific:sidebar-collapsed', v ? '0' : '1');
@@ -3412,58 +3424,69 @@ export default function AppLayout() {
       window.dispatchEvent(new Event(APP_SIDEBAR_EVENT));
       return !v;
     });
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        document.documentElement.classList.remove('no-anim');
-      });
-    });
   }
 
   return (
     <div className="flex min-h-screen bg-gray-50">
       {/* Overlay mobile */}
-      {open && (
-        <button
-          type="button"
-          aria-label="Tutup menu"
-          onClick={() => setOpen(false)}
-          className="fixed inset-0 z-30 bg-black/30 lg:hidden"
-        />
-      )}
+      <div
+        role="button"
+        tabIndex={open ? 0 : -1}
+        aria-label="Tutup menu"
+        onClick={() => setOpen(false)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setOpen(false);
+          }
+        }}
+        className={`fixed inset-0 z-30 bg-black/30 transition-opacity duration-300 ease-in-out lg:hidden ${
+          open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
+      />
 
       {/* Sidebar desktop */}
       <aside
-        className={`hidden shrink-0 border-r border-gray-200 transition-[width] duration-200 ease-in-out lg:sticky lg:top-0 lg:block lg:h-screen ${
-          collapsed ? 'lg:w-0 lg:border-r-0 overflow-hidden' : 'lg:w-64'
+        className={`hidden shrink-0 overflow-hidden border-gray-200 transition-[width,border-color] duration-300 ease-in-out lg:sticky lg:top-0 lg:block lg:h-screen ${
+          collapsed ? 'lg:w-0 border-r-0' : 'lg:w-64 border-r'
         }`}
       >
-        <SidebarContent
-          collapsed={collapsed}
-          onRequestExpand={() => setCollapsed(false)}
-          onToggleCollapse={toggleCollapsed}
-          onOpenNotifications={handleOpenNotifications}
-          onOpenArchive={handleOpenArchive}
-          onOpenEdit={handleOpenEdit}
-          unreadCount={unreadCount}
-        />
+        <div
+          className={`h-full w-64 min-w-[16rem] transition-transform duration-300 ease-in-out ${
+            collapsed ? '-translate-x-full' : 'translate-x-0'
+          }`}
+        >
+          <SidebarContent
+            collapsed={collapsed}
+            onRequestExpand={() => setCollapsed(false)}
+            onToggleCollapse={toggleCollapsed}
+            onOpenNotifications={handleOpenNotifications}
+            onOpenArchive={handleOpenArchive}
+            onOpenEdit={handleOpenEdit}
+            unreadCount={unreadCount}
+          />
+        </div>
       </aside>
 
       {/* Tombol buka sidebar saat tertutup penuh */}
-      {collapsed && !notificationsOpen && !archiveOpen && !editOpen && (
-        <button
-          type="button"
-          onClick={toggleCollapsed}
-          title="Buka sidebar"
-          aria-label="Buka sidebar"
-          className="fixed left-3 top-3 z-30 hidden h-8 w-8 items-center justify-center rounded-lg bg-white text-perrific-graphite transition hover:bg-gray-100 lg:flex"
-        >
-          <ChevronRight size={16} strokeWidth={1.6} />
-        </button>
-      )}
+      <button
+        type="button"
+        onClick={toggleCollapsed}
+        title="Buka sidebar"
+        aria-label="Buka sidebar"
+        tabIndex={collapsed && !notificationsOpen && !archiveOpen && !editOpen ? 0 : -1}
+        className={`fixed left-3 top-3 z-30 hidden h-8 w-8 items-center justify-center rounded-lg border border-gray-200/80 bg-white shadow-sm text-perrific-graphite transition-all duration-300 ease-in-out hover:bg-gray-100 hover:scale-105 active:scale-95 lg:flex ${
+          collapsed && !notificationsOpen && !archiveOpen && !editOpen
+            ? 'opacity-100 translate-x-0 pointer-events-auto'
+            : 'opacity-0 -translate-x-2 pointer-events-none'
+        }`}
+      >
+        <ChevronRight size={16} strokeWidth={1.6} />
+      </button>
 
       {/* Sidebar mobile (geser) */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 w-64 shrink-0 border-r border-gray-200 transition-transform lg:hidden ${
+        className={`fixed inset-y-0 left-0 z-40 w-64 shrink-0 border-r border-gray-200 transition-transform duration-300 ease-in-out lg:hidden ${
           open ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -3478,23 +3501,11 @@ export default function AppLayout() {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        {/* Topbar mobile */}
-        <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-gray-200 bg-white/90 px-4 py-3 backdrop-blur lg:hidden">
-          <button
-            type="button"
-            onClick={() => setOpen(true)}
-            aria-label="Buka menu"
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-perrific-graphite hover:bg-gray-100"
-          >
-            <Menu size={18} strokeWidth={1.6} />
-          </button>
-          <Link to="/notes" className="flex items-center gap-2">
-            <img src="/Purrific.svg" alt="Purrific" width="24" height="24" className="h-6 w-6" />
-            <span className="font-gendy text-[16px] font-extrabold tracking-[-0.02em] text-perrific-graphite">
-              Purrific
-            </span>
-          </Link>
-        </header>
+        {/* Tombol burger floating draggable untuk layar ponsel */}
+        <FloatingMobileBurger
+          onOpen={() => setOpen(true)}
+          hidden={open || notificationsOpen || archiveOpen || editOpen}
+        />
 
         <main className="flex-1 min-w-0 p-4 sm:p-6">
           <Outlet />

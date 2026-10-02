@@ -1,4 +1,4 @@
-import { Check, Minus, X, Kanban, Calendar, RefreshCw, Clock, Zap, FileText } from 'lucide-react';
+import { Check, Minus, X, Columns3, Calendar, RefreshCw, Clock, Zap, FileText } from 'lucide-react';
 
 function StatusBadge({ type }: { type: 'supported' | 'partial' | 'unsupported' }) {
   if (type === 'supported') {
@@ -25,7 +25,7 @@ function StatusBadge({ type }: { type: 'supported' | 'partial' | 'unsupported' }
 export default function ComparisonSection() {
   const rows = [
     {
-      icon: <Kanban size={18} strokeWidth={1.6} className="text-perrific-violet" />,
+      icon: <Columns3 size={18} strokeWidth={1.6} className="text-perrific-violet" />,
       feature: 'Manajemen Kanban Tim',
       purrificText: 'Bawaan & Real-time',
       notion: {
@@ -52,8 +52,8 @@ export default function ComparisonSection() {
     },
     {
       icon: <RefreshCw size={18} strokeWidth={1.7} className="text-emerald-500" />,
-      feature: 'Auto-Sync Tugas Tim ke Jadwal Harian',
-      purrificText: 'Otomatis & Real-time',
+      feature: 'Penjadwalan Tugas Tim ke Kalender',
+      purrificText: 'Drag & Drop + Sidebar Terpadu',
       notion: {
         text: 'Tidak ada (copy-paste manual)',
         type: 'unsupported' as const,
@@ -109,10 +109,10 @@ export default function ComparisonSection() {
       <div className="mx-auto max-w-[1140px] px-4 sm:px-6 lg:px-8">
         {/* Header - Clean, Bold, Minimalist */}
         <div className="text-center mb-12 sm:mb-16">
-          <h2 className="font-givonic text-[28px] font-extrabold tracking-[-0.03em] text-perrific-graphite sm:text-[40px] lg:text-[46px]">
+          <h2 className="font-manrope text-[28px] font-extrabold tracking-[-0.03em] text-perrific-graphite sm:text-[40px] lg:text-[46px]">
             Purrific vs. Notion & Taiga
           </h2>
-          <p className="mt-3 font-givonic text-sm text-perrific-graphite/60 sm:text-base">
+          <p className="mt-3 font-manrope text-sm text-perrific-graphite/60 sm:text-base">
             Perbandingan fitur utama untuk mengelola kolaborasi tim dan aktivitas harianmu.
           </p>
         </div>
@@ -131,7 +131,7 @@ export default function ComparisonSection() {
                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-perrific-paper border border-perrific-line/60">
                       {row.icon}
                     </div>
-                    <span className="font-givonic text-[14px] sm:text-[15px] font-bold text-perrific-graphite leading-snug">
+                    <span className="font-manrope text-[14px] sm:text-[15px] font-bold text-perrific-graphite leading-snug">
                       {row.feature}
                     </span>
                   </div>
@@ -150,7 +150,7 @@ export default function ComparisonSection() {
                     key={idx}
                     className="h-[72px] flex items-center justify-between px-4 sm:px-5"
                   >
-                    <span className="font-givonic text-xs sm:text-[13px] font-bold text-white pr-2 leading-tight">
+                    <span className="font-manrope text-xs sm:text-[13px] font-bold text-white pr-2 leading-tight">
                       {row.purrificText}
                     </span>
                     <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white text-perrific-violet">
@@ -172,7 +172,7 @@ export default function ComparisonSection() {
                     key={idx}
                     className="h-[72px] flex items-center justify-between pl-2 pr-2"
                   >
-                    <span className="font-givonic text-xs text-perrific-graphite/70 pr-2 leading-relaxed">
+                    <span className="font-manrope text-xs text-perrific-graphite/70 pr-2 leading-relaxed">
                       {row.notion.text}
                     </span>
                     <StatusBadge type={row.notion.type} />
@@ -192,7 +192,7 @@ export default function ComparisonSection() {
                     key={idx}
                     className="h-[72px] flex items-center justify-between pl-2 pr-2"
                   >
-                    <span className="font-givonic text-xs text-perrific-graphite/70 pr-2 leading-relaxed">
+                    <span className="font-manrope text-xs text-perrific-graphite/70 pr-2 leading-relaxed">
                       {row.taiga.text}
                     </span>
                     <StatusBadge type={row.taiga.type} />

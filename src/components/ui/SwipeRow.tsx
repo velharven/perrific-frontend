@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+﻿import { useRef, useState } from 'react';
 
 export interface SwipeAction {
   label: string;
@@ -106,7 +106,7 @@ export default function SwipeRow({
             tabIndex={open ? 0 : -1}
             onClick={a.onClick}
             style={{ width: ACTION_WIDTH }}
-            className={`flex items-center justify-center px-2 text-center font-givonic text-xs font-bold text-white transition ${
+            className={`flex items-center justify-center px-2 text-center font-manrope text-xs font-bold text-white transition ${
               a.danger ? 'bg-red-500 hover:bg-red-600' : 'bg-perrific-graphite hover:brightness-110'
             }`}
           >

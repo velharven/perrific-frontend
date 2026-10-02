@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+﻿import { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   X,
@@ -225,7 +225,7 @@ export default function NotificationPanel({
             <X size={16} strokeWidth={1.8} aria-hidden="true" />
           </button>
           <div className="flex items-center gap-2">
-            <h2 className="font-givonic text-sm font-bold text-perrific-graphite">
+            <h2 className="font-manrope text-sm font-bold text-perrific-graphite">
               Notifikasi
             </h2>
             {unreadCount > 0 && (
@@ -242,7 +242,7 @@ export default function NotificationPanel({
           onClick={handleMarkAllRead}
           disabled={unreadCount === 0 || markingAll}
           title="Baca semua notifikasi"
-          className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 font-givonic text-xs font-semibold text-perrific-violet transition hover:bg-perrific-violet/10 disabled:opacity-40 disabled:hover:bg-transparent"
+          className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 font-manrope text-xs font-semibold text-perrific-violet transition hover:bg-perrific-violet/10 disabled:opacity-40 disabled:hover:bg-transparent"
         >
           <CheckCheck size={14} strokeWidth={1.8} aria-hidden="true" />
           <span>Baca semua</span>
@@ -254,17 +254,17 @@ export default function NotificationPanel({
         {loading && notifications.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center text-gray-400">
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-300 border-t-perrific-violet" />
-            <p className="mt-3 font-givonic text-xs text-gray-400">Memuat notifikasi…</p>
+            <p className="mt-3 font-manrope text-xs text-gray-400">Memuat notifikasi…</p>
           </div>
         ) : notifications.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-50 text-gray-400 border border-gray-100">
               <Bell size={22} strokeWidth={1.5} />
             </div>
-            <h3 className="mt-3 font-givonic text-sm font-bold text-perrific-graphite">
+            <h3 className="mt-3 font-manrope text-sm font-bold text-perrific-graphite">
               Belum ada notifikasi
             </h3>
-            <p className="mt-1 font-givonic text-xs text-gray-400 leading-relaxed max-w-[24ch]">
+            <p className="mt-1 font-manrope text-xs text-gray-400 leading-relaxed max-w-[24ch]">
               Pemberitahuan tugas, deadline, dan aktivitas tim akan muncul di sini.
             </p>
           </div>
@@ -293,7 +293,7 @@ export default function NotificationPanel({
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span
-                      className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 font-givonic text-[10px] font-semibold ${badge.color}`}
+                      className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 font-manrope text-[10px] font-semibold ${badge.color}`}
                     >
                       <BadgeIcon size={11} strokeWidth={1.8} aria-hidden="true" />
                       <span>{badge.label}</span>
@@ -313,12 +313,12 @@ export default function NotificationPanel({
                     </div>
                   </div>
 
-                  <h4 className="font-givonic text-xs font-bold text-perrific-graphite leading-snug">
+                  <h4 className="font-manrope text-xs font-bold text-perrific-graphite leading-snug">
                     {item.title}
                   </h4>
 
                   {item.message && (
-                    <p className="font-givonic text-xs text-perrific-graphite/70 leading-relaxed line-clamp-2">
+                    <p className="font-manrope text-xs text-perrific-graphite/70 leading-relaxed line-clamp-2">
                       {item.message}
                     </p>
                   )}

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { teamApi } from '@/api/teams';
 import { projectApi } from '@/api/projects';
@@ -187,13 +187,13 @@ export default function TeamPage() {
   function panel(title: string, items: TaskWithProject[], emptyLead: string, emptyRest: string) {
     return (
       <section className="w-[85vw] shrink-0 rounded-xl bg-gray-200 p-3 sm:w-80">
-        <h2 className="px-1 pb-2 font-givonic text-sm font-semibold text-gray-600">
+        <h2 className="px-1 pb-2 font-manrope text-sm font-semibold text-gray-600">
           {title} · {items.length}
         </h2>
         {items.length === 0 ? (
           <div className="py-6 text-center">
-            <p className="font-givonic text-sm font-bold text-perrific-graphite">{emptyLead}</p>
-            <p className="mx-auto mt-1 max-w-[260px] font-givonic text-xs leading-relaxed text-perrific-graphite/50">{emptyRest}</p>
+            <p className="font-manrope text-sm font-bold text-perrific-graphite">{emptyLead}</p>
+            <p className="mx-auto mt-1 max-w-[260px] font-manrope text-xs leading-relaxed text-perrific-graphite/50">{emptyRest}</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -223,7 +223,7 @@ export default function TeamPage() {
         ) : (
           <div
             aria-hidden="true"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-perrific-violet/20 bg-perrific-violet/10 font-givonic text-sm font-bold text-perrific-violet"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-perrific-violet/20 bg-perrific-violet/10 font-manrope text-sm font-bold text-perrific-violet"
           >
             {team.name.trim().slice(0, 2).toUpperCase()}
           </div>
@@ -287,9 +287,9 @@ export default function TeamPage() {
                         active ? 'border-perrific-violet ring-1 ring-perrific-violet' : 'border-gray-200'
                       }`}
                     >
-                      <p className="truncate font-givonic text-sm font-bold text-perrific-graphite">{p.name}</p>
+                      <p className="truncate font-manrope text-sm font-bold text-perrific-graphite">{p.name}</p>
                       {p.description && (
-                        <p className="mt-0.5 truncate font-givonic text-xs text-perrific-graphite/50">{p.description}</p>
+                        <p className="mt-0.5 truncate font-manrope text-xs text-perrific-graphite/50">{p.description}</p>
                       )}
                       <p className="mt-1.5 font-mono text-[11px] text-perrific-graphite/50">
                         {p.status === 'ARCHIVED' ? 'Arsip' : 'Aktif'}
@@ -301,7 +301,7 @@ export default function TeamPage() {
                   <button
                     type="button"
                     onClick={() => setFilter(null)}
-                    className="w-full font-givonic text-xs font-semibold text-perrific-violet hover:underline"
+                    className="w-full font-manrope text-xs font-semibold text-perrific-violet hover:underline"
                   >
                     Tampilkan semua project
                   </button>
@@ -311,14 +311,14 @@ export default function TeamPage() {
                     type="button"
                     onClick={() => setCreateOpen(true)}
                     aria-haspopup="dialog"
-                    className="block w-full rounded-lg border border-dashed border-perrific-violet/40 bg-perrific-violet/5 px-4 py-2.5 text-center font-givonic text-xs font-bold tracking-widest text-perrific-violet transition hover:bg-perrific-violet/10"
+                    className="block w-full rounded-lg border border-dashed border-perrific-violet/40 bg-perrific-violet/5 px-4 py-2.5 text-center font-manrope text-xs font-bold tracking-widest text-perrific-violet transition hover:bg-perrific-violet/10"
                   >
                     + PROJECT BARU
                   </button>
                 )}
                 <Link
                   to={`/team/${team.id}/projects`}
-                  className="block w-full rounded-lg bg-perrific-mint px-4 py-2.5 text-center font-givonic text-xs font-bold tracking-widest text-perrific-graphite transition hover:brightness-95"
+                  className="block w-full rounded-lg bg-perrific-mint px-4 py-2.5 text-center font-manrope text-xs font-bold tracking-widest text-perrific-graphite transition hover:brightness-95"
                 >
                   MANAGE PROJECTS
                 </Link>
@@ -328,8 +328,8 @@ export default function TeamPage() {
         ) : (
           <section aria-label="Undang dan anggota tim" className="space-y-5">
             <div className="rounded-xl border border-gray-200 bg-white p-4">
-              <h2 className="font-givonic text-sm font-bold text-perrific-graphite">Undang anggota</h2>
-              <p className="mt-0.5 font-givonic text-xs text-gray-500">Kode tim atau email langsung</p>
+              <h2 className="font-manrope text-sm font-bold text-perrific-graphite">Undang anggota</h2>
+              <p className="mt-0.5 font-manrope text-xs text-gray-500">Kode tim atau email langsung</p>
               {(isAdmin || team.canManageInvite) && team.inviteCode && (
                 <div className="mt-3 flex items-center gap-2">
                   <p className="font-mono text-[11px] tracking-widest text-perrific-graphite/40">KODE TIM</p>
@@ -339,7 +339,7 @@ export default function TeamPage() {
                   <button
                     type="button"
                     onClick={() => void handleCopyCode()}
-                    className="rounded-lg px-2 py-1 font-givonic text-xs font-semibold text-perrific-violet transition hover:bg-perrific-violet/10"
+                    className="rounded-lg px-2 py-1 font-manrope text-xs font-semibold text-perrific-violet transition hover:bg-perrific-violet/10"
                   >
                     Salin
                   </button>
@@ -350,15 +350,15 @@ export default function TeamPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Email anggota"
-                  className="min-w-0 flex-1 rounded-[10px] border border-perrific-line bg-white px-3 py-2.5 font-givonic text-sm text-perrific-graphite placeholder:text-perrific-graphite/40 focus:border-perrific-violet focus:outline-none focus:ring-2 focus:ring-perrific-violet/20"
+                  className="min-w-0 flex-1 rounded-[10px] border border-perrific-line bg-white px-3 py-2.5 font-manrope text-sm text-perrific-graphite placeholder:text-perrific-graphite/40 focus:border-perrific-violet focus:outline-none focus:ring-2 focus:ring-perrific-violet/20"
                 />
-                <button className="shrink-0 rounded-full bg-perrific-violet px-5 py-2.5 font-givonic text-sm font-semibold text-white transition hover:bg-[#E64D0A]">
+                <button className="shrink-0 rounded-full bg-perrific-violet px-5 py-2.5 font-manrope text-sm font-semibold text-white transition hover:bg-[#E64D0A]">
                   Undang
                 </button>
               </form>
             </div>
             <div className="rounded-xl border border-gray-200 bg-white p-4">
-              <h2 className="font-givonic text-sm font-bold text-perrific-graphite">
+              <h2 className="font-manrope text-sm font-bold text-perrific-graphite">
                 Anggota · {team.members?.length ?? 0}
               </h2>
               <ul className="mt-2 divide-y divide-gray-100">
@@ -366,10 +366,10 @@ export default function TeamPage() {
                   <li key={m.id} className="flex items-center gap-3 py-2.5">
                     <Avatar src={m.user?.avatarUrl ?? undefined} name={m.user?.name ?? '?'} size={32} alt={m.user?.name ?? 'anggota'} className="h-8 w-8 text-xs" />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate font-givonic text-sm font-semibold text-perrific-graphite">{m.user?.name}</p>
-                      <p className="truncate font-givonic text-xs text-gray-500">{m.user?.email}</p>
+                      <p className="truncate font-manrope text-sm font-semibold text-perrific-graphite">{m.user?.name}</p>
+                      <p className="truncate font-manrope text-xs text-gray-500">{m.user?.email}</p>
                     </div>
-                    <span className="shrink-0 rounded-full bg-gray-100 px-2.5 py-1 font-givonic text-[11px] font-semibold text-gray-600">
+                    <span className="shrink-0 rounded-full bg-gray-100 px-2.5 py-1 font-manrope text-[11px] font-semibold text-gray-600">
                       {m.role}
                     </span>
                   </li>
@@ -402,7 +402,7 @@ export default function TeamPage() {
               role="tab"
               aria-selected={tab === t.id}
               onClick={() => setTab(t.id)}
-              className={`shrink-0 rounded-full px-4 py-2 font-givonic text-xs font-semibold transition ${
+              className={`shrink-0 rounded-full px-4 py-2 font-manrope text-xs font-semibold transition ${
                 tab === t.id
                   ? 'bg-perrific-graphite text-white'
                   : 'text-gray-800 hover:bg-gray-200 hover:text-black'

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { noteApi } from '@/api/notes';
 import { useTrash } from '@/hooks/useNavLabels';
@@ -61,7 +61,7 @@ export default function PrivatRedirect({ kind }: { kind: NoteKind }) {
   if (error) {
     return (
       <div className="mx-auto max-w-3xl rounded-xl border border-dashed border-gray-300 bg-white p-10 text-center">
-        <p className="font-givonic text-sm text-perrific-graphite/60">Gagal membuka. Coba muat ulang.</p>
+        <p className="font-manrope text-sm text-perrific-graphite/60">Gagal membuka. Coba muat ulang.</p>
       </div>
     );
   }

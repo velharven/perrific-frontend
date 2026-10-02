@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useAuth } from '@/store/auth';
 import { useUsernameAvailability } from '@/hooks/useUsernameAvailability';
 
@@ -46,21 +46,21 @@ export default function UsernameModal() {
         <div className="flex items-center gap-3">
           <img src="/Purrific.svg" alt="" aria-hidden="true" width="32" height="32" className="h-8 w-8" />
           <div>
-            <h2 id="username-modal-title" className="font-givonic text-lg font-extrabold text-perrific-graphite">
+            <h2 id="username-modal-title" className="font-manrope text-lg font-extrabold text-perrific-graphite">
               Satu langkah lagi
             </h2>
-            <p className="font-givonic text-xs text-perrific-graphite/60">
+            <p className="font-manrope text-xs text-perrific-graphite/60">
               Pilih username untuk akunmu — wajib diisi untuk lanjut.
             </p>
           </div>
         </div>
 
         <form onSubmit={handleSubmit} className="mt-5">
-          <label htmlFor="modal-username" className="mb-1.5 block font-givonic text-xs font-medium text-perrific-graphite">
+          <label htmlFor="modal-username" className="mb-1.5 block font-manrope text-xs font-medium text-perrific-graphite">
             Username
           </label>
           <div className="flex items-center rounded-[10px] border border-perrific-line bg-white px-3 focus-within:border-perrific-violet focus-within:ring-2 focus-within:ring-perrific-violet/20">
-            <span className="select-none font-givonic text-sm text-perrific-graphite/40">@</span>
+            <span className="select-none font-manrope text-sm text-perrific-graphite/40">@</span>
             <input
               id="modal-username"
               type="text"
@@ -75,29 +75,29 @@ export default function UsernameModal() {
               spellCheck={false}
               required
               aria-describedby="modal-username-status"
-              className="w-full bg-transparent px-1.5 py-2.5 font-givonic text-sm text-perrific-graphite placeholder:text-perrific-graphite/40 focus:outline-none"
+              className="w-full bg-transparent px-1.5 py-2.5 font-manrope text-sm text-perrific-graphite placeholder:text-perrific-graphite/40 focus:outline-none"
             />
           </div>
           <div id="modal-username-status" aria-live="polite" className="mt-1.5 min-h-[1rem]">
             {invalid ? (
-              <p className="font-givonic text-xs text-red-600">
+              <p className="font-manrope text-xs text-red-600">
                 3–30 karakter: huruf kecil, angka, titik, underscore.
               </p>
             ) : checking ? (
-              <p className="font-givonic text-xs text-perrific-graphite/50">Memeriksa ketersediaan…</p>
+              <p className="font-manrope text-xs text-perrific-graphite/50">Memeriksa ketersediaan…</p>
             ) : taken ? (
-              <p className="font-givonic text-xs font-medium text-red-600">Username sudah dipakai.</p>
+              <p className="font-manrope text-xs font-medium text-red-600">Username sudah dipakai.</p>
             ) : available === true ? (
-              <p className="font-givonic text-xs font-medium text-green-700">Username tersedia.</p>
+              <p className="font-manrope text-xs font-medium text-green-700">Username tersedia.</p>
             ) : null}
           </div>
           {error && (
-            <p role="alert" className="mt-2 font-givonic text-xs text-red-600">{error}</p>
+            <p role="alert" className="mt-2 font-manrope text-xs text-red-600">{error}</p>
           )}
           <button
             type="submit"
             disabled={!ready}
-            className="mt-4 inline-flex w-full items-center justify-center rounded-full bg-perrific-violet px-6 py-3 font-givonic text-sm font-semibold text-white hover:bg-[#E64D0A] disabled:cursor-not-allowed disabled:opacity-60 transition"
+            className="mt-4 inline-flex w-full items-center justify-center rounded-full bg-perrific-violet px-6 py-3 font-manrope text-sm font-semibold text-white hover:bg-[#E64D0A] disabled:cursor-not-allowed disabled:opacity-60 transition"
           >
             {saving ? 'Menyimpan…' : 'Simpan & lanjut'}
           </button>

@@ -1,4 +1,4 @@
-import { useSocket } from '@/store/socket';
+﻿import { useSocket } from '@/store/socket';
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { projectApi } from '@/api/projects';
 import { teamApi } from '@/api/teams';
@@ -13,7 +13,7 @@ import { APP_SIDEBAR_EVENT, isAppSidebarCollapsed } from '@/components/layout/Ap
 import { ActivityIcon } from '@/components/icons';
 import { useAuth } from '@/store/auth';
 import { useUndo } from '@/hooks/useUndoStack';
-import { Kanban, ChevronDown, Filter, Search, X } from 'lucide-react';
+import { Columns3, ChevronDown, Filter, Search, X } from 'lucide-react';
 import type { BoardColumn, Project, Task } from '@/types';
 
 function compareTasks(a: Task, b: Task) {
@@ -570,7 +570,7 @@ export default function PersonalProjectKanbanView() {
     return (
       <div className="py-20 text-center">
         <div className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-orange-500 border-t-transparent" />
-        <p className="mt-3 font-givonic text-sm text-gray-500">Memuat project pribadi Anda…</p>
+        <p className="mt-3 font-manrope text-sm text-gray-500">Memuat project pribadi Anda…</p>
       </div>
     );
   }
@@ -582,10 +582,10 @@ export default function PersonalProjectKanbanView() {
         {/* Sisi Kiri: Info Project Pribadi */}
         <div className="flex min-w-0 items-center gap-2.5">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-orange-100 text-orange-700 shadow-2xs">
-            <Kanban size={18} strokeWidth={1.6} />
+            <Columns3 size={18} strokeWidth={1.6} />
           </div>
           <div className="min-w-0">
-            <h1 className="truncate font-givonic text-lg font-bold text-gray-800">
+            <h1 className="truncate font-manrope text-lg font-bold text-gray-800">
               {project?.name ?? 'Project Pribadi'}
             </h1>
             <p className="truncate text-xs text-gray-500">
@@ -631,13 +631,13 @@ export default function PersonalProjectKanbanView() {
             aria-haspopup="menu"
             aria-expanded={projectMenuOpen}
             aria-label="Pilih project pribadi"
-            className={`flex max-w-[180px] shrink-0 items-center gap-2 rounded-full px-4 py-2.5 font-givonic text-sm font-semibold transition focus:outline-none ${
+            className={`flex max-w-[180px] shrink-0 items-center gap-2 rounded-full px-4 py-2.5 font-manrope text-sm font-semibold transition focus:outline-none ${
               projectMenuOpen
                 ? 'bg-orange-600 text-white'
                 : 'bg-orange-50 text-orange-700 hover:bg-orange-100'
             }`}
           >
-            <Kanban size={14} strokeWidth={1.6} className="shrink-0" />
+            <Columns3 size={14} strokeWidth={1.6} className="shrink-0" />
             <span className="truncate">{project?.name ?? 'Project Pribadi'}</span>
             <ChevronDown
               size={12}
@@ -661,7 +661,7 @@ export default function PersonalProjectKanbanView() {
             aria-haspopup="menu"
             aria-expanded={filterMenuOpen}
             aria-label="Filter task"
-            className={`flex shrink-0 items-center gap-2 rounded-full px-5 py-2.5 font-givonic text-sm font-semibold transition focus:outline-none ${
+            className={`flex shrink-0 items-center gap-2 rounded-full px-5 py-2.5 font-manrope text-sm font-semibold transition focus:outline-none ${
               filterOptionCount > 0
                 ? 'bg-perrific-graphite text-white'
                 : 'text-gray-800 hover:bg-gray-200 hover:text-black'
@@ -670,7 +670,7 @@ export default function PersonalProjectKanbanView() {
             <Filter size={15} strokeWidth={1.6} />
             Filter
             {filterOptionCount > 0 && (
-              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-white px-1.5 font-givonic text-[11px] font-bold text-perrific-graphite">
+              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-white px-1.5 font-manrope text-[11px] font-bold text-perrific-graphite">
                 {filterOptionCount}
               </span>
             )}
@@ -688,7 +688,7 @@ export default function PersonalProjectKanbanView() {
               onChange={(e) => setFilterSearch(e.target.value)}
               placeholder="Cari task…"
               aria-label="Cari task"
-              className="w-full rounded-full bg-gray-100 py-2.5 pl-10 pr-4 font-givonic text-sm text-gray-800 placeholder:text-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-perrific-violet/30"
+              className="w-full rounded-full bg-gray-100 py-2.5 pl-10 pr-4 font-manrope text-sm text-gray-800 placeholder:text-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-perrific-violet/30"
             />
           </div>
 
@@ -726,7 +726,7 @@ export default function PersonalProjectKanbanView() {
                 setProjectSearch('');
                 setCreateProjectOpen(true);
               }}
-              className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-orange-600 px-3 py-2 font-givonic text-xs font-semibold text-white transition hover:bg-orange-700"
+              className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-orange-600 px-3 py-2 font-manrope text-xs font-semibold text-white transition hover:bg-orange-700"
             >
               <span aria-hidden="true" className="text-sm leading-none">+</span>
               <span>Tambah Project Baru</span>
@@ -745,7 +745,7 @@ export default function PersonalProjectKanbanView() {
                 onChange={(e) => setProjectSearch(e.target.value)}
                 placeholder="Cari project…"
                 aria-label="Cari project"
-                className="w-full rounded-lg border border-gray-200 bg-gray-50 py-1.5 pl-8 pr-2.5 font-givonic text-xs text-gray-800 placeholder:text-gray-400 focus:border-orange-400 focus:bg-white focus:outline-none"
+                className="w-full rounded-lg border border-gray-200 bg-gray-50 py-1.5 pl-8 pr-2.5 font-manrope text-xs text-gray-800 placeholder:text-gray-400 focus:border-orange-400 focus:bg-white focus:outline-none"
               />
             </div>
           </div>
@@ -757,7 +757,7 @@ export default function PersonalProjectKanbanView() {
               className="nice-scroll max-h-[112px] overflow-y-auto px-1"
             >
               {filteredPersonalProjects.length === 0 ? (
-                <p className="py-3 text-center font-givonic text-xs text-gray-400">
+                <p className="py-3 text-center font-manrope text-xs text-gray-400">
                   Project tidak ditemukan
                 </p>
               ) : (
@@ -770,7 +770,7 @@ export default function PersonalProjectKanbanView() {
                       role="menuitemradio"
                       aria-checked={isActive}
                       onClick={() => void handleSelectProject(p)}
-                      className={`flex h-9 w-full items-center justify-between gap-2 rounded-lg px-2.5 text-left font-givonic text-xs font-semibold transition ${
+                      className={`flex h-9 w-full items-center justify-between gap-2 rounded-lg px-2.5 text-left font-manrope text-xs font-semibold transition ${
                         isActive
                           ? 'bg-orange-50 text-orange-700'
                           : 'text-gray-700 hover:bg-gray-100'
@@ -810,7 +810,7 @@ export default function PersonalProjectKanbanView() {
               aria-expanded={filterFlyout === 'priority'}
               onMouseEnter={() => openFlyout('priority')}
               onClick={() => setFilterFlyout((v) => (v === 'priority' ? null : 'priority'))}
-              className={`flex w-full items-center justify-between px-3 py-2 text-left font-givonic text-xs font-semibold transition hover:bg-gray-100 ${
+              className={`flex w-full items-center justify-between px-3 py-2 text-left font-manrope text-xs font-semibold transition hover:bg-gray-100 ${
                 filterPriority ? 'text-perrific-violet' : 'text-perrific-graphite'
               }`}
             >
@@ -839,7 +839,7 @@ export default function PersonalProjectKanbanView() {
                       setFilterMenuOpen(false);
                       setFilterFlyout(null);
                     }}
-                    className={`flex w-full items-center justify-between px-3 py-2 text-left font-givonic text-xs font-semibold transition hover:bg-gray-100 ${
+                    className={`flex w-full items-center justify-between px-3 py-2 text-left font-manrope text-xs font-semibold transition hover:bg-gray-100 ${
                       filterPriority === o.v ? 'text-perrific-violet' : 'text-perrific-graphite'
                     }`}
                   >
@@ -859,7 +859,7 @@ export default function PersonalProjectKanbanView() {
                   setFilterMenuOpen(false);
                   setFilterFlyout(null);
                 }}
-                className="w-full rounded-lg bg-gray-100 px-3 py-1.5 font-givonic text-xs font-semibold text-gray-600 hover:bg-gray-200"
+                className="w-full rounded-lg bg-gray-100 px-3 py-1.5 font-manrope text-xs font-semibold text-gray-600 hover:bg-gray-200"
               >
                 Reset filter
               </button>
@@ -872,7 +872,7 @@ export default function PersonalProjectKanbanView() {
       {createOpen && (
         <ModalShell label="Task baru" onClose={() => setCreateOpen(false)} wide>
           <div className="relative">
-            <p className="text-center font-givonic text-lg font-bold text-perrific-graphite">Task baru</p>
+            <p className="text-center font-manrope text-lg font-bold text-perrific-graphite">Task baru</p>
             <button
               type="button"
               onClick={() => setCreateOpen(false)}
@@ -886,7 +886,7 @@ export default function PersonalProjectKanbanView() {
             <div className="grid gap-4 sm:grid-cols-[1fr_220px]">
               <div className="min-w-0 space-y-3">
                 <div>
-                  <label htmlFor="task-title" className="mb-1.5 block font-givonic text-xs font-medium text-perrific-graphite">
+                  <label htmlFor="task-title" className="mb-1.5 block font-manrope text-xs font-medium text-perrific-graphite">
                     Judul
                   </label>
                   <input
@@ -896,11 +896,11 @@ export default function PersonalProjectKanbanView() {
                     onChange={(e) => setTitle(e.target.value)}
                     placeholder="Judul task..."
                     maxLength={120}
-                    className="w-full rounded-xl border border-gray-200 px-3 py-2 font-givonic text-sm focus:border-perrific-violet focus:outline-none"
+                    className="w-full rounded-xl border border-gray-200 px-3 py-2 font-manrope text-sm focus:border-perrific-violet focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label htmlFor="task-desc" className="mb-1.5 block font-givonic text-xs font-medium text-perrific-graphite">
+                  <label htmlFor="task-desc" className="mb-1.5 block font-manrope text-xs font-medium text-perrific-graphite">
                     Deskripsi
                   </label>
                   <textarea
@@ -909,21 +909,21 @@ export default function PersonalProjectKanbanView() {
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="Tambahkan catatan atau rincian task pribadi ini..."
                     rows={4}
-                    className="w-full rounded-xl border border-gray-200 px-3 py-2 font-givonic text-sm focus:border-perrific-violet focus:outline-none"
+                    className="w-full rounded-xl border border-gray-200 px-3 py-2 font-manrope text-sm focus:border-perrific-violet focus:outline-none"
                   />
                 </div>
               </div>
 
               <div className="space-y-3 border-t border-gray-200 pt-3 sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0">
                 <div>
-                  <label htmlFor="task-col" className="mb-1 block font-givonic text-xs font-medium text-perrific-graphite">
+                  <label htmlFor="task-col" className="mb-1 block font-manrope text-xs font-medium text-perrific-graphite">
                     Kolom status
                   </label>
                   <select
                     id="task-col"
                     value={status}
                     onChange={(e) => setStatus(e.target.value)}
-                    className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 font-givonic text-xs text-gray-700 focus:border-perrific-violet focus:outline-none"
+                    className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 font-manrope text-xs text-gray-700 focus:border-perrific-violet focus:outline-none"
                   >
                     {columns.map((col) => (
                       <option key={col.id} value={col.id}>
@@ -934,14 +934,14 @@ export default function PersonalProjectKanbanView() {
                 </div>
 
                 <div>
-                  <label htmlFor="task-priority" className="mb-1 block font-givonic text-xs font-medium text-perrific-graphite">
+                  <label htmlFor="task-priority" className="mb-1 block font-manrope text-xs font-medium text-perrific-graphite">
                     Prioritas
                   </label>
                   <select
                     id="task-priority"
                     value={priority}
                     onChange={(e) => setPriority(e.target.value as Task['priority'])}
-                    className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 font-givonic text-xs text-gray-700 focus:border-perrific-violet focus:outline-none"
+                    className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 font-manrope text-xs text-gray-700 focus:border-perrific-violet focus:outline-none"
                   >
                     <option value="LOW">Low</option>
                     <option value="MEDIUM">Medium</option>
@@ -951,7 +951,7 @@ export default function PersonalProjectKanbanView() {
                 </div>
 
                 <div>
-                  <label htmlFor="task-due" className="mb-1 block font-givonic text-xs font-medium text-perrific-graphite">
+                  <label htmlFor="task-due" className="mb-1 block font-manrope text-xs font-medium text-perrific-graphite">
                     Tenggat waktu
                   </label>
                   <input
@@ -959,13 +959,13 @@ export default function PersonalProjectKanbanView() {
                     type="date"
                     value={dueDate}
                     onChange={(e) => setDueDate(e.target.value)}
-                    className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 font-givonic text-xs text-gray-700 focus:border-perrific-violet focus:outline-none"
+                    className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 font-manrope text-xs text-gray-700 focus:border-perrific-violet focus:outline-none"
                   />
                 </div>
 
                 <div>
                   <div className="flex items-center justify-between bg-gray-100 px-2 py-1.5">
-                    <p className="font-givonic text-xs font-bold text-perrific-graphite">
+                    <p className="font-manrope text-xs font-bold text-perrific-graphite">
                       {pendingFiles.length} Lampiran
                     </p>
                     <button
@@ -973,7 +973,7 @@ export default function PersonalProjectKanbanView() {
                       onClick={() => fileInputRef.current?.click()}
                       aria-label="Tambah lampiran"
                       title="Tambah lampiran"
-                      className="flex h-5 w-5 items-center justify-center rounded-full border border-dashed border-gray-300 font-givonic text-sm font-bold leading-none text-gray-500 transition hover:border-perrific-violet hover:text-perrific-violet"
+                      className="flex h-5 w-5 items-center justify-center rounded-full border border-dashed border-gray-300 font-manrope text-sm font-bold leading-none text-gray-500 transition hover:border-perrific-violet hover:text-perrific-violet"
                     >
                       +
                     </button>
@@ -982,12 +982,12 @@ export default function PersonalProjectKanbanView() {
                     <ul className="mt-1 space-y-1">
                       {pendingFiles.map((f, i) => (
                         <li key={`${f.filename}-${i}`} className="flex items-center justify-between gap-2 text-xs">
-                          <span className="truncate font-givonic text-gray-600">{f.filename}</span>
+                          <span className="truncate font-manrope text-gray-600">{f.filename}</span>
                           <button
                             type="button"
                             onClick={() => setPendingFiles((prev) => prev.filter((_, j) => j !== i))}
                             aria-label={`Hapus ${f.filename}`}
-                            className="shrink-0 rounded px-1 font-givonic text-xs text-red-600 hover:bg-red-50"
+                            className="shrink-0 rounded px-1 font-manrope text-xs text-red-600 hover:bg-red-50"
                           >
                             ×
                           </button>
@@ -998,7 +998,7 @@ export default function PersonalProjectKanbanView() {
                   {pendingFiles.length === 0 && (
                     <label
                       htmlFor="personal-task-files"
-                      className="mt-1 block cursor-pointer rounded-lg border border-dashed border-gray-300 px-3 py-3 text-center font-givonic text-xs text-gray-400 transition hover:border-perrific-violet hover:text-perrific-violet"
+                      className="mt-1 block cursor-pointer rounded-lg border border-dashed border-gray-300 px-3 py-3 text-center font-manrope text-xs text-gray-400 transition hover:border-perrific-violet hover:text-perrific-violet"
                     >
                       Klik untuk pilih lampiran
                     </label>
@@ -1021,7 +1021,7 @@ export default function PersonalProjectKanbanView() {
             <button
               type="submit"
               disabled={creating || !title.trim()}
-              className="mt-4 w-full rounded-lg bg-perrific-violet px-4 py-2.5 font-givonic text-xs font-bold tracking-widest text-white transition hover:bg-[#E64D0A] disabled:opacity-50"
+              className="mt-4 w-full rounded-lg bg-perrific-violet px-4 py-2.5 font-manrope text-xs font-bold tracking-widest text-white transition hover:bg-[#E64D0A] disabled:opacity-50"
             >
               {creating ? 'Menyimpan…' : 'Tambah Task'}
             </button>
@@ -1054,7 +1054,7 @@ export default function PersonalProjectKanbanView() {
       {settingsOpen && project && (
         <ModalShell label="Pengaturan Project Pribadi" onClose={() => setSettingsOpen(false)} wide>
           <div className="relative mb-4">
-            <h2 className="font-givonic text-lg font-bold text-gray-800">Pengaturan Project Pribadi</h2>
+            <h2 className="font-manrope text-lg font-bold text-gray-800">Pengaturan Project Pribadi</h2>
             <button
               type="button"
               onClick={() => setSettingsOpen(false)}
@@ -1068,11 +1068,11 @@ export default function PersonalProjectKanbanView() {
           <div className="space-y-6">
             {/* Form Ubah Nama & Deskripsi Project */}
             <form onSubmit={handleSaveProjectSettings} className="space-y-3 rounded-xl border border-gray-200 bg-gray-50/50 p-4">
-              <h3 className="font-givonic text-xs font-bold uppercase tracking-wider text-gray-500">
+              <h3 className="font-manrope text-xs font-bold uppercase tracking-wider text-gray-500">
                 Informasi Umum
               </h3>
               <div>
-                <label htmlFor="settings-name" className="mb-1 block font-givonic text-xs font-medium text-gray-700">
+                <label htmlFor="settings-name" className="mb-1 block font-manrope text-xs font-medium text-gray-700">
                   Nama Project
                 </label>
                 <input
@@ -1080,11 +1080,11 @@ export default function PersonalProjectKanbanView() {
                   value={settingsName}
                   onChange={(e) => setSettingsName(e.target.value)}
                   placeholder="Nama project..."
-                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-givonic text-sm focus:border-perrific-violet focus:outline-none"
+                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-manrope text-sm focus:border-perrific-violet focus:outline-none"
                 />
               </div>
               <div>
-                <label htmlFor="settings-desc" className="mb-1 block font-givonic text-xs font-medium text-gray-700">
+                <label htmlFor="settings-desc" className="mb-1 block font-manrope text-xs font-medium text-gray-700">
                   Deskripsi
                 </label>
                 <textarea
@@ -1093,13 +1093,13 @@ export default function PersonalProjectKanbanView() {
                   onChange={(e) => setSettingsDesc(e.target.value)}
                   placeholder="Deskripsi singkat project pribadi..."
                   rows={2}
-                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-givonic text-sm focus:border-perrific-violet focus:outline-none"
+                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-manrope text-sm focus:border-perrific-violet focus:outline-none"
                 />
               </div>
               <button
                 type="submit"
                 disabled={savingSettings || !settingsName.trim()}
-                className="rounded-lg bg-gray-900 px-4 py-2 font-givonic text-xs font-semibold text-white transition hover:bg-black disabled:opacity-50"
+                className="rounded-lg bg-gray-900 px-4 py-2 font-manrope text-xs font-semibold text-white transition hover:bg-black disabled:opacity-50"
               >
                 {savingSettings ? 'Menyimpan…' : 'Simpan Informasi'}
               </button>
@@ -1107,7 +1107,7 @@ export default function PersonalProjectKanbanView() {
 
             {/* Editor Kolom Kanban */}
             <div className="rounded-xl border border-gray-200 bg-white p-4">
-              <h3 className="mb-3 font-givonic text-xs font-bold uppercase tracking-wider text-gray-500">
+              <h3 className="mb-3 font-manrope text-xs font-bold uppercase tracking-wider text-gray-500">
                 Kolom Kanban Board
               </h3>
               <BoardColumnEditor
@@ -1124,7 +1124,7 @@ export default function PersonalProjectKanbanView() {
       {createProjectOpen && (
         <ModalShell label="Tambah Project Pribadi Baru" onClose={() => setCreateProjectOpen(false)}>
           <div className="relative mb-4">
-            <h2 className="font-givonic text-lg font-bold text-gray-800">Tambah Project Baru</h2>
+            <h2 className="font-manrope text-lg font-bold text-gray-800">Tambah Project Baru</h2>
             <button
               type="button"
               onClick={() => setCreateProjectOpen(false)}
@@ -1137,7 +1137,7 @@ export default function PersonalProjectKanbanView() {
 
           <form onSubmit={handleCreateProject} className="space-y-3">
             <div>
-              <label htmlFor="new-project-name" className="mb-1 block font-givonic text-xs font-medium text-gray-700">
+              <label htmlFor="new-project-name" className="mb-1 block font-manrope text-xs font-medium text-gray-700">
                 Nama Project
               </label>
               <input
@@ -1147,11 +1147,11 @@ export default function PersonalProjectKanbanView() {
                 onChange={(e) => setNewProjectName(e.target.value)}
                 placeholder="Mis. Belajar React, Side Project..."
                 maxLength={100}
-                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-givonic text-sm focus:border-orange-500 focus:outline-none"
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-manrope text-sm focus:border-orange-500 focus:outline-none"
               />
             </div>
             <div>
-              <label htmlFor="new-project-desc" className="mb-1 block font-givonic text-xs font-medium text-gray-700">
+              <label htmlFor="new-project-desc" className="mb-1 block font-manrope text-xs font-medium text-gray-700">
                 Deskripsi (Opsional)
               </label>
               <textarea
@@ -1160,21 +1160,21 @@ export default function PersonalProjectKanbanView() {
                 onChange={(e) => setNewProjectDesc(e.target.value)}
                 placeholder="Deskripsi singkat project ini..."
                 rows={3}
-                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-givonic text-sm focus:border-orange-500 focus:outline-none"
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-manrope text-sm focus:border-orange-500 focus:outline-none"
               />
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <button
                 type="button"
                 onClick={() => setCreateProjectOpen(false)}
-                className="rounded-lg border border-gray-200 px-4 py-2 font-givonic text-xs font-semibold text-gray-600 transition hover:bg-gray-50"
+                className="rounded-lg border border-gray-200 px-4 py-2 font-manrope text-xs font-semibold text-gray-600 transition hover:bg-gray-50"
               >
                 Batal
               </button>
               <button
                 type="submit"
                 disabled={creatingProject || !newProjectName.trim()}
-                className="rounded-lg bg-orange-600 px-4 py-2 font-givonic text-xs font-semibold text-white transition hover:bg-orange-700 disabled:opacity-50"
+                className="rounded-lg bg-orange-600 px-4 py-2 font-manrope text-xs font-semibold text-white transition hover:bg-orange-700 disabled:opacity-50"
               >
                 {creatingProject ? 'Membuat…' : 'Buat Project'}
               </button>

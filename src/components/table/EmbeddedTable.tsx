@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+﻿import { Link } from 'react-router-dom';
 import { useTableData } from './useTableData';
 import TableGrid from './TableGrid';
 
@@ -22,8 +22,8 @@ export default function EmbeddedTable({ noteId }: { noteId: string }) {
   if (t.loadError) {
     return (
       <div className="rounded-xl border border-dashed border-gray-300 bg-white px-4 py-5 text-center">
-        <p className="font-givonic text-xs text-perrific-graphite/60">Tabel tak termuat.</p>
-        <Link to={`/tables/${noteId}`} className="mt-1 inline-block font-givonic text-xs font-semibold text-perrific-violet hover:underline">
+        <p className="font-manrope text-xs text-perrific-graphite/60">Tabel tak termuat.</p>
+        <Link to={`/tables/${noteId}`} className="mt-1 inline-block font-manrope text-xs font-semibold text-perrific-violet hover:underline">
           Buka penuh →
         </Link>
       </div>
@@ -36,7 +36,7 @@ export default function EmbeddedTable({ noteId }: { noteId: string }) {
       {t.rows.length > MAX_ROWS && (
         <Link
           to={`/tables/${noteId}`}
-          className="block px-3 py-2 font-givonic text-xs text-perrific-graphite/50 hover:text-perrific-violet hover:underline"
+          className="block px-3 py-2 font-manrope text-xs text-perrific-graphite/50 hover:text-perrific-violet hover:underline"
         >
           +{t.rows.length - MAX_ROWS} lainnya — buka penuh →
         </Link>

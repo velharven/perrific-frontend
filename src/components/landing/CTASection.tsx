@@ -13,17 +13,17 @@ export default function CTASection() {
             Mulai Sekarang
           </span>
 
-          <h2 className="mx-auto mt-2 max-w-[18ch] font-givonic text-[28px] font-extrabold leading-[1.05] tracking-[-0.03em] text-perrific-graphite sm:text-[38px]">
+          <h2 className="mx-auto mt-2 max-w-[18ch] font-manrope text-[28px] font-extrabold leading-[1.05] tracking-[-0.03em] text-perrific-graphite sm:text-[38px]">
             Siap Menghubungkan Tim & Harimu?
           </h2>
-          <p className="mx-auto mt-3.5 max-w-[46ch] font-givonic text-sm leading-relaxed text-perrific-graphite/70 sm:text-base">
-            Mulai dari satu board tim gratis tanpa kartu kredit. Buat pekerjaan tim lebih terkoordinasi dan jadwal harianmu selalu rapi.
+          <p className="mx-auto mt-3.5 max-w-[46ch] font-manrope text-sm leading-relaxed text-perrific-graphite/70 sm:text-base">
+            Mulai dari satu board tim gratis tanpa kartu kredit. Buat pekerjaan tim lebih terkoordinasi dan kalender harianmu selalu rapi.
           </p>
 
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link
               to="/register"
-              className="group inline-flex items-center gap-2 rounded-full bg-perrific-violet px-8 py-3.5 font-givonic text-sm font-semibold text-white shadow-[0_4px_16px_rgba(255,80,11,0.25)] hover:bg-[#E64D0A] hover:shadow-[0_6px_20px_rgba(255,80,11,0.35)] active:scale-[0.98] transition-all"
+              className="group inline-flex items-center gap-2 rounded-full bg-perrific-violet px-8 py-3.5 font-manrope text-sm font-semibold text-white shadow-[0_4px_16px_rgba(255,80,11,0.25)] hover:bg-[#E64D0A] hover:shadow-[0_6px_20px_rgba(255,80,11,0.35)] active:scale-[0.98] transition-all"
             >
               Coba Gratis Sekarang
               <ChevronRight
@@ -34,7 +34,7 @@ export default function CTASection() {
             </Link>
             <Link
               to="/login"
-              className="inline-flex items-center gap-2 rounded-full border border-perrific-line bg-white px-7 py-3.5 font-givonic text-sm font-medium text-perrific-graphite shadow-xs hover:bg-perrific-paper hover:border-perrific-wood/40 active:scale-[0.98] transition-all"
+              className="inline-flex items-center gap-2 rounded-full border border-perrific-line bg-white px-7 py-3.5 font-manrope text-sm font-medium text-perrific-graphite shadow-xs hover:bg-perrific-paper hover:border-perrific-wood/40 active:scale-[0.98] transition-all"
             >
               Sudah Punya Akun? Masuk
             </Link>

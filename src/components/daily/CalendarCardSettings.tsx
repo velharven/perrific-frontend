@@ -134,6 +134,7 @@ interface CalendarCardSettingsProps {
   onRecordUndo?: (action: CalendarUndoAction) => void;
   onUndo?: (actionId?: number) => void;
   getNextUndoId?: () => number;
+  onDateChanged?: (newDate: Date) => void;
 }
 
 function toDateInputValue(d: Date | string | null | undefined): string {
@@ -214,6 +215,7 @@ export default function CalendarCardSettings({
   onRecordUndo,
   onUndo,
   getNextUndoId,
+  onDateChanged,
 }: CalendarCardSettingsProps) {
   const isAct = selectedItem.type === 'activity';
   const act = isAct ? selectedItem.act : null;
@@ -563,6 +565,11 @@ export default function CalendarCardSettings({
           });
         }
 
+        if (override?.nextDateStr !== undefined) {
+          const [y, m, d] = override.nextDateStr.split('-').map(Number);
+          onDateChanged?.(new Date(y, m - 1, d, 12, 0, 0));
+        }
+
         onRefresh?.();
       } catch (err) {
         console.error('[CalendarCardSettings] Gagal menyimpan kegiatan:', err);
@@ -574,6 +581,26 @@ export default function CalendarCardSettings({
       if (savingPromiseRef.current === save) savingPromiseRef.current = null;
     });
     return save;
+  };
+
+  // Tangani pemindahan tanggal kartu (quick relocate)
+  const handleRelocateDate = (next: string) => {
+    if (!next || next === dateStr) return;
+    setDateStr(next);
+    setShowDatePicker(false);
+    const [y, m, d] = next.split('-').map(Number);
+    const nextDateObj = new Date(y, m - 1, d, 12, 0, 0);
+
+    if (isRepeating) {
+      setScopeModal({
+        isOpen: true,
+        actionType: 'move',
+        pendingOverride: { nextDateStr: next },
+      });
+    } else {
+      void handleSave({ nextDateStr: next });
+      onDateChanged?.(nextDateObj);
+    }
   };
 
   // Tangani pemilihan warna dari palet
@@ -843,6 +870,10 @@ export default function CalendarCardSettings({
           colorId: effectiveColor,
         });
       }
+      if (pendingOverride?.nextDateStr !== undefined) {
+        const [y, m, d] = pendingOverride.nextDateStr.split('-').map(Number);
+        onDateChanged?.(new Date(y, m - 1, d, 12, 0, 0));
+      }
       onClose();
       onRefresh?.();
       return;
@@ -919,6 +950,10 @@ export default function CalendarCardSettings({
           });
           showToast('Gagal menyimpan perubahan kegiatan berulang. Perubahan dibatalkan.');
         }
+      }
+      if (pendingOverride?.nextDateStr !== undefined) {
+        const [y, m, d] = pendingOverride.nextDateStr.split('-').map(Number);
+        onDateChanged?.(new Date(y, m - 1, d, 12, 0, 0));
       }
       onClose();
       onRefresh?.();
@@ -1079,7 +1114,7 @@ export default function CalendarCardSettings({
   };
 
   return (
-    <div className="w-full shrink-0 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm animate-in fade-in zoom-in-95 duration-150 flex flex-col gap-3 font-givonic">
+    <div className="w-full shrink-0 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm animate-in fade-in zoom-in-95 duration-150 flex flex-col gap-3 font-manrope">
       {/* Header bar: Label & Close Button */}
       <div className="flex items-center justify-between border-b border-gray-100 pb-2.5">
         <div className="flex items-center gap-2">
@@ -1200,63 +1235,96 @@ export default function CalendarCardSettings({
         </div>
 
         {/* Tanggal di bawah jam */}
-        <div className="relative flex items-center justify-between pl-6 text-[11px] text-gray-500">
-          {showDatePicker ? (
-            <input
-              ref={(el) => {
-                if (el) {
-                  el.focus();
-                  try {
-                    el.showPicker?.();
-                  } catch {
-                    // abaikan jika browser tidak mendukung showPicker langsung
-                  }
-                }
-              }}
-              type="date"
-              value={dateStr}
-              onChange={(e) => {
-                const next = e.target.value;
-                if (!next) return;
-                setDateStr(next);
-                setShowDatePicker(false);
-                if (isRepeating) {
-                  setScopeModal({
-                    isOpen: true,
-                    actionType: 'move',
-                    pendingOverride: { nextDateStr: next },
-                  });
-                } else {
-                  void handleSave({ nextDateStr: next });
-                }
-              }}
-              onBlur={() => {
-                setTimeout(() => setShowDatePicker(false), 150);
-              }}
-              className="rounded border border-gray-200 bg-white px-1.5 py-0.5 text-xs text-gray-800 focus:border-blue-500 focus:outline-none cursor-pointer"
-            />
-          ) : (
-            <button
-              type="button"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => setShowDatePicker(true)}
-              className="hover:text-blue-600 transition cursor-pointer font-medium hover:underline"
-              title="Klik untuk mengganti tanggal"
-            >
-              {formatHumanDate(dateStr)}
-            </button>
-          )}
+        <div className="pl-6 pt-1 text-[11px] text-gray-500 space-y-1.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <Calendar size={13} className="text-gray-400 shrink-0" />
+              {showDatePicker ? (
+                <input
+                  ref={(el) => {
+                    if (el) {
+                      el.focus();
+                      try {
+                        el.showPicker?.();
+                      } catch {
+                        // abaikan jika browser tidak mendukung showPicker langsung
+                      }
+                    }
+                  }}
+                  type="date"
+                  value={dateStr}
+                  onChange={(e) => {
+                    handleRelocateDate(e.target.value);
+                  }}
+                  onBlur={() => {
+                    setTimeout(() => setShowDatePicker(false), 150);
+                  }}
+                  className="rounded border border-gray-300 bg-white px-2 py-0.5 text-xs text-gray-800 focus:border-blue-500 focus:outline-none cursor-pointer"
+                />
+              ) : (
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => setShowDatePicker(true)}
+                  className="hover:text-blue-600 transition cursor-pointer font-semibold text-gray-800 hover:underline flex items-center gap-1.5"
+                  title="Klik untuk mengganti tanggal"
+                >
+                  <span>{formatHumanDate(dateStr)}</span>
+                  <span className="text-[10px] text-blue-600 font-normal underline">Ganti</span>
+                </button>
+              )}
+            </div>
+          </div>
 
-          {!showDatePicker && (
-            <button
-              type="button"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => setShowDatePicker(true)}
-              className="text-[10px] text-blue-600 hover:underline cursor-pointer"
-            >
-              Ubah tgl
-            </button>
-          )}
+          {/* Quick Relocation Pills (Mobile-friendly) */}
+          <div className="flex flex-wrap items-center gap-1 pt-0.5">
+            <span className="text-[10px] font-medium text-gray-400 mr-0.5">Pindah:</span>
+            {(() => {
+              const todayStr = toDateInputValue(new Date());
+              const isToday = dateStr === todayStr;
+              const [y, m, d] = (dateStr || todayStr).split('-').map(Number);
+              const cardDate = new Date(y, m - 1, d, 12, 0, 0);
+
+              const tomorrow = new Date(cardDate);
+              tomorrow.setDate(tomorrow.getDate() + 1);
+              const tomorrowStr = toDateInputValue(tomorrow);
+
+              const nextWeek = new Date(cardDate);
+              nextWeek.setDate(nextWeek.getDate() + 7);
+              const nextWeekStr = toDateInputValue(nextWeek);
+
+              return (
+                <>
+                  {!isToday && (
+                    <button
+                      type="button"
+                      onClick={() => handleRelocateDate(todayStr)}
+                      className="rounded-md border border-gray-200 bg-gray-50 hover:bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-700 transition cursor-pointer"
+                      title="Pindahkan ke hari ini"
+                    >
+                      Hari Ini
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleRelocateDate(tomorrowStr)}
+                    className="rounded-md border border-blue-200 bg-blue-50 hover:bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-700 transition cursor-pointer"
+                    title="Pindahkan ke besok (+1 hari)"
+                  >
+                    Besok (+1 Hr)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleRelocateDate(nextWeekStr)}
+                    className="rounded-md border border-gray-200 bg-gray-50 hover:bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-700 transition cursor-pointer"
+                    title="Pindahkan ke minggu depan (+7 hari)"
+                  >
+                    +7 Hari
+                  </button>
+                </>
+              );
+            })()}
+          </div>
         </div>
       </div>
 
@@ -1421,7 +1489,7 @@ export default function CalendarCardSettings({
               maxHeight: 'calc(100vh - 24px)',
               zIndex: 9999,
             }}
-            className="w-64 overflow-y-auto rounded-xl border border-gray-200 bg-white py-1.5 shadow-xl font-givonic animate-in fade-in zoom-in-95 duration-100"
+            className="w-64 overflow-y-auto rounded-xl border border-gray-200 bg-white py-1.5 shadow-xl font-manrope animate-in fade-in zoom-in-95 duration-100"
           >
             {presets.map((preset) => {
               const selected = isSameRecurrence(recurrence, preset.config);
@@ -1472,7 +1540,7 @@ export default function CalendarCardSettings({
       {customModalOpen &&
         createPortal(
           <div
-            className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/40 p-4 backdrop-blur-[1px] animate-in fade-in duration-150 font-givonic"
+            className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/40 p-4 backdrop-blur-[1px] animate-in fade-in duration-150 font-manrope"
             onMouseDown={(e) => {
               if (e.target === e.currentTarget) setCustomModalOpen(false);
             }}
@@ -1701,7 +1769,7 @@ export default function CalendarCardSettings({
               left: colorMenuPos.left,
               zIndex: 9999,
             }}
-            className="w-56 rounded-xl border border-gray-200 bg-white p-3 shadow-xl font-givonic animate-in fade-in zoom-in-95 duration-100"
+            className="w-56 rounded-xl border border-gray-200 bg-white p-3 shadow-xl font-manrope animate-in fade-in zoom-in-95 duration-100"
           >
             <div className="mb-2 px-0.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
               Warna Kegiatan

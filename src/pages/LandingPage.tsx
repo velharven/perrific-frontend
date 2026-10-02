@@ -1,4 +1,4 @@
-import Navbar from '@/components/landing/Navbar';
+﻿import Navbar from '@/components/landing/Navbar';
 import Hero from '@/components/landing/Hero';
 import ProblemSection from '@/components/landing/ProblemSection';
 import SolutionSection from '@/components/landing/SolutionSection';
@@ -10,7 +10,7 @@ import Footer from '@/components/landing/Footer';
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-perrific-paper font-givonic">
+    <div className="min-h-screen bg-perrific-paper font-manrope">
       <Navbar />
       <main>
         <Hero />

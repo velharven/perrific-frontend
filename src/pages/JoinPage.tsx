@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { teamApi } from '@/api/teams';
 import { PurrificBrandLoader } from '@/components/ui/loading';
@@ -35,13 +35,13 @@ export default function JoinPage() {
   if (pendingTeam) {
     return (
       <div className="mx-auto flex min-h-[50vh] w-full max-w-sm flex-col items-center justify-center gap-3 px-4 text-center">
-        <p className="font-givonic text-base font-bold text-perrific-graphite">Permintaan terkirim</p>
-        <p className="font-givonic text-sm text-gray-500">
+        <p className="font-manrope text-base font-bold text-perrific-graphite">Permintaan terkirim</p>
+        <p className="font-manrope text-sm text-gray-500">
           Menunggu persetujuan admin untuk bergabung ke {pendingTeam}.
         </p>
         <Link
           to="/notes"
-          className="rounded-full bg-perrific-graphite px-5 py-2 font-givonic text-xs font-semibold text-white transition hover:brightness-110"
+          className="rounded-full bg-perrific-graphite px-5 py-2 font-manrope text-xs font-semibold text-white transition hover:brightness-110"
         >
           Ke catatan
         </Link>
@@ -55,11 +55,11 @@ export default function JoinPage() {
 
   return (
     <div className="mx-auto flex min-h-[50vh] w-full max-w-sm flex-col items-center justify-center gap-3 px-4 text-center">
-      <p className="font-givonic text-base font-bold text-perrific-graphite">Tidak bisa bergabung</p>
-      <p className="font-givonic text-sm text-gray-500">{error}</p>
+      <p className="font-manrope text-base font-bold text-perrific-graphite">Tidak bisa bergabung</p>
+      <p className="font-manrope text-sm text-gray-500">{error}</p>
       <Link
         to="/notes"
-        className="rounded-full bg-perrific-graphite px-5 py-2 font-givonic text-xs font-semibold text-white transition hover:brightness-110"
+        className="rounded-full bg-perrific-graphite px-5 py-2 font-manrope text-xs font-semibold text-white transition hover:brightness-110"
       >
         Ke catatan
       </Link>

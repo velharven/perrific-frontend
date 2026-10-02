@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 
 type AvatarProps = {
   src?: string | null;
@@ -53,7 +53,7 @@ export default function Avatar({ src, name, alt, size = 36, className = '' }: Av
   return (
     <span
       aria-hidden="true"
-      className={`flex shrink-0 items-center justify-center rounded-full bg-perrific-violet font-givonic font-bold text-white ${className}`}
+      className={`flex shrink-0 items-center justify-center rounded-full bg-perrific-violet font-manrope font-bold text-white ${className}`}
       style={{ width: dimension, height: dimension, fontSize: Math.round(size * 0.42) }}
     >
       {initial}

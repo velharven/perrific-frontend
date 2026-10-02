@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { organizationApi } from '@/api/organizations';
 import ModalShell from '@/components/ui/ModalShell';
 import { showToast } from '@/components/ui/Toast';
@@ -85,7 +85,7 @@ export default function SendTaskModal({
               <CheckCircle2 size={18} strokeWidth={1.8} aria-hidden="true" />
             </span>
             <div>
-              <h2 className="font-givonic text-base font-bold text-perrific-graphite">Kirim Task ke Project</h2>
+              <h2 className="font-manrope text-base font-bold text-perrific-graphite">Kirim Task ke Project</h2>
               <p className="text-xs text-gray-400">Kirim task ke project tim terhubung</p>
             </div>
           </div>
@@ -107,7 +107,7 @@ export default function SendTaskModal({
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="mb-1 block font-givonic text-xs font-semibold text-perrific-graphite">
+            <label className="mb-1 block font-manrope text-xs font-semibold text-perrific-graphite">
               Tim Terhubung <span className="text-red-500">*</span>
             </label>
             <select
@@ -124,7 +124,7 @@ export default function SendTaskModal({
           </div>
 
           <div>
-            <label className="mb-1 block font-givonic text-xs font-semibold text-perrific-graphite">
+            <label className="mb-1 block font-manrope text-xs font-semibold text-perrific-graphite">
               Project Tujuan <span className="text-red-500">*</span>
             </label>
             {availableProjects.length === 0 ? (
@@ -146,7 +146,7 @@ export default function SendTaskModal({
         </div>
 
         <div>
-          <label className="mb-1 block font-givonic text-xs font-semibold text-perrific-graphite">
+          <label className="mb-1 block font-manrope text-xs font-semibold text-perrific-graphite">
             Judul Task <span className="text-red-500">*</span>
           </label>
           <input
@@ -163,7 +163,7 @@ export default function SendTaskModal({
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="mb-1 block font-givonic text-xs font-semibold text-perrific-graphite">
+            <label className="mb-1 block font-manrope text-xs font-semibold text-perrific-graphite">
               Prioritas
             </label>
             <select
@@ -179,7 +179,7 @@ export default function SendTaskModal({
           </div>
 
           <div>
-            <label className="mb-1 block font-givonic text-xs font-semibold text-perrific-graphite">
+            <label className="mb-1 block font-manrope text-xs font-semibold text-perrific-graphite">
               Tenggat Waktu (Opsional)
             </label>
             <input
@@ -192,7 +192,7 @@ export default function SendTaskModal({
         </div>
 
         <div>
-          <label className="mb-1 block font-givonic text-xs font-semibold text-perrific-graphite">
+          <label className="mb-1 block font-manrope text-xs font-semibold text-perrific-graphite">
             Deskripsi Task (Opsional)
           </label>
           <textarea
@@ -210,14 +210,14 @@ export default function SendTaskModal({
             type="button"
             onClick={onClose}
             disabled={submitting}
-            className="rounded-lg px-4 py-2 font-givonic text-xs font-semibold text-gray-600 hover:bg-gray-100 disabled:opacity-50"
+            className="rounded-lg px-4 py-2 font-manrope text-xs font-semibold text-gray-600 hover:bg-gray-100 disabled:opacity-50"
           >
             Batal
           </button>
           <button
             type="submit"
             disabled={submitting || !title.trim() || !projectId}
-            className="rounded-lg bg-emerald-600 px-4 py-2 font-givonic text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-50"
+            className="rounded-lg bg-emerald-600 px-4 py-2 font-manrope text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-50"
           >
             {submitting ? 'Mengirim...' : 'Kirim Task'}
           </button>

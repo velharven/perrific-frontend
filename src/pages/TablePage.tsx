@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { noteApi } from '@/api/notes';
 import { useTableData } from '@/components/table/useTableData';
@@ -120,24 +120,24 @@ function TablePageInner() {
   if (isTrashed) {
     return (
       <div className="mx-auto max-w-3xl rounded-xl border border-dashed border-gray-300 bg-white p-10 text-center">
-        <p className="font-givonic text-sm font-semibold text-perrific-graphite">
+        <p className="font-manrope text-sm font-semibold text-perrific-graphite">
           Tabel &quot;{t.title || 'Tanpa judul'}&quot; ada di Sampah
         </p>
-        <p className="mt-1 font-givonic text-xs text-perrific-graphite/60">
+        <p className="mt-1 font-manrope text-xs text-perrific-graphite/60">
           Baris dan halaman tertaut ikut tersembunyi sampai dikembalikan.
         </p>
         <div className="mt-4 flex items-center justify-center gap-2">
           <button
             type="button"
             onClick={handleRestoreFromTrash}
-            className="rounded-full bg-perrific-violet px-4 py-2 font-givonic text-xs font-semibold text-white transition hover:brightness-110"
+            className="rounded-full bg-perrific-violet px-4 py-2 font-manrope text-xs font-semibold text-white transition hover:brightness-110"
           >
             Kembalikan (Ctrl+Z)
           </button>
           <button
             type="button"
             onClick={() => navigate('/notes')}
-            className="rounded-full px-4 py-2 font-givonic text-xs font-semibold text-gray-600 transition hover:bg-gray-100"
+            className="rounded-full px-4 py-2 font-manrope text-xs font-semibold text-gray-600 transition hover:bg-gray-100"
           >
             Kembali
           </button>
@@ -159,7 +159,7 @@ function TablePageInner() {
               onChange={(e) => t.setTitle(e.target.value)}
               aria-label="Judul tabel"
               placeholder="Tanpa judul"
-              className="min-w-0 flex-1 bg-transparent font-givonic text-[28px] font-extrabold leading-tight tracking-[-0.02em] text-perrific-graphite placeholder:text-perrific-graphite/30 focus:outline-none sm:text-[32px]"
+              className="min-w-0 flex-1 bg-transparent font-manrope text-[28px] font-extrabold leading-tight tracking-[-0.02em] text-perrific-graphite placeholder:text-perrific-graphite/30 focus:outline-none sm:text-[32px]"
             />
             <div className="relative shrink-0 pt-1" ref={menuRef}>
               <button
@@ -191,7 +191,7 @@ function TablePageInner() {
                       setMenuOpen(false);
                       setConfirmOpen(true);
                     }}
-                    className="flex w-full items-center gap-2.5 px-3 py-2.5 font-givonic text-sm font-medium text-red-600 transition hover:bg-red-50"
+                    className="flex w-full items-center gap-2.5 px-3 py-2.5 font-manrope text-sm font-medium text-red-600 transition hover:bg-red-50"
                   >
                     Hapus tabel
                   </button>

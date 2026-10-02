@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { organizationApi } from '@/api/organizations';
 import ModalShell from '@/components/ui/ModalShell';
 import { showToast } from '@/components/ui/Toast';
@@ -59,7 +59,7 @@ export default function ProposeProjectModal({
               <Briefcase size={18} strokeWidth={1.8} aria-hidden="true" />
             </span>
             <div>
-              <h2 className="font-givonic text-base font-bold text-perrific-graphite">Usulkan Project Baru</h2>
+              <h2 className="font-manrope text-base font-bold text-perrific-graphite">Usulkan Project Baru</h2>
               <p className="text-xs text-gray-400">Buat project baru untuk tim terhubung</p>
             </div>
           </div>
@@ -80,7 +80,7 @@ export default function ProposeProjectModal({
         )}
 
         <div>
-          <label className="mb-1 block font-givonic text-xs font-semibold text-perrific-graphite">
+          <label className="mb-1 block font-manrope text-xs font-semibold text-perrific-graphite">
             Tim Tujuan <span className="text-red-500">*</span>
           </label>
           {connectedTeams.length === 0 ? (
@@ -103,7 +103,7 @@ export default function ProposeProjectModal({
         </div>
 
         <div>
-          <label className="mb-1 block font-givonic text-xs font-semibold text-perrific-graphite">
+          <label className="mb-1 block font-manrope text-xs font-semibold text-perrific-graphite">
             Nama Project <span className="text-red-500">*</span>
           </label>
           <input
@@ -119,7 +119,7 @@ export default function ProposeProjectModal({
         </div>
 
         <div>
-          <label className="mb-1 block font-givonic text-xs font-semibold text-perrific-graphite">
+          <label className="mb-1 block font-manrope text-xs font-semibold text-perrific-graphite">
             Deskripsi Project (Opsional)
           </label>
           <textarea
@@ -137,14 +137,14 @@ export default function ProposeProjectModal({
             type="button"
             onClick={onClose}
             disabled={submitting}
-            className="rounded-lg px-4 py-2 font-givonic text-xs font-semibold text-gray-600 hover:bg-gray-100 disabled:opacity-50"
+            className="rounded-lg px-4 py-2 font-manrope text-xs font-semibold text-gray-600 hover:bg-gray-100 disabled:opacity-50"
           >
             Batal
           </button>
           <button
             type="submit"
             disabled={submitting || !name.trim() || !teamId}
-            className="rounded-lg bg-blue-600 px-4 py-2 font-givonic text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50"
+            className="rounded-lg bg-blue-600 px-4 py-2 font-manrope text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50"
           >
             {submitting ? 'Mengirim...' : 'Kirim Usulan Project'}
           </button>

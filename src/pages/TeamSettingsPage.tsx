@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { teamApi } from '@/api/teams';
 import { showToast } from '@/components/ui/Toast';
@@ -140,7 +140,7 @@ export default function TeamSettingsPage() {
                 <button
                   type="button"
                   onClick={() => void handleCopyCode()}
-                  className="rounded-lg px-2 py-1 font-givonic text-xs font-semibold text-perrific-violet transition hover:bg-perrific-violet/10"
+                  className="rounded-lg px-2 py-1 font-manrope text-xs font-semibold text-perrific-violet transition hover:bg-perrific-violet/10"
                 >
                   Salin
                 </button>
@@ -152,18 +152,18 @@ export default function TeamSettingsPage() {
                     readOnly
                     value={joinLink}
                     onFocus={(e) => e.target.select()}
-                    className="min-w-0 flex-1 truncate rounded-[10px] border border-perrific-line bg-gray-50 px-3 py-2 font-givonic text-xs text-perrific-graphite focus:border-perrific-violet focus:outline-none"
+                    className="min-w-0 flex-1 truncate rounded-[10px] border border-perrific-line bg-gray-50 px-3 py-2 font-manrope text-xs text-perrific-graphite focus:border-perrific-violet focus:outline-none"
                   />
                   <button
                     type="button"
                     onClick={() => void handleCopyLink()}
-                    className="shrink-0 rounded-lg px-2 py-2 font-givonic text-xs font-semibold text-perrific-violet transition hover:bg-perrific-violet/10"
+                    className="shrink-0 rounded-lg px-2 py-2 font-manrope text-xs font-semibold text-perrific-violet transition hover:bg-perrific-violet/10"
                   >
                     Salin link
                   </button>
                 </div>
                 <p
-                  className={`font-givonic text-xs ${
+                  className={`font-manrope text-xs ${
                     isExpired ? 'font-semibold text-red-600' : 'text-gray-500'
                   }`}
                 >
@@ -181,7 +181,7 @@ export default function TeamSettingsPage() {
                       type="button"
                       disabled={savingInvite}
                       onClick={() => void handlePreset(p.hours)}
-                      className={`rounded-full px-3 py-1.5 font-givonic text-xs font-semibold transition disabled:opacity-50 ${
+                      className={`rounded-full px-3 py-1.5 font-manrope text-xs font-semibold transition disabled:opacity-50 ${
                         activePreset === p.hours
                           ? 'bg-perrific-graphite text-white'
                           : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -194,20 +194,20 @@ export default function TeamSettingsPage() {
                     type="button"
                     disabled={savingInvite || isExpired}
                     onClick={() => void handleDeactivate()}
-                    className="rounded-full bg-red-50 px-3 py-1.5 font-givonic text-xs font-semibold text-red-600 transition hover:bg-red-100 disabled:opacity-50"
+                    className="rounded-full bg-red-50 px-3 py-1.5 font-manrope text-xs font-semibold text-red-600 transition hover:bg-red-100 disabled:opacity-50"
                   >
                     Nonaktifkan
                   </button>
                 </div>
               </div>
               <div className="flex items-center justify-between gap-2 border-t border-gray-100 pt-3">
-                <p className="font-givonic text-xs text-gray-500">
+                <p className="font-manrope text-xs text-gray-500">
                   Kode baru membuat kode dan link lama tidak berlaku.
                 </p>
                 <button
                   type="button"
                   onClick={() => setConfirmRegen(true)}
-                  className="shrink-0 rounded-full border border-perrific-line px-3 py-1.5 font-givonic text-xs font-semibold text-perrific-graphite transition hover:bg-gray-50"
+                  className="shrink-0 rounded-full border border-perrific-line px-3 py-1.5 font-manrope text-xs font-semibold text-perrific-graphite transition hover:bg-gray-50"
                 >
                   Buat kode baru
                 </button>
@@ -219,9 +219,9 @@ export default function TeamSettingsPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Email anggota"
-              className="min-w-0 flex-1 rounded-[10px] border border-perrific-line bg-white px-3 py-2.5 font-givonic text-sm text-perrific-graphite placeholder:text-perrific-graphite/40 focus:border-perrific-violet focus:outline-none focus:ring-2 focus:ring-perrific-violet/20"
+              className="min-w-0 flex-1 rounded-[10px] border border-perrific-line bg-white px-3 py-2.5 font-manrope text-sm text-perrific-graphite placeholder:text-perrific-graphite/40 focus:border-perrific-violet focus:outline-none focus:ring-2 focus:ring-perrific-violet/20"
             />
-            <button className="shrink-0 rounded-full bg-perrific-violet px-5 py-2.5 font-givonic text-sm font-semibold text-white transition hover:bg-[#E64D0A]">
+            <button className="shrink-0 rounded-full bg-perrific-violet px-5 py-2.5 font-manrope text-sm font-semibold text-white transition hover:bg-[#E64D0A]">
               Undang
             </button>
           </form>
@@ -273,7 +273,7 @@ export default function TeamSettingsPage() {
               role="tab"
               aria-selected={section === t.id}
               onClick={() => setSection(t.id)}
-              className={`shrink-0 rounded-full px-4 py-2 font-givonic text-xs font-semibold transition ${
+              className={`shrink-0 rounded-full px-4 py-2 font-manrope text-xs font-semibold transition ${
                 section === t.id
                   ? 'bg-perrific-graphite text-white'
                   : 'text-gray-500 hover:bg-gray-100 hover:text-perrific-graphite'

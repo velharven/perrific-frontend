@@ -30,10 +30,11 @@ export default function SortableSection({
 }) {
   const { setNodeRef, setActivatorNodeRef, attributes, listeners, transform, isDragging } =
     useSortable({ id, disabled });
+  const verticalTransform = transform ? { ...transform, x: 0 } : null;
   const style: CSSProperties = {
     // Saat settle dimatikan (snap instan), tampil statis di slot akhir
     // tanpa meluncur.
-    transform: settle ? CSS.Transform.toString(transform) : undefined,
+    transform: settle ? CSS.Translate.toString(verticalTransform) : undefined,
     // Tanpa transisi saat dragging (1:1 dengan pointer) dan saat settle mati
     // (snap instan); selebihnya luncuran 300ms.
     transition:

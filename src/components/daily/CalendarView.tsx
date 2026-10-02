@@ -11,7 +11,7 @@ import { doesActivityOccurOnDate, getDayBefore, getNthWeekdayInfo, projectActivi
 import { getCalendarColorMeta } from '@/lib/calendarColors';
 import { calendarCardEnd, isCalendarCardPast } from '@/lib/calendarTiming';
 import { useCalendarSync } from '@/store/calendarSync';
-import { Repeat, ChevronLeft, ChevronRight, ChevronDown, X } from 'lucide-react';
+import { Repeat, ChevronLeft, ChevronRight, ChevronDown, X, AlertTriangle } from 'lucide-react';
 
 export type CalendarViewMode = 'day' | 'week';
 
@@ -282,7 +282,16 @@ export default function CalendarView({
 }: CalendarViewProps) {
   const [currentYear, setCurrentYear] = useState(selectedDate.getFullYear());
   const [currentMonth, setCurrentMonth] = useState(selectedDate.getMonth()); // 0-indexed
-  const [viewMode, setViewMode] = useState<CalendarViewMode>('week');
+  const [viewMode, setViewMode] = useState<CalendarViewMode>(() => {
+    if (typeof window !== 'undefined' && window.innerWidth > 0 && window.innerWidth < 768) {
+      return 'day';
+    }
+    return 'week';
+  });
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const unscheduledCount = useMemo(() => {
+    return activities.filter((a) => !a.allDay && !a.startTime && !a.endTime && !a.taskId).length;
+  }, [activities]);
   const [isViewMenuOpen, setIsViewMenuOpen] = useState(false);
   const [googleEvents, setGoogleEvents] = useState<GoogleCalendarEvent[]>([]);
   const [linkedActivityMoves, setLinkedActivityMoves] = useState<Map<string, LinkedActivityMove>>(new Map());
@@ -1765,6 +1774,113 @@ export default function CalendarView({
     void handleDropPayload(targetDate, startMinutes, raw);
   };
 
+  // Penjadwalan item langsung dari sidebar/drawer (misal via modal tap-to-schedule di mobile)
+  const handleScheduleFromSidebar = async (payload: {
+    source: 'item' | 'team-task' | 'personal-task';
+    id: string;
+    taskId?: string;
+    title: string;
+    targetDate: Date;
+    startTime?: string;
+    endTime?: string;
+    allDay?: boolean;
+  }) => {
+    try {
+      const actionId = nextUndoIdRef.current++;
+      const dateStr = new Date(
+        payload.targetDate.getFullYear(),
+        payload.targetDate.getMonth(),
+        payload.targetDate.getDate(),
+        0, 0, 0, 0
+      ).toISOString();
+
+      const isAllDay = Boolean(payload.allDay);
+      const startTimeStr = isAllDay ? null : (payload.startTime || null);
+      const endTimeStr = isAllDay ? null : (payload.endTime || null);
+
+      if (payload.source === 'item') {
+        const originalAct = activities.find((a) => a.id === payload.id);
+        const prevDate = originalAct?.date || null;
+        const prevStartTime = originalAct?.startTime || null;
+        const prevEndTime = originalAct?.endTime || null;
+        if (originalAct?.googleEventId) {
+          deletedGoogleIdsRef.current.delete(originalAct.googleEventId);
+        }
+
+        const updated = await activityApi.update(payload.id, {
+          date: dateStr,
+          startTime: startTimeStr,
+          endTime: endTimeStr,
+          allDay: isAllDay,
+        });
+
+        const finalGoogleEventId = updated?.googleEventId;
+        if (finalGoogleEventId) {
+          deletedGoogleIdsRef.current.delete(finalGoogleEventId);
+        }
+
+        recordUndo({
+          id: actionId,
+          type: 'drag-from-sidebar-item',
+          activityId: payload.id,
+          title: payload.title,
+          prevDate,
+          prevStartTime,
+          prevEndTime,
+          googleEventId: finalGoogleEventId || originalAct?.googleEventId,
+        });
+
+        showToast(`"${payload.title}" dijadwalkan ke kalender`, {
+          label: 'Urungkan (Ctrl+Z)',
+          onAction: () => {
+            void handleUndo(actionId);
+          },
+        });
+      } else if (payload.source === 'team-task' || payload.source === 'personal-task') {
+        const isPersonal = payload.source === 'personal-task';
+        const created = await activityApi.create({
+          title: payload.title,
+          taskId: payload.taskId,
+          type: 'TASK',
+          date: dateStr,
+          startTime: startTimeStr,
+          endTime: endTimeStr,
+          allDay: isAllDay,
+          icon: 'check',
+        });
+
+        const finalGoogleEventId = created?.googleEventId;
+        if (finalGoogleEventId) {
+          deletedGoogleIdsRef.current.delete(finalGoogleEventId);
+        }
+
+        recordUndo({
+          id: actionId,
+          type: isPersonal ? 'drag-from-sidebar-personal-task' : 'drag-from-sidebar-team-task',
+          createdActivityId: created.id,
+          title: payload.title,
+          googleEventId: finalGoogleEventId,
+        });
+
+        showToast(`${isPersonal ? 'Tugas pribadi' : 'Tugas'} "${payload.title}" dijadwalkan ke kalender`, {
+          label: 'Urungkan (Ctrl+Z)',
+          onAction: () => {
+            void handleUndo(actionId);
+          },
+        });
+      }
+
+      onRefreshActivitiesRef.current?.();
+      onSelectDate(payload.targetDate);
+      setCurrentYear(payload.targetDate.getFullYear());
+      setCurrentMonth(payload.targetDate.getMonth());
+      setMobileSidebarOpen(false);
+    } catch (e) {
+      console.error('[CalendarView] Gagal menjadwalkan kegiatan dari sidebar:', e);
+      showToast('Gagal menjadwalkan kegiatan. Silakan coba lagi.');
+    }
+  };
+
   const clearDragState = useCallback(() => {
     dragTimingRef.current = null;
     setDraggingCardId(null);
@@ -2303,194 +2419,230 @@ export default function CalendarView({
   }
 
   return (
-    <div className="flex flex-col gap-4 font-givonic">
-      {/* Header toolbar kalender */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white p-3.5 shadow-sm">
-        {/* Navigasi tanggal & pengatur tampilan */}
-        <div className="flex flex-wrap items-center gap-2">
-          <h2 className="text-base font-semibold text-gray-900 min-w-[140px]">
-            {headerTitle}
-          </h2>
+    <div className="flex flex-col gap-4 font-manrope">
+      {/* Header toolbar kalender responsif: 2 baris di mobile, 1 baris di desktop */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 sm:gap-3 rounded-xl border border-gray-200 bg-white p-3 sm:p-3.5 shadow-sm">
+        {/* Baris 1 di mobile (atau sisi kiri di desktop): Judul, Navigasi < >, Hari Ini, dan + Kegiatan (mobile) */}
+        <div className="flex items-center justify-between gap-2 w-full lg:w-auto">
+          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+            <h2 className="text-sm sm:text-base font-semibold text-gray-900 truncate">
+              {headerTitle}
+            </h2>
 
-          <div className="flex items-center rounded-lg border border-gray-200 p-0.5 bg-gray-50">
-            <button
-              type="button"
-              onClick={handlePrev}
-              title="Sebelumnya"
-              className="rounded p-1 text-gray-600 hover:bg-white hover:text-gray-900 transition shadow-none hover:shadow-xs"
-            >
-              <ChevronLeft size={14} strokeWidth={1.8} />
-            </button>
-            <button
-              type="button"
-              onClick={handleNext}
-              title="Berikutnya"
-              className="rounded p-1 text-gray-600 hover:bg-white hover:text-gray-900 transition shadow-none hover:shadow-xs"
-            >
-              <ChevronRight size={14} strokeWidth={1.8} />
-            </button>
-          </div>
-
-          <button
-            type="button"
-            onClick={handleToday}
-            className="rounded-lg border border-gray-200 px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 transition"
-          >
-            Hari Ini
-          </button>
-
-          {/* Tombol & Menu pengatur tampilan di samping "Hari ini" */}
-          <div className="relative" ref={viewMenuRef}>
-            <button
-              type="button"
-              onClick={() => setIsViewMenuOpen((prev) => !prev)}
-              aria-haspopup="menu"
-              aria-expanded={isViewMenuOpen}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 transition shadow-none hover:shadow-xs"
-            >
-              <span>{viewMode === 'day' ? 'Hari' : 'Minggu'}</span>
-              <ChevronDown
-                size={12}
-                strokeWidth={1.8}
-                className={`transition-transform duration-150 text-gray-500 ${isViewMenuOpen ? 'rotate-180' : ''}`}
-              />
-            </button>
-
-            {/* Menu Dropdown Tampilan Berlatar Belakang Putih */}
-            {isViewMenuOpen && (
-              <div
-                role="menu"
-                className="absolute left-0 mt-1.5 z-50 w-52 overflow-hidden rounded-xl border border-gray-200 bg-white p-1.5 text-xs text-gray-800 shadow-xl"
-              >
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    setViewMode('day');
-                    setIsViewMenuOpen(false);
-                  }}
-                  className={`flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left transition ${
-                    viewMode === 'day'
-                      ? 'bg-blue-50 font-semibold text-blue-700'
-                      : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="w-3.5 text-center text-blue-600 font-bold">
-                      {viewMode === 'day' ? '✓' : ''}
-                    </span>
-                    <span>Hari</span>
-                  </div>
-                  <span className="text-[11px] font-mono text-gray-400">1 atau D</span>
-                </button>
-
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    setViewMode('week');
-                    setIsViewMenuOpen(false);
-                  }}
-                  className={`flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left transition ${
-                    viewMode === 'week'
-                      ? 'bg-blue-50 font-semibold text-blue-700'
-                      : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="w-3.5 text-center text-blue-600 font-bold">
-                      {viewMode === 'week' ? '✓' : ''}
-                    </span>
-                    <span>Minggu</span>
-                  </div>
-                  <span className="text-[11px] font-mono text-gray-400">0 atau W</span>
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Kontrol integrasi Google Calendar */}
-        <div className="flex items-center gap-2">
-          {gcalStatus.connected ? (
-            <div className="flex items-center gap-2">
-              {/* Google Profile Card */}
-              <div
-                title={gcalStatus.email ?? 'Google Calendar Terhubung'}
-                className="flex items-center gap-2.5 rounded-full border border-blue-200 bg-blue-50/80 pl-1 pr-3 py-1 text-xs shadow-xs"
-              >
-                {/* Avatar with Google G badge */}
-                <div className="relative h-6 w-6 shrink-0">
-                  {gcalStatus.avatarUrl ? (
-                    <img
-                      src={gcalStatus.avatarUrl}
-                      alt={gcalStatus.name || 'Google Profile'}
-                      className="h-6 w-6 rounded-full object-cover"
-                      referrerPolicy="no-referrer"
-                    />
-                  ) : (
-                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 font-semibold text-white text-[10px]">
-                      {(gcalStatus.name || gcalStatus.email || 'G').charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                  <span className="absolute -bottom-0.5 -right-0.5 flex h-3 w-3 items-center justify-center rounded-full bg-white ring-1 ring-white">
-                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none">
-                      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-                      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-                      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
-                      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-                    </svg>
-                  </span>
-                </div>
-
-                {/* Name & Email */}
-                <div className="flex flex-col text-left leading-tight min-w-0 max-w-[130px] sm:max-w-[180px]">
-                  <span className="truncate font-semibold text-gray-900 text-[11px]">
-                    {gcalStatus.name || gcalStatus.email?.split('@')[0] || 'Google User'}
-                  </span>
-                  {gcalStatus.email && (
-                    <span className="truncate text-[10px] text-gray-500">
-                      {gcalStatus.email}
-                    </span>
-                  )}
-                </div>
-              </div>
+            <div className="flex items-center rounded-lg border border-gray-200 p-0.5 bg-gray-50 shrink-0">
               <button
                 type="button"
-                disabled={gcalDisconnecting}
-                onClick={() => void disconnectGcal()}
-                className="inline-flex items-center rounded-lg border border-red-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-red-600 shadow-xs transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
-                title="Putuskan akun Google Calendar"
+                onClick={handlePrev}
+                title="Sebelumnya"
+                className="rounded p-1 text-gray-600 hover:bg-white hover:text-gray-900 transition shadow-none hover:shadow-xs"
               >
-                {gcalDisconnecting ? 'Memutuskan…' : 'Putuskan'}
+                <ChevronLeft size={14} strokeWidth={1.8} />
+              </button>
+              <button
+                type="button"
+                onClick={handleNext}
+                title="Berikutnya"
+                className="rounded p-1 text-gray-600 hover:bg-white hover:text-gray-900 transition shadow-none hover:shadow-xs"
+              >
+                <ChevronRight size={14} strokeWidth={1.8} />
               </button>
             </div>
-          ) : (
+
             <button
               type="button"
-              disabled={gcalConnecting}
-              onClick={connectGcal}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition shadow-xs"
+              onClick={handleToday}
+              className="rounded-lg border border-gray-200 px-2 sm:px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 transition shrink-0"
             >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
-                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-              </svg>
-              {gcalConnecting ? 'Menghubungkan…' : 'Hubungkan Google Calendar'}
+              Hari Ini
             </button>
-          )}
+          </div>
 
+          {/* Tombol + Kegiatan khusus mobile di baris 1 kanan */}
           {onCreateActivity && (
             <button
               type="button"
               onClick={() => onCreateActivity(selectedDate)}
-              className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 transition shadow-xs"
+              className="lg:hidden rounded-lg bg-blue-600 px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 transition shadow-xs shrink-0"
             >
               + Kegiatan
             </button>
           )}
+        </div>
+
+        {/* Baris 2 di mobile (atau sisi kanan di desktop): Mode Hari/Minggu, Belum Terjadwal (mobile), Google Calendar, + Kegiatan (desktop) */}
+        <div className="flex flex-wrap items-center justify-between lg:justify-end gap-2 w-full lg:w-auto border-t border-gray-100 lg:border-t-0 pt-2 lg:pt-0">
+          <div className="flex items-center gap-2">
+            {/* Tombol & Menu pengatur tampilan */}
+            <div className="relative" ref={viewMenuRef}>
+              <button
+                type="button"
+                onClick={() => setIsViewMenuOpen((prev) => !prev)}
+                aria-haspopup="menu"
+                aria-expanded={isViewMenuOpen}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 transition shadow-none hover:shadow-xs"
+              >
+                <span>{viewMode === 'day' ? 'Hari' : 'Minggu'}</span>
+                <ChevronDown
+                  size={12}
+                  strokeWidth={1.8}
+                  className={`transition-transform duration-150 text-gray-500 ${isViewMenuOpen ? 'rotate-180' : ''}`}
+                />
+              </button>
+
+              {/* Menu Dropdown Tampilan Berlatar Belakang Putih */}
+              {isViewMenuOpen && (
+                <div
+                  role="menu"
+                  className="absolute left-0 mt-1.5 z-50 w-52 overflow-hidden rounded-xl border border-gray-200 bg-white p-1.5 text-xs text-gray-800 shadow-xl"
+                >
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setViewMode('day');
+                      setIsViewMenuOpen(false);
+                    }}
+                    className={`flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left transition ${
+                      viewMode === 'day'
+                        ? 'bg-blue-50 font-semibold text-blue-700'
+                        : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="w-3.5 text-center text-blue-600 font-bold">
+                        {viewMode === 'day' ? '✓' : ''}
+                      </span>
+                      <span>Hari</span>
+                    </div>
+                    <span className="text-[11px] font-mono text-gray-400">1 atau D</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setViewMode('week');
+                      setIsViewMenuOpen(false);
+                    }}
+                    className={`flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left transition ${
+                      viewMode === 'week'
+                        ? 'bg-blue-50 font-semibold text-blue-700'
+                        : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="w-3.5 text-center text-blue-600 font-bold">
+                        {viewMode === 'week' ? '✓' : ''}
+                      </span>
+                      <span>Minggu</span>
+                    </div>
+                    <span className="text-[11px] font-mono text-gray-400">0 atau W</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Tombol Toggle 'Belum Terjadwal' khusus mobile/tablet */}
+            <button
+              type="button"
+              onClick={() => setMobileSidebarOpen(true)}
+              className="lg:hidden inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50/80 px-2.5 py-1 text-xs font-semibold text-amber-800 hover:bg-amber-100 transition shadow-xs"
+              title="Buka daftar belum di kalender"
+            >
+              <AlertTriangle size={13} strokeWidth={1.8} className="text-amber-600" />
+              <span>Belum Terjadwal</span>
+              {unscheduledCount > 0 && (
+                <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-600 px-1 text-[10px] font-bold text-white leading-none">
+                  {unscheduledCount}
+                </span>
+              )}
+            </button>
+          </div>
+
+          {/* Kontrol integrasi Google Calendar & + Kegiatan Desktop */}
+          <div className="flex items-center gap-2">
+            {gcalStatus.connected ? (
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                {/* Google Profile Card */}
+                <div
+                  title={gcalStatus.email ?? 'Google Calendar Terhubung'}
+                  className="flex items-center gap-2 sm:gap-2.5 rounded-full border border-blue-200 bg-blue-50/80 pl-1 pr-2 sm:pr-3 py-1 text-xs shadow-xs"
+                >
+                  {/* Avatar with Google G badge */}
+                  <div className="relative h-6 w-6 shrink-0">
+                    {gcalStatus.avatarUrl ? (
+                      <img
+                        src={gcalStatus.avatarUrl}
+                        alt={gcalStatus.name || 'Google Profile'}
+                        className="h-6 w-6 rounded-full object-cover"
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 font-semibold text-white text-[10px]">
+                        {(gcalStatus.name || gcalStatus.email || 'G').charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <span className="absolute -bottom-0.5 -right-0.5 flex h-3 w-3 items-center justify-center rounded-full bg-white ring-1 ring-white">
+                      <svg width="8" height="8" viewBox="0 0 24 24" fill="none">
+                        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+                        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+                        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+                        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+                      </svg>
+                    </span>
+                  </div>
+
+                  {/* Name & Email */}
+                  <div className="flex flex-col text-left leading-tight min-w-0 max-w-[100px] sm:max-w-[180px]">
+                    <span className="truncate font-semibold text-gray-900 text-[11px]">
+                      {gcalStatus.name || gcalStatus.email?.split('@')[0] || 'Google User'}
+                    </span>
+                    {gcalStatus.email && (
+                      <span className="truncate text-[10px] text-gray-500 hidden sm:inline">
+                        {gcalStatus.email}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  disabled={gcalDisconnecting}
+                  onClick={() => void disconnectGcal()}
+                  className="inline-flex items-center rounded-lg border border-red-200 bg-white px-2 sm:px-2.5 py-1.5 text-[11px] font-medium text-red-600 shadow-xs transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
+                  title="Putuskan akun Google Calendar"
+                >
+                  {gcalDisconnecting ? 'Memutuskan…' : 'Putuskan'}
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                disabled={gcalConnecting}
+                onClick={connectGcal}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 sm:px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition shadow-xs"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+                </svg>
+                <span className="hidden sm:inline">{gcalConnecting ? 'Menghubungkan…' : 'Hubungkan Google Calendar'}</span>
+                <span className="sm:hidden">{gcalConnecting ? '…' : 'Google Cal'}</span>
+              </button>
+            )}
+
+            {/* Tombol + Kegiatan untuk desktop */}
+            {onCreateActivity && (
+              <button
+                type="button"
+                onClick={() => onCreateActivity(selectedDate)}
+                className="hidden lg:inline-flex rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 transition shadow-xs"
+              >
+                + Kegiatan
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -2504,8 +2656,10 @@ export default function CalendarView({
       {/* ============================================================== */}
       {viewMode === 'week' && (
         <div className="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm flex flex-col">
-          {/* Header 7 Hari */}
-          <div className="grid grid-cols-[64px_repeat(7,1fr)] border-b border-gray-200 bg-white sticky top-0 z-20">
+          <div className="overflow-x-auto">
+            <div className="min-w-[640px]">
+              {/* Header 7 Hari */}
+              <div className="grid grid-cols-[56px_repeat(7,1fr)] sm:grid-cols-[64px_repeat(7,1fr)] border-b border-gray-200 bg-white sticky top-0 z-20">
             <div className="p-2 border-r border-gray-200 text-[11px] font-medium text-gray-400 flex items-center justify-center">
               WAKTU
             </div>
@@ -2550,7 +2704,7 @@ export default function CalendarView({
             className="bg-white relative select-none"
           >
             <div
-              className="grid grid-cols-[64px_repeat(7,1fr)] relative"
+              className="grid grid-cols-[56px_repeat(7,1fr)] sm:grid-cols-[64px_repeat(7,1fr)] relative"
               style={{ height: `${24 * HOUR_HEIGHT}px` }}
             >
               {/* Kolom Label Jam (Sisi Kiri) */}
@@ -2682,6 +2836,8 @@ export default function CalendarView({
               )}
             </div>
           </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -2690,22 +2846,52 @@ export default function CalendarView({
       {/* ============================================================== */}
       {viewMode === 'day' && (
         <div className="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm flex flex-col">
+          {/* 7-Day Strip Selector (Mobile & Tablet) */}
+          <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50/70 p-1.5 lg:hidden select-none">
+            {weekDays.map((dayDate, idx) => {
+              const isToday = isSameDay(dayDate, today);
+              const isSelected = isSameDay(dayDate, selectedDate);
+
+              return (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => onSelectDate(dayDate)}
+                  className={`flex flex-1 flex-col items-center justify-center py-1.5 px-1 rounded-xl transition ${
+                    isSelected
+                      ? 'bg-blue-600 text-white shadow-xs font-bold'
+                      : isToday
+                        ? 'bg-blue-50 text-blue-700 font-semibold'
+                        : 'text-gray-700 hover:bg-gray-100/70'
+                  }`}
+                >
+                  <span className={`text-[10px] uppercase tracking-wider ${isSelected ? 'text-blue-100' : 'text-gray-400'}`}>
+                    {DAY_NAMES[idx]}
+                  </span>
+                  <span className="mt-0.5 text-xs font-semibold">
+                    {dayDate.getDate()}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
           {/* Header Hari Terpilih */}
-          <div className="grid grid-cols-[64px_1fr] border-b border-gray-200 bg-white sticky top-0 z-20">
+          <div className="grid grid-cols-[56px_1fr] sm:grid-cols-[64px_1fr] border-b border-gray-200 bg-white sticky top-0 z-20">
             <div className="p-2 border-r border-gray-200 text-[11px] font-medium text-gray-400 flex items-center justify-center">
               WAKTU
             </div>
-            <div className="py-2.5 px-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-white text-sm font-bold shadow-xs">
+            <div className="py-2 px-3 sm:py-2.5 sm:px-4 flex items-center justify-between">
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                <span className="inline-flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white text-xs sm:text-sm font-bold shadow-xs">
                   {selectedDate.getDate()}
                 </span>
-                <div>
-                  <h3 className="text-sm font-bold text-gray-900">
+                <div className="min-w-0">
+                  <h3 className="text-xs sm:text-sm font-bold text-gray-900 truncate">
                     {FULL_DAY_NAMES[selectedDate.getDay()]}, {selectedDate.getDate()}{' '}
                     {MONTH_NAMES[selectedDate.getMonth()]} {selectedDate.getFullYear()}
                   </h3>
-                  <span className="text-[11px] text-gray-500">
+                  <span className="text-[10px] sm:text-[11px] text-gray-500">
                     {getDayItems(selectedDate).length} Kegiatan tercatat
                   </span>
                 </div>
@@ -2715,7 +2901,7 @@ export default function CalendarView({
                 <button
                   type="button"
                   onClick={() => onCreateActivity(selectedDate)}
-                  className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 transition shadow-xs"
+                  className="rounded-lg bg-blue-600 px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 transition shadow-xs shrink-0"
                 >
                   + Tambah Kegiatan
                 </button>
@@ -2731,7 +2917,7 @@ export default function CalendarView({
             className="bg-white relative select-none"
           >
             <div
-              className="grid grid-cols-[64px_1fr] relative"
+              className="grid grid-cols-[56px_1fr] sm:grid-cols-[64px_1fr] relative"
               style={{ height: `${24 * HOUR_HEIGHT}px` }}
             >
               {/* Kolom Label Jam (Sisi Kiri) */}
@@ -2850,11 +3036,13 @@ export default function CalendarView({
       )}
         </div>
 
-        {/* Kolom Kanan: Sidebar Item belum terjadwal + Settings Card Terpilih */}
-        <div className="sticky top-6 flex w-80 shrink-0 flex-col gap-3 self-start">
+        {/* Kolom Kanan: Sidebar Item belum terjadwal + Settings Card Terpilih (Desktop) */}
+        <div className="hidden lg:flex sticky top-6 w-80 shrink-0 flex-col gap-3 self-start">
           <CalendarSidebar
             activities={activities}
             onRefresh={onRefreshActivities}
+            onScheduleItem={handleScheduleFromSidebar}
+            activeCalendarDate={selectedDate}
           />
 
           {selectedCardItem && (
@@ -2867,10 +3055,63 @@ export default function CalendarView({
               onRecordUndo={recordUndo}
               onUndo={handleUndo}
               getNextUndoId={() => nextUndoIdRef.current++}
+              onDateChanged={(newDate) => {
+                onSelectDate(newDate);
+                setCurrentYear(newDate.getFullYear());
+                setCurrentMonth(newDate.getMonth());
+              }}
             />
           )}
         </div>
       </div>
+
+      {/* Drawer / Bottom Sheet Belum Terjadwal (Mobile & Tablet) */}
+      {mobileSidebarOpen && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 lg:hidden">
+          <div
+            className="fixed inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity"
+            onClick={() => setMobileSidebarOpen(false)}
+            aria-hidden="true"
+          />
+          <div className="relative z-10 w-full max-w-md max-h-[85vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl shadow-2xl bg-white animate-in slide-in-from-bottom duration-200">
+            <CalendarSidebar
+              activities={activities}
+              onRefresh={onRefreshActivities}
+              onClose={() => setMobileSidebarOpen(false)}
+              onScheduleItem={handleScheduleFromSidebar}
+              activeCalendarDate={selectedDate}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Modal / Bottom Sheet Pengaturan Kartu Kegiatan (Mobile & Tablet) */}
+      {selectedCardItem && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 lg:hidden">
+          <div
+            className="fixed inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity"
+            onClick={() => setSelectedCardItem(null)}
+            aria-hidden="true"
+          />
+          <div className="relative z-10 w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl shadow-2xl bg-white animate-in slide-in-from-bottom duration-200">
+            <CalendarCardSettings
+              selectedItem={selectedCardItem}
+              onClose={() => setSelectedCardItem(null)}
+              onOpenActivity={onOpenActivity}
+              onDelete={handleDeleteCard}
+              onRefresh={onRefreshActivities}
+              onRecordUndo={recordUndo}
+              onUndo={handleUndo}
+              getNextUndoId={() => nextUndoIdRef.current++}
+              onDateChanged={(newDate) => {
+                onSelectDate(newDate);
+                setCurrentYear(newDate.getFullYear());
+                setCurrentMonth(newDate.getMonth());
+              }}
+            />
+          </div>
+        </div>
+      )}
 
 
 

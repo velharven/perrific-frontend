@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/store/auth';
@@ -162,7 +162,7 @@ export default function SettingsPage() {
             <div className="flex flex-wrap items-center gap-2">
               <label
                 htmlFor="photo-input"
-                className={`inline-flex cursor-pointer items-center rounded-full border border-perrific-line bg-white px-4 py-2 font-givonic text-xs font-semibold text-perrific-graphite transition hover:bg-perrific-paper ${
+                className={`inline-flex cursor-pointer items-center rounded-full border border-perrific-line bg-white px-4 py-2 font-manrope text-xs font-semibold text-perrific-graphite transition hover:bg-perrific-paper ${
                   photoBusy ? 'pointer-events-none opacity-60' : ''
                 }`}
               >
@@ -184,7 +184,7 @@ export default function SettingsPage() {
                   type="button"
                   onClick={handleRemovePhoto}
                   disabled={photoBusy}
-                  className="rounded-full px-3 py-2 font-givonic text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-60"
+                  className="rounded-full px-3 py-2 font-manrope text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-60"
                 >
                   Hapus
                 </button>
@@ -194,14 +194,14 @@ export default function SettingsPage() {
               JPG/PNG/WebP · maks 5 MB · otomatis dikecilkan
             </p>
             {photoError && (
-              <p role="alert" className="mt-1.5 font-givonic text-xs text-red-600">{photoError}</p>
+              <p role="alert" className="mt-1.5 font-manrope text-xs text-red-600">{photoError}</p>
             )}
           </div>
         </div>
 
         <form onSubmit={handleSubmitProfile} className="mt-5 space-y-4">
           <div>
-            <label htmlFor="display-name" className="mb-1.5 block font-givonic text-xs font-medium text-perrific-graphite">
+            <label htmlFor="display-name" className="mb-1.5 block font-manrope text-xs font-medium text-perrific-graphite">
               Nama tampilan
             </label>
             <input
@@ -211,16 +211,16 @@ export default function SettingsPage() {
               onChange={(e) => setName(e.target.value)}
               maxLength={60}
               placeholder="Namamu"
-              className="w-full rounded-[10px] border border-perrific-line bg-white px-3 py-2.5 font-givonic text-sm text-perrific-graphite placeholder:text-perrific-graphite/40 focus:border-perrific-violet focus:outline-none focus:ring-2 focus:ring-perrific-violet/20"
+              className="w-full rounded-[10px] border border-perrific-line bg-white px-3 py-2.5 font-manrope text-sm text-perrific-graphite placeholder:text-perrific-graphite/40 focus:border-perrific-violet focus:outline-none focus:ring-2 focus:ring-perrific-violet/20"
             />
           </div>
 
           <div>
-            <label htmlFor="username" className="mb-1.5 block font-givonic text-xs font-medium text-perrific-graphite">
+            <label htmlFor="username" className="mb-1.5 block font-manrope text-xs font-medium text-perrific-graphite">
               Username
             </label>
             <div className="flex items-center rounded-[10px] border border-perrific-line bg-white px-3 focus-within:border-perrific-violet focus-within:ring-2 focus-within:ring-perrific-violet/20">
-              <span className="select-none font-givonic text-sm text-perrific-graphite/40">@</span>
+              <span className="select-none font-manrope text-sm text-perrific-graphite/40">@</span>
               <input
                 id="username"
                 type="text"
@@ -233,22 +233,22 @@ export default function SettingsPage() {
                 autoCorrect="off"
                 spellCheck={false}
                 aria-describedby="username-status"
-                className="w-full bg-transparent px-1.5 py-2.5 font-givonic text-sm text-perrific-graphite placeholder:text-perrific-graphite/40 focus:outline-none"
+                className="w-full bg-transparent px-1.5 py-2.5 font-manrope text-sm text-perrific-graphite placeholder:text-perrific-graphite/40 focus:outline-none"
               />
             </div>
             <div id="username-status" aria-live="polite" className="mt-1.5 min-h-[1rem]">
               {!usernameFormatOk ? (
-                <p className="font-givonic text-xs text-red-600">
+                <p className="font-manrope text-xs text-red-600">
                   3–30 karakter: huruf kecil, angka, titik, underscore.
                 </p>
               ) : usernameUnchanged ? null : checking ? (
-                <p className="font-givonic text-xs text-perrific-graphite/50">Memeriksa ketersediaan…</p>
+                <p className="font-manrope text-xs text-perrific-graphite/50">Memeriksa ketersediaan…</p>
               ) : available === true ? (
-                <p className="font-givonic text-xs font-medium text-green-700">Username tersedia.</p>
+                <p className="font-manrope text-xs font-medium text-green-700">Username tersedia.</p>
               ) : available === false ? (
-                <p className="font-givonic text-xs font-medium text-red-600">Username sudah dipakai.</p>
+                <p className="font-manrope text-xs font-medium text-red-600">Username sudah dipakai.</p>
               ) : usernameNorm === '' ? (
-                <p className="font-givonic text-xs text-perrific-graphite/40">Opsional — kosongkan untuk menghapus.</p>
+                <p className="font-manrope text-xs text-perrific-graphite/40">Opsional — kosongkan untuk menghapus.</p>
               ) : null}
             </div>
           </div>
@@ -257,14 +257,14 @@ export default function SettingsPage() {
             <button
               type="submit"
               disabled={!canSave}
-              className="rounded-full bg-perrific-violet px-5 py-2.5 font-givonic text-sm font-semibold text-white hover:bg-[#E64D0A] disabled:cursor-not-allowed disabled:opacity-60 transition"
+              className="rounded-full bg-perrific-violet px-5 py-2.5 font-manrope text-sm font-semibold text-white hover:bg-[#E64D0A] disabled:cursor-not-allowed disabled:opacity-60 transition"
             >
               {saving ? 'Menyimpan…' : 'Simpan profil'}
             </button>
             {notice && (
               <p
                 role={notice.type === 'error' ? 'alert' : 'status'}
-                className={`mt-2 font-givonic text-xs ${notice.type === 'error' ? 'text-red-600' : 'text-green-700'}`}
+                className={`mt-2 font-manrope text-xs ${notice.type === 'error' ? 'text-red-600' : 'text-green-700'}`}
               >
                 {notice.text}
               </p>
@@ -275,14 +275,14 @@ export default function SettingsPage() {
 
         <SettingsBlock title="Password" desc="Minimal 8 karakter">
         {!user?.hasPassword && (
-          <p className="mt-2 rounded-lg bg-perrific-paper px-3 py-2.5 font-givonic text-xs leading-relaxed text-perrific-graphite/70">
+          <p className="mt-2 rounded-lg bg-perrific-paper px-3 py-2.5 font-manrope text-xs leading-relaxed text-perrific-graphite/70">
             Akun ini masuk dengan Google. Buat password agar bisa masuk dengan email juga.
           </p>
         )}
         <form onSubmit={handleSubmitPassword} className="mt-4 space-y-4">
           {user?.hasPassword && (
             <div>
-              <label htmlFor="current-password" className="mb-1.5 block font-givonic text-xs font-medium text-perrific-graphite">
+              <label htmlFor="current-password" className="mb-1.5 block font-manrope text-xs font-medium text-perrific-graphite">
                 Password saat ini
               </label>
               <input
@@ -291,12 +291,12 @@ export default function SettingsPage() {
                 autoComplete="current-password"
                 value={currentPw}
                 onChange={(e) => setCurrentPw(e.target.value)}
-                className="w-full rounded-[10px] border border-perrific-line bg-white px-3 py-2.5 font-givonic text-sm text-perrific-graphite placeholder:text-perrific-graphite/40 focus:border-perrific-violet focus:outline-none focus:ring-2 focus:ring-perrific-violet/20"
+                className="w-full rounded-[10px] border border-perrific-line bg-white px-3 py-2.5 font-manrope text-sm text-perrific-graphite placeholder:text-perrific-graphite/40 focus:border-perrific-violet focus:outline-none focus:ring-2 focus:ring-perrific-violet/20"
               />
             </div>
           )}
           <div>
-            <label htmlFor="new-password" className="mb-1.5 block font-givonic text-xs font-medium text-perrific-graphite">
+            <label htmlFor="new-password" className="mb-1.5 block font-manrope text-xs font-medium text-perrific-graphite">
               Password baru
             </label>
             <input
@@ -306,11 +306,11 @@ export default function SettingsPage() {
               value={newPw}
               onChange={(e) => setNewPw(e.target.value)}
               placeholder="Minimal 8 karakter"
-              className="w-full rounded-[10px] border border-perrific-line bg-white px-3 py-2.5 font-givonic text-sm text-perrific-graphite placeholder:text-perrific-graphite/40 focus:border-perrific-violet focus:outline-none focus:ring-2 focus:ring-perrific-violet/20"
+              className="w-full rounded-[10px] border border-perrific-line bg-white px-3 py-2.5 font-manrope text-sm text-perrific-graphite placeholder:text-perrific-graphite/40 focus:border-perrific-violet focus:outline-none focus:ring-2 focus:ring-perrific-violet/20"
             />
           </div>
           <div>
-            <label htmlFor="confirm-password" className="mb-1.5 block font-givonic text-xs font-medium text-perrific-graphite">
+            <label htmlFor="confirm-password" className="mb-1.5 block font-manrope text-xs font-medium text-perrific-graphite">
               Ulangi password baru
             </label>
             <input
@@ -319,24 +319,24 @@ export default function SettingsPage() {
               autoComplete="new-password"
               value={confirmPw}
               onChange={(e) => setConfirmPw(e.target.value)}
-              className="w-full rounded-[10px] border border-perrific-line bg-white px-3 py-2.5 font-givonic text-sm text-perrific-graphite placeholder:text-perrific-graphite/40 focus:border-perrific-violet focus:outline-none focus:ring-2 focus:ring-perrific-violet/20"
+              className="w-full rounded-[10px] border border-perrific-line bg-white px-3 py-2.5 font-manrope text-sm text-perrific-graphite placeholder:text-perrific-graphite/40 focus:border-perrific-violet focus:outline-none focus:ring-2 focus:ring-perrific-violet/20"
             />
             {pwMismatch && (
-              <p className="mt-1.5 font-givonic text-xs text-red-600">Konfirmasi tidak cocok.</p>
+              <p className="mt-1.5 font-manrope text-xs text-red-600">Konfirmasi tidak cocok.</p>
             )}
           </div>
           <div>
             <button
               type="submit"
               disabled={!canSubmitPw}
-              className="rounded-full bg-perrific-violet px-5 py-2.5 font-givonic text-sm font-semibold text-white hover:bg-[#E64D0A] disabled:cursor-not-allowed disabled:opacity-60 transition"
+              className="rounded-full bg-perrific-violet px-5 py-2.5 font-manrope text-sm font-semibold text-white hover:bg-[#E64D0A] disabled:cursor-not-allowed disabled:opacity-60 transition"
             >
               {pwBusy ? 'Menyimpan…' : 'Ubah password'}
             </button>
             {pwMsg && (
               <p
                 role={pwMsg.type === 'error' ? 'alert' : 'status'}
-                className={`mt-2 font-givonic text-xs ${pwMsg.type === 'error' ? 'text-red-600' : 'text-green-700'}`}
+                className={`mt-2 font-manrope text-xs ${pwMsg.type === 'error' ? 'text-red-600' : 'text-green-700'}`}
               >
                 {pwMsg.text}
               </p>
@@ -377,11 +377,11 @@ export default function SettingsPage() {
                       </span>
                     </div>
                     <div className="min-w-0">
-                      <p className="truncate font-givonic text-sm font-semibold text-perrific-graphite">
+                      <p className="truncate font-manrope text-sm font-semibold text-perrific-graphite">
                         {gcalStatus.name || 'Akun Google'}
                       </p>
                       {gcalStatus.email && (
-                        <p className="truncate font-givonic text-xs text-perrific-graphite/70">
+                        <p className="truncate font-manrope text-xs text-perrific-graphite/70">
                           {gcalStatus.email}
                         </p>
                       )}
@@ -390,13 +390,13 @@ export default function SettingsPage() {
                   <button
                     type="button"
                     onClick={() => void disconnectGcal()}
-                    className="shrink-0 rounded-full border border-gray-200 bg-white px-4 py-1.5 font-givonic text-xs font-medium text-gray-700 hover:bg-gray-50 transition shadow-xs"
+                    className="shrink-0 rounded-full border border-gray-200 bg-white px-4 py-1.5 font-manrope text-xs font-medium text-gray-700 hover:bg-gray-50 transition shadow-xs"
                   >
                     Putuskan
                   </button>
                 </div>
                 {gcalStatus.syncedAt && (
-                  <p className="font-givonic text-xs text-gray-500 pt-2 border-t border-blue-100">
+                  <p className="font-manrope text-xs text-gray-500 pt-2 border-t border-blue-100">
                     Terakhir disinkronkan: {new Date(gcalStatus.syncedAt).toLocaleString('id-ID')}
                   </p>
                 )}
@@ -404,10 +404,10 @@ export default function SettingsPage() {
             ) : (
               <div className="flex items-center justify-between gap-4 rounded-[12px] border border-perrific-line bg-perrific-paper/50 p-4">
                 <div>
-                  <p className="font-givonic text-sm font-semibold text-perrific-graphite">
+                  <p className="font-manrope text-sm font-semibold text-perrific-graphite">
                     Belum terhubung
                   </p>
-                  <p className="font-givonic text-xs text-perrific-graphite/60">
+                  <p className="font-manrope text-xs text-perrific-graphite/60">
                     Hubungkan akun Google untuk menampilkan jadwal di kalender dan sinkronisasi aktivitas harian.
                   </p>
                 </div>
@@ -415,14 +415,14 @@ export default function SettingsPage() {
                   type="button"
                   disabled={gcalConnecting}
                   onClick={connectGcal}
-                  className="inline-flex shrink-0 items-center gap-2 rounded-full border border-perrific-line bg-white px-5 py-2 font-givonic text-xs font-semibold text-perrific-graphite shadow-sm hover:bg-perrific-paper transition disabled:opacity-60"
+                  className="inline-flex shrink-0 items-center gap-2 rounded-full border border-perrific-line bg-white px-5 py-2 font-manrope text-xs font-semibold text-perrific-graphite shadow-sm hover:bg-perrific-paper transition disabled:opacity-60"
                 >
                   {gcalConnecting ? 'Menghubungkan…' : 'Hubungkan'}
                 </button>
               </div>
             )}
             {gcalError && (
-              <p role="alert" className="font-givonic text-xs text-red-600">
+              <p role="alert" className="font-manrope text-xs text-red-600">
                 {gcalError}
               </p>
             )}
@@ -432,25 +432,25 @@ export default function SettingsPage() {
         <SettingsBlock title="Akun" desc="Info akun & keluar">
         <dl className="mt-3 space-y-2.5">
           <div className="flex items-center justify-between gap-3">
-            <dt className="font-givonic text-sm text-perrific-graphite/60">Email</dt>
+            <dt className="font-manrope text-sm text-perrific-graphite/60">Email</dt>
             <dd className="truncate font-mono text-xs text-perrific-graphite">{user?.email}</dd>
           </div>
           <div className="flex items-center justify-between gap-3">
-            <dt className="font-givonic text-sm text-perrific-graphite/60">Username</dt>
+            <dt className="font-manrope text-sm text-perrific-graphite/60">Username</dt>
             <dd className="truncate font-mono text-xs text-perrific-graphite">
               {user?.username ? `@${user.username}` : '—'}
             </dd>
           </div>
           <div className="flex items-center justify-between gap-3">
-            <dt className="font-givonic text-sm text-perrific-graphite/60">Bergabung sejak</dt>
-            <dd className="font-givonic text-sm text-perrific-graphite">{memberSince}</dd>
+            <dt className="font-manrope text-sm text-perrific-graphite/60">Bergabung sejak</dt>
+            <dd className="font-manrope text-sm text-perrific-graphite">{memberSince}</dd>
           </div>
         </dl>
         <div className="mt-4 border-t border-gray-100 pt-4">
           <button
             type="button"
             onClick={handleLogout}
-            className="inline-flex items-center gap-2 rounded-full border border-red-200 px-5 py-2.5 font-givonic text-sm font-semibold text-red-600 transition hover:bg-red-50 cursor-pointer"
+            className="inline-flex items-center gap-2 rounded-full border border-red-200 px-5 py-2.5 font-manrope text-sm font-semibold text-red-600 transition hover:bg-red-50 cursor-pointer"
           >
             <LogOut size={15} strokeWidth={1.6} aria-hidden="true" />
             Keluar

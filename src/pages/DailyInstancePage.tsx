@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { noteApi } from '@/api/notes';
 import type { Note } from '@/types';
@@ -36,7 +36,7 @@ export default function DailyInstancePage() {
   if (notFound) {
     return (
       <div className="mx-auto max-w-3xl rounded-xl border border-dashed border-gray-300 bg-white p-10 text-center">
-        <p className="font-givonic text-sm text-perrific-graphite/60">Aktivitas tidak ditemukan atau sudah dihapus.</p>
+        <p className="font-manrope text-sm text-perrific-graphite/60">Aktivitas tidak ditemukan atau sudah dihapus.</p>
       </div>
     );
   }

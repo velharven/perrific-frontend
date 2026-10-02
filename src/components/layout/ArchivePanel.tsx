@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+﻿import { useEffect, useRef } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   X,
@@ -98,7 +98,7 @@ export default function ArchivePanel({
             <X size={16} strokeWidth={1.8} aria-hidden="true" />
           </button>
           <div className="flex items-center gap-2">
-            <h2 className="font-givonic text-sm font-bold text-perrific-graphite">
+            <h2 className="font-manrope text-sm font-bold text-perrific-graphite">
               Arsip
             </h2>
             {totalArchived > 0 && (
@@ -116,7 +116,7 @@ export default function ArchivePanel({
           disabled={totalArchived === 0}
           title="Keluarkan semua dari arsip"
           aria-label="Keluarkan semua dari arsip"
-          className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 font-givonic text-xs font-semibold text-perrific-violet transition hover:bg-perrific-violet/10 disabled:opacity-40 disabled:hover:bg-transparent"
+          className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 font-manrope text-xs font-semibold text-perrific-violet transition hover:bg-perrific-violet/10 disabled:opacity-40 disabled:hover:bg-transparent"
         >
           <ArchiveRestore size={14} strokeWidth={1.8} aria-hidden="true" />
           <span>Keluarkan semua</span>
@@ -130,10 +130,10 @@ export default function ArchivePanel({
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-50 text-gray-400">
               <Archive size={22} strokeWidth={1.6} />
             </div>
-            <p className="mt-3 font-givonic text-sm font-semibold text-perrific-graphite">
+            <p className="mt-3 font-manrope text-sm font-semibold text-perrific-graphite">
               Tidak ada arsip
             </p>
-            <p className="mt-1 font-givonic text-xs leading-relaxed text-perrific-graphite/50">
+            <p className="mt-1 font-manrope text-xs leading-relaxed text-perrific-graphite/50">
               Arsipkan tab privat atau tim melalui menu ⋮ atau klik kanan pada sidebar.
             </p>
           </div>
@@ -173,7 +173,7 @@ export default function ArchivePanel({
                           ) : (
                             <FileText size={15} strokeWidth={1.6} className="shrink-0 text-gray-400" />
                           )}
-                          <span className="ml-2.5 min-w-0 flex-1 truncate font-givonic text-sm">
+                          <span className="ml-2.5 min-w-0 flex-1 truncate font-manrope text-sm">
                             {displayLabel}
                           </span>
                           {starred.includes(to) && (
@@ -239,7 +239,7 @@ export default function ArchivePanel({
                         title="Klik kanan untuk opsi"
                       >
                         {renderTeamBadge(team)}
-                        <span className="ml-2.5 min-w-0 flex-1 truncate font-givonic text-sm">
+                        <span className="ml-2.5 min-w-0 flex-1 truncate font-manrope text-sm">
                           {team.name}
                         </span>
                         {starred.includes(team.id) && (

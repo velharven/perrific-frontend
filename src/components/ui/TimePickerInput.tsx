@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useLayoutEffect, useMemo, useCallback } from 'react';
+﻿import React, { useState, useEffect, useRef, useLayoutEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 
 export interface TimePickerInputProps {
@@ -416,7 +416,7 @@ export default function TimePickerInput({
   };
 
   return (
-    <div ref={containerRef} className="relative inline-block font-givonic">
+    <div ref={containerRef} className="relative inline-block font-manrope">
       {/* Input Teks Jam Interaktif */}
       <input
         ref={inputRef}
@@ -454,7 +454,7 @@ export default function TimePickerInput({
               left: `${menuPos.left}px`,
               minWidth: `${menuPos.width}px`,
             }}
-            className="fixed z-9999 max-h-64 overflow-y-auto nice-scroll rounded-xl border border-gray-200 bg-white py-1 shadow-xl font-givonic animate-in fade-in zoom-in-95 duration-100"
+            className="fixed z-9999 max-h-64 overflow-y-auto nice-scroll rounded-xl border border-gray-200 bg-white py-1 shadow-xl font-manrope animate-in fade-in zoom-in-95 duration-100"
           >
             {suggestions.length === 0 ? (
               <div className="px-3 py-2 text-center text-xs text-gray-400">

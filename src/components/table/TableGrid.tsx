@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+﻿import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Maximize2 } from 'lucide-react';
 import {
   DndContext,
@@ -511,7 +511,7 @@ export default function TableGrid({
         <div
           role="status"
           aria-live="polite"
-          className={`absolute left-0 z-30 flex items-center gap-1 rounded-lg border border-gray-200 bg-white py-1 pl-3 pr-1 font-givonic text-xs font-semibold text-perrific-graphite shadow-[0_8px_24px_rgba(26,26,30,0.14)] ${hideToolbar ? '-top-9' : 'top-0'}`}
+          className={`absolute left-0 z-30 flex items-center gap-1 rounded-lg border border-gray-200 bg-white py-1 pl-3 pr-1 font-manrope text-xs font-semibold text-perrific-graphite shadow-[0_8px_24px_rgba(26,26,30,0.14)] ${hideToolbar ? '-top-9' : 'top-0'}`}
         >
           <span>{selCount} dipilih</span>
           <span aria-hidden="true" className="mx-1 h-4 w-px bg-gray-200" />
@@ -557,7 +557,7 @@ export default function TableGrid({
         <button
           type="button"
           onClick={handleAddInline}
-          className="shrink-0 rounded-lg bg-perrific-violet px-3 py-1.5 font-givonic text-xs font-semibold text-white transition hover:brightness-110"
+          className="shrink-0 rounded-lg bg-perrific-violet px-3 py-1.5 font-manrope text-xs font-semibold text-white transition hover:brightness-110"
         >
           Baru
         </button>
@@ -603,7 +603,7 @@ export default function TableGrid({
                           <TableColumnIcon type={col.type} className="h-4 w-4 text-gray-400" />
                         )}
                       </span>
-                      <span className="min-w-0 flex-1 truncate font-givonic font-semibold text-perrific-graphite">
+                      <span className="min-w-0 flex-1 truncate font-manrope font-semibold text-perrific-graphite">
                         {col.name}
                       </span>
                     </button>
@@ -661,7 +661,7 @@ export default function TableGrid({
                 <button
                   type="button"
                   onClick={handleAddInline}
-                  className="flex w-full items-center gap-1.5 px-3 py-2 text-left font-givonic text-sm text-gray-400 transition hover:bg-gray-50 hover:text-perrific-violet"
+                  className="flex w-full items-center gap-1.5 px-3 py-2 text-left font-manrope text-sm text-gray-400 transition hover:bg-gray-50 hover:text-perrific-violet"
                 >
                   <span aria-hidden="true">+</span> Halaman baru
                 </button>

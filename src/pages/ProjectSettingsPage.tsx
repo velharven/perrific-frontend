@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+﻿import { useEffect, useState, type ReactNode } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { projectApi } from '@/api/projects';
 import { teamApi } from '@/api/teams';
@@ -40,7 +40,7 @@ const sections: { id: Section; label: string; adminOnly?: boolean; inviteAllowed
 ];
 
 const inputClass =
-  'w-full rounded-[10px] border border-perrific-line bg-white px-3 py-2.5 font-givonic text-sm text-perrific-graphite placeholder:text-perrific-graphite/40 focus:border-perrific-violet focus:outline-none focus:ring-2 focus:ring-perrific-violet/20';
+  'w-full rounded-[10px] border border-perrific-line bg-white px-3 py-2.5 font-manrope text-sm text-perrific-graphite placeholder:text-perrific-graphite/40 focus:border-perrific-violet focus:outline-none focus:ring-2 focus:ring-perrific-violet/20';
 
 export default function ProjectSettingsPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -269,7 +269,7 @@ export default function ProjectSettingsPage() {
                     <div className="flex flex-wrap items-center gap-2">
                       <label
                         htmlFor="ps-photo"
-                        className={`inline-flex cursor-pointer items-center rounded-full border border-perrific-line bg-white px-4 py-2 font-givonic text-xs font-semibold text-perrific-graphite transition hover:bg-perrific-paper ${
+                        className={`inline-flex cursor-pointer items-center rounded-full border border-perrific-line bg-white px-4 py-2 font-manrope text-xs font-semibold text-perrific-graphite transition hover:bg-perrific-paper ${
                           photoBusy ? 'pointer-events-none opacity-60' : ''
                         }`}
                       >
@@ -291,14 +291,14 @@ export default function ProjectSettingsPage() {
                           type="button"
                           onClick={handleRemovePhoto}
                           disabled={photoBusy}
-                          className="rounded-full px-3 py-2 font-givonic text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-60"
+                          className="rounded-full px-3 py-2 font-manrope text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-60"
                         >
                           Hapus
                         </button>
                       )}
                     </div>
                     {photoError && (
-                      <p role="alert" className="mt-1.5 font-givonic text-xs text-red-600">{photoError}</p>
+                      <p role="alert" className="mt-1.5 font-manrope text-xs text-red-600">{photoError}</p>
                     )}
                   </div>
                 </div>
@@ -335,12 +335,12 @@ export default function ProjectSettingsPage() {
               </SettingsBlock>
               <div>
                 {saveError && (
-                  <p role="alert" className="mb-2 font-givonic text-xs text-red-600">{saveError}</p>
+                  <p role="alert" className="mb-2 font-manrope text-xs text-red-600">{saveError}</p>
                 )}
                 <button
                   type="submit"
                   disabled={!dirty || saving}
-                  className="rounded-full bg-perrific-violet px-5 py-2.5 font-givonic text-sm font-semibold text-white hover:bg-[#E64D0A] disabled:cursor-not-allowed disabled:opacity-60 transition"
+                  className="rounded-full bg-perrific-violet px-5 py-2.5 font-manrope text-sm font-semibold text-white hover:bg-[#E64D0A] disabled:cursor-not-allowed disabled:opacity-60 transition"
                 >
                   {saving ? 'Menyimpan…' : 'Simpan'}
                 </button>
@@ -351,9 +351,9 @@ export default function ProjectSettingsPage() {
               <div className="flex items-center gap-3">
                 <Avatar src={project.avatarUrl ?? undefined} name={project.name} size={48} alt="Foto project" className="h-12 w-12 text-lg" />
                 <div className="min-w-0">
-                  <p className="truncate font-givonic text-sm font-bold text-perrific-graphite">{project.name}</p>
+                  <p className="truncate font-manrope text-sm font-bold text-perrific-graphite">{project.name}</p>
                   {project.description && (
-                    <p className="truncate font-givonic text-sm text-perrific-graphite/60">{project.description}</p>
+                    <p className="truncate font-manrope text-sm text-perrific-graphite/60">{project.description}</p>
                   )}
                 </div>
               </div>
@@ -372,7 +372,7 @@ export default function ProjectSettingsPage() {
                   <button
                     type="button"
                     onClick={() => void handleCopyCode()}
-                    className="rounded-lg px-2 py-1 font-givonic text-xs font-semibold text-perrific-violet transition hover:bg-perrific-violet/10"
+                    className="rounded-lg px-2 py-1 font-manrope text-xs font-semibold text-perrific-violet transition hover:bg-perrific-violet/10"
                   >
                     Salin
                   </button>
@@ -384,18 +384,18 @@ export default function ProjectSettingsPage() {
                       readOnly
                       value={joinLink}
                       onFocus={(e) => e.target.select()}
-                      className="min-w-0 flex-1 truncate rounded-[10px] border border-perrific-line bg-gray-50 px-3 py-2 font-givonic text-xs text-perrific-graphite focus:border-perrific-violet focus:outline-none"
+                      className="min-w-0 flex-1 truncate rounded-[10px] border border-perrific-line bg-gray-50 px-3 py-2 font-manrope text-xs text-perrific-graphite focus:border-perrific-violet focus:outline-none"
                     />
                     <button
                       type="button"
                       onClick={() => void handleCopyLink()}
-                      className="shrink-0 rounded-lg px-2 py-2 font-givonic text-xs font-semibold text-perrific-violet transition hover:bg-perrific-violet/10"
+                      className="shrink-0 rounded-lg px-2 py-2 font-manrope text-xs font-semibold text-perrific-violet transition hover:bg-perrific-violet/10"
                     >
                       Salin link
                     </button>
                   </div>
                   <p
-                    className={`font-givonic text-xs ${
+                    className={`font-manrope text-xs ${
                       isExpired ? 'font-semibold text-red-600' : 'text-gray-500'
                     }`}
                   >
@@ -413,7 +413,7 @@ export default function ProjectSettingsPage() {
                         type="button"
                         disabled={savingInvite}
                         onClick={() => void handlePreset(p.hours)}
-                        className={`rounded-full px-3 py-1.5 font-givonic text-xs font-semibold transition disabled:opacity-50 ${
+                        className={`rounded-full px-3 py-1.5 font-manrope text-xs font-semibold transition disabled:opacity-50 ${
                           activePreset === p.hours
                             ? 'bg-perrific-graphite text-white'
                             : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -426,20 +426,20 @@ export default function ProjectSettingsPage() {
                       type="button"
                       disabled={savingInvite || isExpired}
                       onClick={() => void handleDeactivate()}
-                      className="rounded-full bg-red-50 px-3 py-1.5 font-givonic text-xs font-semibold text-red-600 transition hover:bg-red-100 disabled:opacity-50"
+                      className="rounded-full bg-red-50 px-3 py-1.5 font-manrope text-xs font-semibold text-red-600 transition hover:bg-red-100 disabled:opacity-50"
                     >
                       Nonaktifkan
                     </button>
                   </div>
                 </div>
                 <div className="flex items-center justify-between gap-2 border-t border-gray-100 pt-3">
-                  <p className="font-givonic text-xs text-gray-500">
+                  <p className="font-manrope text-xs text-gray-500">
                     Kode baru membuat kode dan link lama tidak berlaku.
                   </p>
                   <button
                     type="button"
                     onClick={() => setConfirmRegen(true)}
-                    className="shrink-0 rounded-full border border-perrific-line px-3 py-1.5 font-givonic text-xs font-semibold text-perrific-graphite transition hover:bg-gray-50"
+                    className="shrink-0 rounded-full border border-perrific-line px-3 py-1.5 font-manrope text-xs font-semibold text-perrific-graphite transition hover:bg-gray-50"
                   >
                     Buat kode baru
                   </button>
@@ -455,7 +455,7 @@ export default function ProjectSettingsPage() {
               />
               <button
                 type="submit"
-                className="shrink-0 rounded-full bg-perrific-violet px-5 py-2.5 font-givonic text-sm font-semibold text-white transition hover:bg-[#E64D0A]"
+                className="shrink-0 rounded-full bg-perrific-violet px-5 py-2.5 font-manrope text-sm font-semibold text-white transition hover:bg-[#E64D0A]"
               >
                 Undang
               </button>
@@ -470,7 +470,7 @@ export default function ProjectSettingsPage() {
             <button
               type="button"
               onClick={() => setConfirmDelete(true)}
-              className="rounded-full bg-red-600 px-5 py-2.5 font-givonic text-sm font-semibold text-white transition hover:bg-red-700"
+              className="rounded-full bg-red-600 px-5 py-2.5 font-manrope text-sm font-semibold text-white transition hover:bg-red-700"
             >
               Hapus project
             </button>
@@ -494,7 +494,7 @@ export default function ProjectSettingsPage() {
               role="tab"
               aria-selected={section === s.id}
               onClick={() => setSection(s.id)}
-              className={`flex shrink-0 items-center gap-2 rounded-full px-4 py-2 font-givonic text-xs font-semibold transition ${
+              className={`flex shrink-0 items-center gap-2 rounded-full px-4 py-2 font-manrope text-xs font-semibold transition ${
                 section === s.id
                   ? 'bg-perrific-graphite text-white'
                   : 'text-gray-500 hover:bg-gray-100 hover:text-perrific-graphite'

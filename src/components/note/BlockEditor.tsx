@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useRef, useState } from 'react';
+﻿import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   DndContext,
@@ -174,7 +174,7 @@ function BlockRow({
               className="group/link flex min-w-0 flex-1 items-center gap-1.5 rounded-md px-1 py-[3px] focus:outline-none"
             >
               <PageIcon table={target.table} />
-              <span className="min-w-0 truncate font-givonic text-[15px] text-perrific-graphite group-hover/link:underline">
+              <span className="min-w-0 truncate font-manrope text-[15px] text-perrific-graphite group-hover/link:underline">
                 {target.title}
               </span>
               <ArrowUpRight size={12} strokeWidth={1.8} aria-hidden="true" className="shrink-0 text-perrific-violet opacity-0 transition group-hover:opacity-100 group-hover/link:opacity-100" />
@@ -182,7 +182,7 @@ function BlockRow({
           ) : (
             <span className="flex min-w-0 flex-1 items-center gap-1.5 px-1 py-[3px]" title="Halaman tidak tersedia">
               <PageIcon table={false} className="shrink-0 text-gray-300" />
-              <span className="min-w-0 flex-1 truncate font-givonic text-[15px] text-gray-300">
+              <span className="min-w-0 flex-1 truncate font-manrope text-[15px] text-gray-300">
                 {block.text || 'Halaman tidak tersedia'}
               </span>
             </span>
@@ -198,7 +198,7 @@ function BlockRow({
                     }),
                   )
                 }
-                className="shrink-0 rounded-lg bg-perrific-violet px-2.5 py-1 font-givonic text-[11px] font-semibold text-white transition hover:brightness-110 cursor-pointer"
+                className="shrink-0 rounded-lg bg-perrific-violet px-2.5 py-1 font-manrope text-[11px] font-semibold text-white transition hover:brightness-110 cursor-pointer"
               >
                 Baru
               </button>
@@ -321,11 +321,11 @@ function BlockRow({
               )}
             </button>
           ) : block.type === 'bullet' ? (
-            <span aria-hidden="true" className="font-givonic text-[15px] leading-none text-perrific-graphite">
+            <span aria-hidden="true" className="font-manrope text-[15px] leading-none text-perrific-graphite">
               •
             </span>
           ) : block.type === 'number' ? (
-            <span aria-hidden="true" className="note-num font-givonic text-[15px] text-perrific-graphite" />
+            <span aria-hidden="true" className="note-num font-manrope text-[15px] text-perrific-graphite" />
           ) : null}
         </span>
         <textarea
@@ -411,7 +411,7 @@ function BlockRow({
               }
             }
           }}
-          className={`note-block-input min-w-0 flex-1 resize-none overflow-hidden bg-transparent py-[3px] font-givonic leading-relaxed focus:outline-none ${
+          className={`note-block-input min-w-0 flex-1 resize-none overflow-hidden bg-transparent py-[3px] font-manrope leading-relaxed focus:outline-none ${
             block.type === 'todo' && block.checked
               ? 'text-[15px] text-perrific-graphite/40 line-through'
               : block.type === 'toggle'
@@ -467,7 +467,7 @@ function EmptyToggleHint({
           onClick={() => onAppendChild(parentId)}
           // Sejajar teks judul toggle di atas: 84px (gagang 52 + gap 8 + slot 24)
           // dikurangi indent anak pl-6 (24px) = 60px.
-          className="w-full rounded-md py-1.5 pl-[60px] pr-2 text-left font-givonic text-[13px] text-gray-400 transition hover:bg-gray-50 hover:text-gray-500"
+          className="w-full rounded-md py-1.5 pl-[60px] pr-2 text-left font-manrope text-[13px] text-gray-400 transition hover:bg-gray-50 hover:text-gray-500"
         >
           Tombol kosong. Klik atau letakkan blok di dalamnya.
         </button>
@@ -653,7 +653,7 @@ export default function NoteBlocks({
       <button
         type="button"
         onClick={onAppend}
-        className="w-full rounded-lg border border-dashed border-gray-300 px-4 py-10 text-center font-givonic text-sm text-gray-400 transition hover:border-perrific-violet hover:text-perrific-violet"
+        className="w-full rounded-lg border border-dashed border-gray-300 px-4 py-10 text-center font-manrope text-sm text-gray-400 transition hover:border-perrific-violet hover:text-perrific-violet"
       >
         Mulai menulis… (Enter = blok baru, Tab = masuk ke dalam)
       </button>
@@ -678,7 +678,7 @@ export default function NoteBlocks({
         <LevelList blocks={blocks} register={register} pageOf={pageOf} hint={hint} h={h} onAppendChild={onAppendChild} />
         <DragOverlay adjustScale={false} dropAnimation={null}>
           {dragBlock ? (
-            <div className="pointer-events-none max-w-xs truncate rounded-lg border border-gray-200 bg-white/95 px-3 py-2 font-givonic text-sm text-gray-600 shadow-[0_8px_24px_rgba(26,26,30,0.18)] backdrop-blur">
+            <div className="pointer-events-none max-w-xs truncate rounded-lg border border-gray-200 bg-white/95 px-3 py-2 font-manrope text-sm text-gray-600 shadow-[0_8px_24px_rgba(26,26,30,0.18)] backdrop-blur">
               {dragLabel}
             </div>
           ) : null}

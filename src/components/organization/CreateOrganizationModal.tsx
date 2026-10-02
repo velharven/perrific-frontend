@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { teamApi } from '@/api/teams';
 import { organizationApi } from '@/api/organizations';
 import { useAuth } from '@/store/auth';
@@ -83,7 +83,7 @@ export default function CreateOrganizationModal({
               <Building2 size={18} strokeWidth={1.8} aria-hidden="true" />
             </span>
             <div>
-              <h2 className="font-givonic text-base font-bold text-perrific-graphite">Buat Organisasi Baru</h2>
+              <h2 className="font-manrope text-base font-bold text-perrific-graphite">Buat Organisasi Baru</h2>
               <p className="text-xs text-gray-400">Ruang kerja terpadu untuk mengusulkan project & task</p>
             </div>
           </div>
@@ -104,7 +104,7 @@ export default function CreateOrganizationModal({
         )}
 
         <div>
-          <label className="mb-1 block font-givonic text-xs font-semibold text-perrific-graphite">
+          <label className="mb-1 block font-manrope text-xs font-semibold text-perrific-graphite">
             Nama Organisasi <span className="text-red-500">*</span>
           </label>
           <input
@@ -120,7 +120,7 @@ export default function CreateOrganizationModal({
         </div>
 
         <div>
-          <label className="mb-1 block font-givonic text-xs font-semibold text-perrific-graphite">
+          <label className="mb-1 block font-manrope text-xs font-semibold text-perrific-graphite">
             Deskripsi (Opsional)
           </label>
           <textarea
@@ -134,7 +134,7 @@ export default function CreateOrganizationModal({
         </div>
 
         <div>
-          <label className="mb-1 block font-givonic text-xs font-semibold text-perrific-graphite">
+          <label className="mb-1 block font-manrope text-xs font-semibold text-perrific-graphite">
             Hubungkan Tim Binaan (Opsional)
           </label>
           <p className="mb-2 text-xs text-gray-400">
@@ -177,14 +177,14 @@ export default function CreateOrganizationModal({
             type="button"
             onClick={onClose}
             disabled={submitting}
-            className="rounded-lg px-4 py-2 font-givonic text-xs font-semibold text-gray-600 hover:bg-gray-100 disabled:opacity-50"
+            className="rounded-lg px-4 py-2 font-manrope text-xs font-semibold text-gray-600 hover:bg-gray-100 disabled:opacity-50"
           >
             Batal
           </button>
           <button
             type="submit"
             disabled={submitting || !name.trim()}
-            className="rounded-lg bg-perrific-violet px-4 py-2 font-givonic text-xs font-semibold text-white shadow-sm transition hover:bg-perrific-violet/90 disabled:opacity-50"
+            className="rounded-lg bg-perrific-violet px-4 py-2 font-manrope text-xs font-semibold text-white shadow-sm transition hover:bg-perrific-violet/90 disabled:opacity-50"
           >
             {submitting ? 'Membuat...' : 'Buat Organisasi'}
           </button>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import type { HeadingItem } from './noteBlocks';
 
 // Daftar isi di sisi kolom catatan: strip ramping berisi batang level
@@ -65,7 +65,7 @@ export default function HeadingOutline({
                     className={`h-[3px] shrink-0 rounded-full ${BAR_W[it.type]} ${active ? 'bg-perrific-violet' : 'bg-gray-300'}`}
                   />
                   <span
-                    className={`min-w-0 flex-1 truncate font-givonic text-sm ${
+                    className={`min-w-0 flex-1 truncate font-manrope text-sm ${
                       active ? 'font-semibold text-perrific-violet' : empty ? 'italic text-gray-400' : 'text-perrific-graphite'
                     }`}
                   >

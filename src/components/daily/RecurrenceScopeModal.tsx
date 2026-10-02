@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import type { RecurrenceConfig, RecurrenceEditScope } from '@/types';
 import { formatFollowingScopeLabel, toLocalMidnight } from '@/lib/recurrence';
@@ -81,7 +81,7 @@ export default function RecurrenceScopeModal({
   }
 
   return createPortal(
-    <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/40 p-4 backdrop-blur-[1px] animate-in fade-in duration-150 font-givonic">
+    <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/40 p-4 backdrop-blur-[1px] animate-in fade-in duration-150 font-manrope">
       <div
         role="dialog"
         aria-modal="true"

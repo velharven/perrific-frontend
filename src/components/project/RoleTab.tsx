@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+﻿import { useCallback, useEffect, useState } from 'react';
 import { projectApi } from '@/api/projects';
 import { SettingsBlock } from '@/components/ui/SettingsShell';
 import ConfirmModal from '@/components/ui/ConfirmModal';
@@ -144,7 +144,7 @@ export default function RoleTab({ projectId }: { projectId: string }) {
     }
   }
 
-  if (loading) return <p className="font-givonic text-sm text-gray-500">Memuat role…</p>;
+  if (loading) return <p className="font-manrope text-sm text-gray-500">Memuat role…</p>;
 
   return (
     <div className="space-y-5">
@@ -184,7 +184,7 @@ export default function RoleTab({ projectId }: { projectId: string }) {
                       }}
                       maxLength={30}
                       aria-label="Nama role"
-                      className="w-full rounded-md border border-perrific-violet/40 px-2 py-1 font-givonic text-sm font-semibold focus:outline-none"
+                      className="w-full rounded-md border border-perrific-violet/40 px-2 py-1 font-manrope text-sm font-semibold focus:outline-none"
                     />
                   ) : (
                     <button
@@ -198,17 +198,17 @@ export default function RoleTab({ projectId }: { projectId: string }) {
                         setEditDraft(r.name);
                       }}
                       title={r.system ? 'Klik untuk buka/tutup permission' : 'Ubah nama (klik chevron untuk permission)'}
-                      className="block w-full truncate text-left font-givonic text-sm font-semibold text-perrific-graphite hover:underline"
+                      className="block w-full truncate text-left font-manrope text-sm font-semibold text-perrific-graphite hover:underline"
                     >
                       {r.name}
                       {r.system && (
-                        <span className="ml-2 rounded-full bg-gray-200 px-2 py-0.5 font-givonic text-[10px] font-bold text-gray-500">
+                        <span className="ml-2 rounded-full bg-gray-200 px-2 py-0.5 font-manrope text-[10px] font-bold text-gray-500">
                           BAWAAN
                         </span>
                       )}
                     </button>
                   )}
-                  <p className="font-givonic text-xs text-gray-400">
+                  <p className="font-manrope text-xs text-gray-400">
                     {members.filter((m) => m.roleId === r.id).length} anggota · {permCount} izin
                   </p>
                 </div>
@@ -217,7 +217,7 @@ export default function RoleTab({ projectId }: { projectId: string }) {
                     type="button"
                     onClick={() => askDelete(r)}
                     aria-label={`Hapus role ${r.name}`}
-                    className="shrink-0 rounded-lg px-2 py-1 font-givonic text-xs font-semibold text-red-600 transition hover:bg-red-50"
+                    className="shrink-0 rounded-lg px-2 py-1 font-manrope text-xs font-semibold text-red-600 transition hover:bg-red-50"
                   >
                     Hapus
                   </button>
@@ -243,8 +243,8 @@ export default function RoleTab({ projectId }: { projectId: string }) {
                         aria-label={`${p.label} untuk ${r.name}`}
                       />
                       <span>
-                        <span className="block font-givonic text-xs font-semibold text-perrific-graphite">{p.label}</span>
-                        <span className="block font-givonic text-[11px] text-gray-400">{p.desc}</span>
+                        <span className="block font-manrope text-xs font-semibold text-perrific-graphite">{p.label}</span>
+                        <span className="block font-manrope text-[11px] text-gray-400">{p.desc}</span>
                       </span>
                     </label>
                   );
@@ -261,12 +261,12 @@ export default function RoleTab({ projectId }: { projectId: string }) {
             onChange={(e) => setNewName(e.target.value)}
             placeholder="Nama role baru (mis. QA)"
             maxLength={30}
-            className="min-w-0 flex-1 rounded-[10px] border border-perrific-line bg-white px-3 py-2.5 font-givonic text-sm text-perrific-graphite placeholder:text-perrific-graphite/40 focus:border-perrific-violet focus:outline-none focus:ring-2 focus:ring-perrific-violet/20"
+            className="min-w-0 flex-1 rounded-[10px] border border-perrific-line bg-white px-3 py-2.5 font-manrope text-sm text-perrific-graphite placeholder:text-perrific-graphite/40 focus:border-perrific-violet focus:outline-none focus:ring-2 focus:ring-perrific-violet/20"
           />
           <button
             type="submit"
             disabled={creating || !newName.trim()}
-            className="shrink-0 rounded-full bg-perrific-violet px-5 py-2.5 font-givonic text-sm font-semibold text-white transition hover:bg-[#E64D0A] disabled:opacity-50"
+            className="shrink-0 rounded-full bg-perrific-violet px-5 py-2.5 font-manrope text-sm font-semibold text-white transition hover:bg-[#E64D0A] disabled:opacity-50"
           >
             {creating ? 'Menambah…' : 'Tambah'}
           </button>
@@ -279,14 +279,14 @@ export default function RoleTab({ projectId }: { projectId: string }) {
             <li key={m.id} className="flex items-center gap-3 px-3 py-2.5">
               <Avatar src={m.user?.avatarUrl ?? undefined} name={m.user?.name ?? '?'} size={32} alt={m.user?.name ?? 'anggota'} className="h-8 w-8 text-xs" />
               <div className="min-w-0 flex-1">
-                <p className="truncate font-givonic text-sm font-semibold text-perrific-graphite">{m.user?.name}</p>
-                <p className="truncate font-givonic text-xs text-gray-500">{m.user?.email}</p>
+                <p className="truncate font-manrope text-sm font-semibold text-perrific-graphite">{m.user?.name}</p>
+                <p className="truncate font-manrope text-xs text-gray-500">{m.user?.email}</p>
               </div>
               <select
                 value={m.roleId}
                 onChange={(e) => void handleSetRole(m, e.target.value)}
                 aria-label={`Role ${m.user?.name}`}
-                className="shrink-0 rounded-lg border border-perrific-line bg-white px-2 py-1.5 font-givonic text-xs font-semibold text-perrific-graphite focus:border-perrific-violet focus:outline-none"
+                className="shrink-0 rounded-lg border border-perrific-line bg-white px-2 py-1.5 font-manrope text-xs font-semibold text-perrific-graphite focus:border-perrific-violet focus:outline-none"
               >
                 {roles.map((r) => (
                   <option key={r.id} value={r.id}>
@@ -322,19 +322,19 @@ export default function RoleTab({ projectId }: { projectId: string }) {
       {moveTarget && (
         <ModalShell label="Pindahkan anggota" onClose={() => !busy && setMoveTarget(null)}>
           <div className="p-6">
-            <h2 className="font-givonic text-base font-extrabold text-perrific-graphite">Role dipakai anggota</h2>
-            <p className="mt-1 font-givonic text-sm leading-relaxed text-perrific-graphite/60">
+            <h2 className="font-manrope text-base font-extrabold text-perrific-graphite">Role dipakai anggota</h2>
+            <p className="mt-1 font-manrope text-sm leading-relaxed text-perrific-graphite/60">
               “{moveTarget.name}” dipakai {members.filter((m) => m.roleId === moveTarget.id).length} anggota. Pilih
               role pengganti sebelum menghapus.
             </p>
-            <label htmlFor="role-target" className="mt-4 block font-givonic text-xs font-semibold text-perrific-graphite">
+            <label htmlFor="role-target" className="mt-4 block font-manrope text-xs font-semibold text-perrific-graphite">
               Pindahkan ke
             </label>
             <select
               id="role-target"
               value={targetId}
               onChange={(e) => setTargetId(e.target.value)}
-              className="mt-1.5 w-full rounded-[10px] border border-perrific-line bg-white px-3 py-2.5 font-givonic text-sm focus:border-perrific-violet focus:outline-none"
+              className="mt-1.5 w-full rounded-[10px] border border-perrific-line bg-white px-3 py-2.5 font-manrope text-sm focus:border-perrific-violet focus:outline-none"
             >
               {roles
                 .filter((r) => r.id !== moveTarget.id)
@@ -349,7 +349,7 @@ export default function RoleTab({ projectId }: { projectId: string }) {
                 type="button"
                 onClick={() => setMoveTarget(null)}
                 disabled={busy}
-                className="rounded-full px-4 py-2 font-givonic text-sm font-semibold text-gray-600 transition hover:bg-gray-100 disabled:opacity-50"
+                className="rounded-full px-4 py-2 font-manrope text-sm font-semibold text-gray-600 transition hover:bg-gray-100 disabled:opacity-50"
               >
                 Batal
               </button>
@@ -357,7 +357,7 @@ export default function RoleTab({ projectId }: { projectId: string }) {
                 type="button"
                 onClick={() => void confirmDeleteMove()}
                 disabled={busy || !targetId}
-                className="rounded-full bg-red-600 px-4 py-2 font-givonic text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-50"
+                className="rounded-full bg-red-600 px-4 py-2 font-manrope text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-50"
               >
                 {busy ? 'Memindahkan…' : 'Pindahkan & hapus'}
               </button>

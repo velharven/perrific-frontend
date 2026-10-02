@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useParams } from 'react-router-dom';
 import { projectApi } from '@/api/projects';
 import { teamApi } from '@/api/teams';
@@ -140,7 +140,7 @@ export default function ProjectLayout() {
               end={t.end}
               title={t.label}
               className={({ isActive }) =>
-                `flex items-center gap-2.5 rounded-lg px-3 py-2 font-givonic text-sm transition ${
+                `flex items-center gap-2.5 rounded-lg px-3 py-2 font-manrope text-sm transition ${
                   collapsed ? 'justify-center' : ''
                 } ${
                   isActive ? 'bg-white/10 font-semibold text-white' : 'text-white/60 hover:bg-white/5 hover:text-white'
@@ -156,7 +156,7 @@ export default function ProjectLayout() {
               to="persetujuan"
               title="Persetujuan"
               className={({ isActive }) =>
-                `flex items-center gap-2.5 rounded-lg px-3 py-2 font-givonic text-sm transition ${
+                `flex items-center gap-2.5 rounded-lg px-3 py-2 font-manrope text-sm transition ${
                   collapsed ? 'justify-center' : ''
                 } ${
                   isActive ? 'bg-white/10 font-semibold text-white' : 'text-white/60 hover:bg-white/5 hover:text-white'
@@ -166,7 +166,7 @@ export default function ProjectLayout() {
               <ActivityIcon name="flag" className="h-4 w-4 shrink-0" />
               {!collapsed && <span className="min-w-0 flex-1 truncate">Persetujuan</span>}
               {!collapsed && approvalCount > 0 && (
-                <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-perrific-violet px-1.5 font-givonic text-[11px] font-bold text-white">
+                <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-perrific-violet px-1.5 font-manrope text-[11px] font-bold text-white">
                   {approvalCount}
                 </span>
               )}
@@ -179,7 +179,7 @@ export default function ProjectLayout() {
               to="settings"
               title="Settings"
               className={({ isActive }) =>
-                `flex items-center gap-2.5 rounded-lg px-3 py-2 font-givonic text-sm transition ${
+                `flex items-center gap-2.5 rounded-lg px-3 py-2 font-manrope text-sm transition ${
                   collapsed ? 'justify-center' : ''
                 } ${
                   isActive ? 'bg-white/10 font-semibold text-white' : 'text-white/60 hover:bg-white/5 hover:text-white'
@@ -194,7 +194,7 @@ export default function ProjectLayout() {
             to="/dashboard"
             title="Kembali"
             aria-label="Kembali"
-            className={`flex items-center gap-2.5 rounded-lg px-3 py-2 font-givonic text-sm text-white/60 transition hover:bg-white/5 hover:text-white ${
+            className={`flex items-center gap-2.5 rounded-lg px-3 py-2 font-manrope text-sm text-white/60 transition hover:bg-white/5 hover:text-white ${
               collapsed ? 'justify-center' : ''
             }`}
           >
@@ -229,7 +229,7 @@ export default function ProjectLayout() {
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-20 border-b border-gray-200 bg-white/90 px-4 py-3 backdrop-blur md:hidden">
           <div className="flex items-center justify-between gap-2">
-            <p className="truncate font-givonic text-sm font-bold text-perrific-graphite">{name}</p>
+            <p className="truncate font-manrope text-sm font-bold text-perrific-graphite">{name}</p>
             <div className="flex shrink-0 items-center gap-1">
               {isAdmin && (
                 <Link
@@ -244,7 +244,7 @@ export default function ProjectLayout() {
               {project && (
                 <Link
                   to={`/team/${project.teamId}`}
-                  className="font-givonic text-xs font-semibold text-perrific-violet hover:underline"
+                  className="font-manrope text-xs font-semibold text-perrific-violet hover:underline"
                 >
                   ← Tim
                 </Link>
@@ -258,7 +258,7 @@ export default function ProjectLayout() {
                 to={t.to}
                 end={t.end}
                 className={({ isActive }) =>
-                  `shrink-0 rounded-full px-3 py-1.5 font-givonic text-xs font-semibold transition ${
+                  `shrink-0 rounded-full px-3 py-1.5 font-manrope text-xs font-semibold transition ${
                     isActive ? 'bg-perrific-graphite text-white' : 'text-gray-500 hover:bg-gray-100'
                   }`
                 }
@@ -270,7 +270,7 @@ export default function ProjectLayout() {
               <NavLink
                 to="persetujuan"
                 className={({ isActive }) =>
-                  `flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 font-givonic text-xs font-semibold transition ${
+                  `flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 font-manrope text-xs font-semibold transition ${
                     isActive ? 'bg-perrific-graphite text-white' : 'text-gray-500 hover:bg-gray-100'
                   }`
                 }
@@ -289,7 +289,7 @@ export default function ProjectLayout() {
           <Outlet />
           {switching && (
             <div className="absolute inset-0 z-10 flex items-center justify-center bg-perrific-paper/80 backdrop-blur-[1px]">
-              <p className="flex items-center gap-2 font-givonic text-sm text-gray-500">
+              <p className="flex items-center gap-2 font-manrope text-sm text-gray-500">
                 <span
                   aria-hidden="true"
                   className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-perrific-violet"

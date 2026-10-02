@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+﻿import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { CheckSquare, ChevronRight, Minus, List, FileText, Table } from 'lucide-react';
 
 export type SlashCommandId =
@@ -32,7 +32,7 @@ const GROUPS: { title: string; items: SlashItem[] }[] = [
         desc: 'Tulisan biasa',
         keywords: 'teks text tulisan paragraf',
         icon: (
-          <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200 font-givonic text-base font-bold text-gray-500">
+          <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200 font-manrope text-base font-bold text-gray-500">
             T
           </span>
         ),
@@ -65,7 +65,7 @@ const GROUPS: { title: string; items: SlashItem[] }[] = [
         desc: 'Judul besar',
         keywords: 'judul heading h1 besar hash pagar',
         icon: (
-          <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200 font-givonic text-base font-extrabold text-gray-500">
+          <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200 font-manrope text-base font-extrabold text-gray-500">
             H1
           </span>
         ),
@@ -76,7 +76,7 @@ const GROUPS: { title: string; items: SlashItem[] }[] = [
         desc: 'Judul sedang',
         keywords: 'judul heading h2 sedang hash pagar',
         icon: (
-          <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200 font-givonic text-sm font-extrabold text-gray-500">
+          <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200 font-manrope text-sm font-extrabold text-gray-500">
             H2
           </span>
         ),
@@ -87,7 +87,7 @@ const GROUPS: { title: string; items: SlashItem[] }[] = [
         desc: 'Judul kecil',
         keywords: 'judul heading h3 kecil hash pagar',
         icon: (
-          <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200 font-givonic text-xs font-bold text-gray-500">
+          <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200 font-manrope text-xs font-bold text-gray-500">
             H3
           </span>
         ),
@@ -125,7 +125,7 @@ const GROUPS: { title: string; items: SlashItem[] }[] = [
         desc: 'Bernomor otomatis',
         keywords: 'daftar nomor angka number ordered list numbering',
         icon: (
-          <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200 font-givonic text-sm font-bold text-gray-500">
+          <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200 font-manrope text-sm font-bold text-gray-500">
             1.
           </span>
         ),
@@ -273,7 +273,7 @@ export default function SlashMenu({
     >
       <div className="nice-scroll max-h-[260px] overflow-y-auto p-1.5">
         {flat.length === 0 ? (
-          <p className="px-2.5 py-4 text-center font-givonic text-xs text-perrific-graphite/50">
+          <p className="px-2.5 py-4 text-center font-manrope text-xs text-perrific-graphite/50">
             Tidak ada perintah yang cocok.
           </p>
         ) : (
@@ -298,10 +298,10 @@ export default function SlashMenu({
                   >
                     {item.icon}
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate font-givonic text-sm font-medium text-perrific-graphite">
+                      <span className="block truncate font-manrope text-sm font-medium text-perrific-graphite">
                         {item.label}
                       </span>
-                      <span className="block truncate font-givonic text-xs text-perrific-graphite/50">
+                      <span className="block truncate font-manrope text-xs text-perrific-graphite/50">
                         {item.desc}
                       </span>
                     </span>
@@ -341,7 +341,7 @@ export default function SlashMenu({
           }}
           placeholder="Ketik untuk mencari"
           aria-label="Cari perintah"
-          className="w-full rounded-lg bg-gray-50 px-2.5 py-2 font-givonic text-sm text-perrific-graphite placeholder:text-gray-400 focus:outline-none"
+          className="w-full rounded-lg bg-gray-50 px-2.5 py-2 font-manrope text-sm text-perrific-graphite placeholder:text-gray-400 focus:outline-none"
         />
       </div>
     </div>

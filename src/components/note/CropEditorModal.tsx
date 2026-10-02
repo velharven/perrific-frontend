@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import ModalShell from '@/components/ui/ModalShell';
 import { cropDataUrl } from './cover';
@@ -86,7 +86,7 @@ export default function CropEditorModal({
   return (
     <ModalShell label="Atur sampul" onClose={onClose}>
       <div className="mb-2 flex items-center justify-between px-1">
-        <p className="font-givonic text-sm font-bold text-perrific-graphite">Atur sampul</p>
+        <p className="font-manrope text-sm font-bold text-perrific-graphite">Atur sampul</p>
         <button
           type="button"
           onClick={onClose}
@@ -117,7 +117,7 @@ export default function CropEditorModal({
           }}
         >
           {!size ? (
-            <p className="flex h-full items-center justify-center font-givonic text-xs text-gray-400">Memuat…</p>
+            <p className="flex h-full items-center justify-center font-manrope text-xs text-gray-400">Memuat…</p>
           ) : (
             <img
               src={src}
@@ -133,7 +133,7 @@ export default function CropEditorModal({
           )}
         </div>
       </div>
-      <p className="px-1 pt-1.5 font-givonic text-[11px] text-perrific-graphite/50">
+      <p className="px-1 pt-1.5 font-manrope text-[11px] text-perrific-graphite/50">
         Seret untuk menggeser.
       </p>
       <div className="mt-1 flex items-center gap-2 px-1">
@@ -142,7 +142,7 @@ export default function CropEditorModal({
           onClick={() => setZoomKeep(zoom - 0.25)}
           disabled={zoom <= 1}
           aria-label="Perkecil"
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-gray-200 font-givonic text-base text-gray-600 transition hover:border-perrific-violet hover:text-perrific-violet disabled:opacity-40"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-gray-200 font-manrope text-base text-gray-600 transition hover:border-perrific-violet hover:text-perrific-violet disabled:opacity-40"
         >
           −
         </button>
@@ -161,13 +161,13 @@ export default function CropEditorModal({
           onClick={() => setZoomKeep(zoom + 0.25)}
           disabled={zoom >= zoomMax}
           aria-label="Perbesar"
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-gray-200 font-givonic text-base text-gray-600 transition hover:border-perrific-violet hover:text-perrific-violet disabled:opacity-40"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-gray-200 font-manrope text-base text-gray-600 transition hover:border-perrific-violet hover:text-perrific-violet disabled:opacity-40"
         >
           +
         </button>
       </div>
       {error && (
-        <p role="alert" className="px-1 pt-1 font-givonic text-xs text-red-600">
+        <p role="alert" className="px-1 pt-1 font-manrope text-xs text-red-600">
           {error}
         </p>
       )}
@@ -175,7 +175,7 @@ export default function CropEditorModal({
         type="button"
         onClick={handleSave}
         disabled={!size || busy}
-        className="mt-3 w-full rounded-xl bg-perrific-violet px-3 py-2.5 font-givonic text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-50"
+        className="mt-3 w-full rounded-xl bg-perrific-violet px-3 py-2.5 font-manrope text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-50"
       >
         {busy ? 'Menyimpan…' : 'Pakai sampul ini'}
       </button>

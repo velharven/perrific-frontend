@@ -5,10 +5,10 @@ export default function ProblemSection() {
     <section className="bg-white">
       <div className="mx-auto max-w-[1280px] px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
         <div className="mx-auto max-w-2xl text-center">
-          <h2 className="font-givonic text-[28px] font-extrabold leading-[1.05] tracking-[-0.03em] text-perrific-graphite sm:text-[36px]">
-            Kenapa Beralih Ke <span className="font-gendy text-perrific-violet">Purrific</span>?
+          <h2 className="font-manrope text-[28px] font-extrabold leading-[1.05] tracking-[-0.03em] text-perrific-graphite sm:text-[36px]">
+            Kenapa Beralih Ke <span className="font-space-grotesk text-perrific-violet">Purrific</span>?
           </h2>
-          <p className="mx-auto mt-3.5 max-w-[54ch] font-givonic text-sm leading-relaxed text-perrific-graphite/70 sm:text-base">
+          <p className="mx-auto mt-3.5 max-w-[54ch] font-manrope text-sm leading-relaxed text-perrific-graphite/70 sm:text-base">
             Trello mudah untuk tim, Notion rapi untuk produktivitas pribadi. <span className="font-semibold text-perrific-graphite">Purrific</span> menyatukan keduanya tanpa perlu bolak-balik aplikasi.
           </p>
         </div>
@@ -18,8 +18,8 @@ export default function ProblemSection() {
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-xs border border-perrific-line/50 transition-colors group-hover:border-perrific-violet/40 text-perrific-graphite">
               <LayoutGrid size={18} strokeWidth={1.7} />
             </div>
-            <h3 className="mt-4 font-givonic text-base font-bold text-perrific-graphite">Ringan & Intuitif</h3>
-            <p className="mt-2 font-givonic text-xs leading-relaxed text-perrific-graphite/65">
+            <h3 className="mt-4 font-manrope text-base font-bold text-perrific-graphite">Ringan & Intuitif</h3>
+            <p className="mt-2 font-manrope text-xs leading-relaxed text-perrific-graphite/65">
               Kanban 3 kolom yang langsung dipahami seluruh tim tanpa perlu tutorial berjam-jam. Mulai dalam 2 menit.
             </p>
           </div>
@@ -28,9 +28,9 @@ export default function ProblemSection() {
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-perrific-violet shadow-xs">
               <ArrowDown size={18} strokeWidth={2} />
             </div>
-            <h3 className="mt-4 font-givonic text-base font-bold">Sinkronisasi Otomatis</h3>
-            <p className="mt-2 font-givonic text-xs leading-relaxed text-white/85">
-              Setiap tugas yang didelegasikan otomatis menjadi time-block di menu Harian pengguna. Tanpa copy-paste.
+            <h3 className="mt-4 font-manrope text-base font-bold">Kalender &amp; Time-Blocking</h3>
+            <p className="mt-2 font-manrope text-xs leading-relaxed text-white/85">
+              Tugas tim langsung siap dijadwalkan ke linimasa kalender harian dengan drag &amp; drop dan sinkronisasi Google Calendar.
             </p>
           </div>
 
@@ -38,9 +38,9 @@ export default function ProblemSection() {
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-xs border border-perrific-line/50 transition-colors group-hover:border-perrific-violet/40 text-perrific-graphite">
               <CheckSquare size={18} strokeWidth={1.7} />
             </div>
-            <h3 className="mt-4 font-givonic text-base font-bold text-perrific-graphite">Hari Lebih Tertata</h3>
-            <p className="mt-2 font-givonic text-xs leading-relaxed text-perrific-graphite/65">
-              Time-blocking harian & checklist ala Notion yang sudah terisi otomatis dari board tim, siap langsung dikerjakan.
+            <h3 className="mt-4 font-manrope text-base font-bold text-perrific-graphite">Hari Lebih Tertata</h3>
+            <p className="mt-2 font-manrope text-xs leading-relaxed text-perrific-graphite/65">
+              Linimasa kalender harian dan checklist yang memudahkan perencanaan waktu, terhubung langsung dengan tugas tim Anda.
             </p>
           </div>
         </div>

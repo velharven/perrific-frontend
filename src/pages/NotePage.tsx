@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { noteApi } from '@/api/notes';
 import { notifyTeamsChanged, readTrashIds, useHiddenNav, useTrash } from '@/hooks/useNavLabels';
@@ -551,7 +551,7 @@ function NotePageInner() {
   if (notFound || !note) {
     return (
       <div className="mx-auto max-w-3xl rounded-xl border border-dashed border-gray-300 bg-white p-10 text-center">
-        <p className="font-givonic text-sm text-perrific-graphite/60">Catatan tidak ditemukan atau sudah dihapus.</p>
+        <p className="font-manrope text-sm text-perrific-graphite/60">Catatan tidak ditemukan atau sudah dihapus.</p>
       </div>
     );
   }
@@ -564,7 +564,7 @@ function NotePageInner() {
   return (
     <div className="mx-auto max-w-3xl">
       {parent && (
-        <nav aria-label="Breadcrumb" className="mb-2 flex min-w-0 items-center gap-1.5 font-givonic text-xs text-perrific-graphite/50">
+        <nav aria-label="Breadcrumb" className="mb-2 flex min-w-0 items-center gap-1.5 font-manrope text-xs text-perrific-graphite/50">
           <Link to={notePathFor(parent)} className="truncate hover:text-perrific-violet hover:underline">
             {parent.title || 'Tanpa judul'}
           </Link>
@@ -596,7 +596,7 @@ function NotePageInner() {
                       aria-label={a.label}
                       aria-pressed={parsedCover.pos === a.pos}
                       onClick={() => alignCover(a.pos)}
-                      className={`px-2 py-1 font-givonic text-[11px] font-semibold transition ${
+                      className={`px-2 py-1 font-manrope text-[11px] font-semibold transition ${
                         parsedCover.pos === a.pos
                           ? 'bg-perrific-violet/15 text-perrific-violet'
                           : 'text-perrific-graphite/60 hover:bg-white'
@@ -610,14 +610,14 @@ function NotePageInner() {
               <button
                 type="button"
                 onClick={() => setCoverOpen(true)}
-                className="rounded-lg bg-white/90 px-2.5 py-1 font-givonic text-xs font-semibold text-perrific-graphite shadow-sm backdrop-blur transition hover:bg-white"
+                className="rounded-lg bg-white/90 px-2.5 py-1 font-manrope text-xs font-semibold text-perrific-graphite shadow-sm backdrop-blur transition hover:bg-white"
               >
                 Ubah
               </button>
               <button
                 type="button"
                 onClick={removeCover}
-                className="rounded-lg bg-white/90 px-2.5 py-1 font-givonic text-xs font-semibold text-red-600 shadow-sm backdrop-blur transition hover:bg-white"
+                className="rounded-lg bg-white/90 px-2.5 py-1 font-manrope text-xs font-semibold text-red-600 shadow-sm backdrop-blur transition hover:bg-white"
               >
                 Hapus
               </button>
@@ -629,7 +629,7 @@ function NotePageInner() {
               type="button"
               onClick={() => setCoverOpen(true)}
               aria-haspopup="dialog"
-              className="flex items-center gap-1.5 rounded-lg px-2 py-1 font-givonic text-xs font-medium text-perrific-graphite/45 transition hover:bg-gray-100 hover:text-perrific-graphite"
+              className="flex items-center gap-1.5 rounded-lg px-2 py-1 font-manrope text-xs font-medium text-perrific-graphite/45 transition hover:bg-gray-100 hover:text-perrific-graphite"
             >
               <ImageIcon size={14} strokeWidth={1.6} aria-hidden="true" />
               Tambahkan sampul
@@ -640,7 +640,7 @@ function NotePageInner() {
       {coverOpen && (
         <ModalShell label="Pilih sampul" onClose={() => setCoverOpen(false)}>
           <div className="mb-1 flex items-center justify-between px-1">
-            <p className="font-givonic text-sm font-bold text-perrific-graphite">Pilih sampul</p>
+            <p className="font-manrope text-sm font-bold text-perrific-graphite">Pilih sampul</p>
             <button
               type="button"
               onClick={() => setCoverOpen(false)}
@@ -654,7 +654,7 @@ function NotePageInner() {
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
-            className="mb-2 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-gray-300 px-3 py-2.5 font-givonic text-sm font-semibold text-perrific-graphite/60 transition hover:border-perrific-violet hover:text-perrific-violet cursor-pointer"
+            className="mb-2 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-gray-300 px-3 py-2.5 font-manrope text-sm font-semibold text-perrific-graphite/60 transition hover:border-perrific-violet hover:text-perrific-violet cursor-pointer"
           >
             <Upload size={14} strokeWidth={1.6} aria-hidden="true" />
             Upload gambar
@@ -692,7 +692,7 @@ function NotePageInner() {
                 removeCover();
                 setCoverOpen(false);
               }}
-              className="mt-2 w-full rounded-lg px-2 py-1.5 font-givonic text-xs font-semibold text-red-600 transition hover:bg-red-50"
+              className="mt-2 w-full rounded-lg px-2 py-1.5 font-manrope text-xs font-semibold text-red-600 transition hover:bg-red-50"
             >
               Hapus sampul
             </button>
@@ -722,7 +722,7 @@ function NotePageInner() {
           placeholder="Tanpa judul"
           maxLength={120}
           aria-label="Judul catatan"
-          className="min-w-0 flex-1 bg-transparent font-givonic text-[28px] font-extrabold leading-tight tracking-[-0.02em] text-perrific-graphite placeholder:text-perrific-graphite/30 focus:outline-none sm:text-[32px]"
+          className="min-w-0 flex-1 bg-transparent font-manrope text-[28px] font-extrabold leading-tight tracking-[-0.02em] text-perrific-graphite placeholder:text-perrific-graphite/30 focus:outline-none sm:text-[32px]"
         />
         <div className="relative shrink-0 pt-1" ref={pageMenuRef}>
           {saving && (
@@ -758,7 +758,7 @@ function NotePageInner() {
                 role="menuitem"
                 onClick={handleDelete}
                 disabled={deleting}
-                className="flex w-full items-center gap-2.5 px-3 py-2.5 font-givonic text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+                className="flex w-full items-center gap-2.5 px-3 py-2.5 font-manrope text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50"
               >
                 {deleting ? 'Menghapus…' : 'Hapus catatan'}
               </button>

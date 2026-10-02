@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -82,7 +82,7 @@ function CardView({
               onClick={onOpenTitle}
               title={`Buka detail ${task.title}`}
               aria-label={`Buka detail ${task.title} lewat ID`}
-              className="shrink-0 font-givonic text-xs font-bold text-perrific-violet hover:underline"
+              className="shrink-0 font-manrope text-xs font-bold text-perrific-violet hover:underline"
             >
               #{task.number}
             </button>
@@ -98,7 +98,7 @@ function CardView({
           </>
         ) : (
           <>
-            <span className="shrink-0 font-givonic text-xs font-bold text-perrific-violet">
+            <span className="shrink-0 font-manrope text-xs font-bold text-perrific-violet">
               #{task.number}
             </span>
             <p className="min-w-0 flex-1 truncate text-sm font-medium text-gray-800">{task.title}</p>
@@ -275,10 +275,10 @@ function Column({
             <ChevronRight size={14} strokeWidth={1.8} aria-hidden="true" />
           </button>
           <span aria-hidden="true" className="h-3 w-3 shrink-0 rounded-[3px]" style={{ backgroundColor: color }} />
-          <span className="truncate font-givonic text-xs font-bold tracking-widest text-gray-500 [writing-mode:vertical-rl]">
+          <span className="truncate font-manrope text-xs font-bold tracking-widest text-gray-500 [writing-mode:vertical-rl]">
             {label.toUpperCase()}
           </span>
-          <span className="rounded bg-gray-300 px-1.5 py-0.5 font-givonic text-[11px] font-semibold text-gray-600">
+          <span className="rounded bg-gray-300 px-1.5 py-0.5 font-manrope text-[11px] font-semibold text-gray-600">
             {count}
           </span>
         </div>

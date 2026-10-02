@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { projectApi } from '@/api/projects';
 import { teamApi } from '@/api/teams';
@@ -252,7 +252,7 @@ export default function ProjectPage() {
           ) : (
             <span
               aria-hidden="true"
-              className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-perrific-mint font-givonic text-2xl font-bold text-perrific-graphite"
+              className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-perrific-mint font-manrope text-2xl font-bold text-perrific-graphite"
             >
               {initial(project.name)}
             </span>
@@ -281,7 +281,7 @@ export default function ProjectPage() {
               <button
                 type="button"
                 onClick={() => void handleCopyCode()}
-                className="rounded-lg px-2 py-1 font-givonic text-xs font-semibold text-perrific-violet transition hover:bg-perrific-violet/10"
+                className="rounded-lg px-2 py-1 font-manrope text-xs font-semibold text-perrific-violet transition hover:bg-perrific-violet/10"
               >
                 Salin
               </button>
@@ -292,18 +292,18 @@ export default function ProjectPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Email anggota"
-              className="min-w-0 flex-1 rounded-xl border border-gray-200 px-3 py-2 font-givonic text-sm focus:border-perrific-violet focus:outline-none"
+              className="min-w-0 flex-1 rounded-xl border border-gray-200 px-3 py-2 font-manrope text-sm focus:border-perrific-violet focus:outline-none"
             />
-            <button className="shrink-0 rounded-full bg-perrific-violet px-4 py-2 font-givonic text-xs font-semibold text-white transition hover:brightness-110">
+            <button className="shrink-0 rounded-full bg-perrific-violet px-4 py-2 font-manrope text-xs font-semibold text-white transition hover:brightness-110">
               Undang
             </button>
           </form>
           {!team ? (
-            <p className="rounded-xl border border-gray-200 bg-white px-3 py-6 font-givonic text-sm text-gray-400">
+            <p className="rounded-xl border border-gray-200 bg-white px-3 py-6 font-manrope text-sm text-gray-400">
               Memuat anggota…
             </p>
           ) : (team.members ?? []).length === 0 ? (
-            <p className="rounded-xl border border-gray-200 bg-white px-3 py-6 font-givonic text-sm text-gray-400">
+            <p className="rounded-xl border border-gray-200 bg-white px-3 py-6 font-manrope text-sm text-gray-400">
               Belum ada anggota.
             </p>
           ) : (
@@ -329,14 +329,14 @@ export default function ProjectPage() {
                       className="h-8 w-8 shrink-0 text-sm"
                     />
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate font-givonic text-sm font-semibold text-perrific-graphite">
+                      <span className="block truncate font-manrope text-sm font-semibold text-perrific-graphite">
                         {label}
                       </span>
                       {m.user?.email && m.user?.name && (
-                        <span className="block truncate font-givonic text-xs text-gray-400">{m.user.email}</span>
+                        <span className="block truncate font-manrope text-xs text-gray-400">{m.user.email}</span>
                       )}
                     </span>
-                    <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 font-givonic text-[11px] font-semibold text-gray-500">
+                    <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 font-manrope text-[11px] font-semibold text-gray-500">
                       {m.role === 'ADMIN' ? 'Admin' : 'Member'}
                     </span>
                   </SwipeRow>
@@ -348,7 +348,7 @@ export default function ProjectPage() {
       ) : (
       <section aria-label="Aktivitas" className="min-h-[320px]">
         {feed.length === 0 ? (
-          <p className="rounded-xl border border-gray-200 bg-white px-3 py-6 font-givonic text-sm text-gray-400">
+          <p className="rounded-xl border border-gray-200 bg-white px-3 py-6 font-manrope text-sm text-gray-400">
             Belum ada aktivitas di project ini.
           </p>
         ) : (
@@ -366,7 +366,7 @@ export default function ProjectPage() {
                   alt={item.actor ?? 'Aktivitas'}
                   className="h-8 w-8 shrink-0 text-sm"
                 />
-                <p className="min-w-0 flex-1 font-givonic text-sm text-gray-600">
+                <p className="min-w-0 flex-1 font-manrope text-sm text-gray-600">
                   {item.actor && <span className="font-bold text-perrific-graphite">{item.actor} </span>}
                   {item.text}
                   {item.upload &&
@@ -391,7 +391,7 @@ export default function ProjectPage() {
                             />
                           ) : (
                             <span
-                              className={`flex h-12 w-12 items-center justify-center font-givonic text-[11px] font-bold ${
+                              className={`flex h-12 w-12 items-center justify-center font-manrope text-[11px] font-bold ${
                                 kind === 'pdf' ? 'bg-red-50 text-red-600' : 'bg-gray-100 text-gray-500'
                               }`}
                             >
@@ -402,7 +402,7 @@ export default function ProjectPage() {
                       );
                     })()}
                 </p>
-                <span className="shrink-0 font-givonic text-xs text-gray-400">{timeAgo(item.at)}</span>
+                <span className="shrink-0 font-manrope text-xs text-gray-400">{timeAgo(item.at)}</span>
               </SwipeRow>
             ))}
           </ul>
@@ -431,7 +431,7 @@ export default function ProjectPage() {
               role="tab"
               aria-selected={tab === t.id}
               onClick={() => setTab(t.id)}
-              className={`shrink-0 rounded-full px-4 py-2 font-givonic text-xs font-semibold transition ${
+              className={`shrink-0 rounded-full px-4 py-2 font-manrope text-xs font-semibold transition ${
                 tab === t.id
                   ? 'bg-perrific-graphite text-white'
                   : 'text-gray-800 hover:bg-gray-200 hover:text-black'

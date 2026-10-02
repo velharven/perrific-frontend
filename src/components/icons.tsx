@@ -25,7 +25,7 @@ import {
   Bell,
   Music,
   Inbox,
-  Kanban,
+  Columns3,
   Settings,
   Trash2,
   Pencil,
@@ -143,7 +143,7 @@ export const ACTIVITY_LUCIDE_MAP: Record<ActivityIconName, LucideIcon> = {
   bell: Bell,
   music: Music,
   inbox: Inbox,
-  kanban: Kanban,
+  kanban: Columns3,
   gear: Settings,
 };
 

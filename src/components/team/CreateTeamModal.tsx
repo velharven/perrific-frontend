@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import { teamApi } from '@/api/teams';
 import { fileToAvatarDataUrl } from '@/lib/avatar';
 import ModalShell from '@/components/ui/ModalShell';
@@ -172,15 +172,15 @@ export default function CreateTeamModal({
               type="button"
               onClick={onBack}
               disabled={creating}
-              className="mb-1 inline-flex items-center gap-1 font-givonic text-xs font-semibold text-perrific-violet hover:underline disabled:opacity-50"
+              className="mb-1 inline-flex items-center gap-1 font-manrope text-xs font-semibold text-perrific-violet hover:underline disabled:opacity-50"
             >
               ← Kembali
             </button>
           )}
-          <h2 className="font-givonic text-base font-extrabold text-perrific-graphite">
+          <h2 className="font-manrope text-base font-extrabold text-perrific-graphite">
             Buat tim baru
           </h2>
-          <p className="mt-0.5 font-givonic text-xs text-perrific-graphite/50">
+          <p className="mt-0.5 font-manrope text-xs text-perrific-graphite/50">
             Atur identitas tim dan tambahkan rekan dari tim lain.
           </p>
         </div>
@@ -200,7 +200,7 @@ export default function CreateTeamModal({
         <div>
           <label
             htmlFor="ctm-name"
-            className="mb-1.5 block font-givonic text-xs font-medium text-perrific-graphite"
+            className="mb-1.5 block font-manrope text-xs font-medium text-perrific-graphite"
           >
             Foto &amp; Nama Tim
           </label>
@@ -240,7 +240,7 @@ export default function CreateTeamModal({
                   </>
                 ) : trimmedInitial ? (
                   <>
-                    <span className="font-givonic text-xs font-bold text-perrific-violet">
+                    <span className="font-manrope text-xs font-bold text-perrific-violet">
                       {trimmedInitial}
                     </span>
                     <span className="absolute inset-0 flex items-center justify-center bg-perrific-violet/90 text-white opacity-0 transition group-hover:opacity-100">
@@ -273,10 +273,10 @@ export default function CreateTeamModal({
               onChange={(e) => setName(e.target.value)}
               placeholder="cth. Tim Produk & Desain"
               maxLength={60}
-              className="h-11 min-w-0 flex-1 rounded-[10px] border border-perrific-line bg-white px-3.5 font-givonic text-sm text-perrific-graphite placeholder:text-perrific-graphite/40 focus:border-perrific-violet focus:outline-none focus:ring-2 focus:ring-perrific-violet/20"
+              className="h-11 min-w-0 flex-1 rounded-[10px] border border-perrific-line bg-white px-3.5 font-manrope text-sm text-perrific-graphite placeholder:text-perrific-graphite/40 focus:border-perrific-violet focus:outline-none focus:ring-2 focus:ring-perrific-violet/20"
             />
           </div>
-          <p className="mt-1 font-givonic text-[11px] text-gray-400">
+          <p className="mt-1 font-manrope text-[11px] text-gray-400">
             Klik kotak di kiri untuk mengunggah foto tim (opsional).
           </p>
         </div>
@@ -285,7 +285,7 @@ export default function CreateTeamModal({
         <div>
           <label
             htmlFor="ctm-desc"
-            className="mb-1.5 block font-givonic text-xs font-medium text-perrific-graphite"
+            className="mb-1.5 block font-manrope text-xs font-medium text-perrific-graphite"
           >
             Deskripsi <span className="font-normal text-perrific-graphite/40">(opsional)</span>
           </label>
@@ -295,21 +295,21 @@ export default function CreateTeamModal({
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Deskripsi singkat tim"
             maxLength={500}
-            className="w-full rounded-[10px] border border-perrific-line bg-white px-3 py-2.5 font-givonic text-sm text-perrific-graphite placeholder:text-perrific-graphite/40 focus:border-perrific-violet focus:outline-none focus:ring-2 focus:ring-perrific-violet/20"
+            className="w-full rounded-[10px] border border-perrific-line bg-white px-3 py-2.5 font-manrope text-sm text-perrific-graphite placeholder:text-perrific-graphite/40 focus:border-perrific-violet focus:outline-none focus:ring-2 focus:ring-perrific-violet/20"
           />
         </div>
 
         {/* Pemilih Anggota dari Tim Lain */}
         <div>
           <div className="mb-1.5 flex items-center justify-between gap-2">
-            <p className="font-givonic text-xs font-medium text-perrific-graphite">
+            <p className="font-manrope text-xs font-medium text-perrific-graphite">
               Tambah anggota dari tim lain{' '}
               <span className="font-normal text-gray-400">
                 ({selectedIds.length} dipilih)
               </span>
             </p>
             {filteredIds.length > 0 && (
-              <label className="flex cursor-pointer items-center gap-1.5 font-givonic text-xs font-semibold text-perrific-violet">
+              <label className="flex cursor-pointer items-center gap-1.5 font-manrope text-xs font-semibold text-perrific-violet">
                 <input
                   type="checkbox"
                   checked={allFilteredChecked}
@@ -324,10 +324,10 @@ export default function CreateTeamModal({
 
           {allMembers.length === 0 ? (
             <div className="rounded-[10px] border border-dashed border-gray-200 bg-gray-50/70 px-3 py-3.5 text-center">
-              <p className="font-givonic text-xs text-gray-500">
+              <p className="font-manrope text-xs text-gray-500">
                 Belum ada anggota dari tim lain.
               </p>
-              <p className="mt-0.5 font-givonic text-[11px] text-gray-400">
+              <p className="mt-0.5 font-manrope text-[11px] text-gray-400">
                 Kamu bisa mengundang anggota lewat kode tim atau email setelah tim dibuat.
               </p>
             </div>
@@ -345,7 +345,7 @@ export default function CreateTeamModal({
                     role="tab"
                     aria-selected={teamFilter === 'ALL'}
                     onClick={() => setTeamFilter('ALL')}
-                    className={`shrink-0 rounded-full px-2.5 py-1 font-givonic text-[11px] font-semibold transition cursor-pointer ${
+                    className={`shrink-0 rounded-full px-2.5 py-1 font-manrope text-[11px] font-semibold transition cursor-pointer ${
                       teamFilter === 'ALL'
                         ? 'bg-perrific-graphite text-white'
                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-perrific-graphite'
@@ -360,7 +360,7 @@ export default function CreateTeamModal({
                       role="tab"
                       aria-selected={teamFilter === t.id}
                       onClick={() => setTeamFilter(t.id)}
-                      className={`flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 font-givonic text-[11px] font-semibold transition cursor-pointer ${
+                      className={`flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 font-manrope text-[11px] font-semibold transition cursor-pointer ${
                         teamFilter === t.id
                           ? 'bg-perrific-violet text-white'
                           : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-perrific-graphite'
@@ -385,13 +385,13 @@ export default function CreateTeamModal({
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Cari nama, email, atau tim asal…"
                 aria-label="Cari anggota"
-                className="mb-1.5 w-full rounded-[10px] border border-perrific-line bg-white px-3 py-2 font-givonic text-xs placeholder:text-gray-400 focus:border-perrific-violet focus:outline-none"
+                className="mb-1.5 w-full rounded-[10px] border border-perrific-line bg-white px-3 py-2 font-manrope text-xs placeholder:text-gray-400 focus:border-perrific-violet focus:outline-none"
               />
 
               {/* Daftar Anggota Gabungan dengan Badge Tim Asal */}
               <div className="nice-scroll max-h-44 divide-y divide-gray-100 overflow-y-auto rounded-[10px] border border-perrific-line bg-white">
                 {filteredMembers.length === 0 ? (
-                  <p className="px-3 py-3 text-center font-givonic text-xs text-gray-400">
+                  <p className="px-3 py-3 text-center font-manrope text-xs text-gray-400">
                     Tidak ada anggota yang cocok.
                   </p>
                 ) : (
@@ -429,11 +429,11 @@ export default function CreateTeamModal({
                           className="h-6.5 w-6.5 shrink-0 text-[10px]"
                         />
                         <span className="min-w-0 flex-1">
-                          <span className="block truncate font-givonic text-xs font-semibold text-perrific-graphite">
+                          <span className="block truncate font-manrope text-xs font-semibold text-perrific-graphite">
                             {m.name || m.email}
                           </span>
                           {m.email && (
-                            <span className="block truncate font-givonic text-[11px] text-gray-400">
+                            <span className="block truncate font-manrope text-[11px] text-gray-400">
                               {m.email}
                             </span>
                           )}
@@ -441,7 +441,7 @@ export default function CreateTeamModal({
                         {primaryTeam && (
                           <span
                             title={m.teams.map((t) => t.name).join(', ')}
-                            className="flex shrink-0 items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 font-givonic text-[10px] font-medium text-gray-600"
+                            className="flex shrink-0 items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 font-manrope text-[10px] font-medium text-gray-600"
                           >
                             <span className="max-w-[90px] truncate">{primaryTeam.name}</span>
                             {extraCount > 0 && (
@@ -459,7 +459,7 @@ export default function CreateTeamModal({
         </div>
 
         {error && (
-          <p role="alert" className="font-givonic text-xs text-red-600">
+          <p role="alert" className="font-manrope text-xs text-red-600">
             {error}
           </p>
         )}
@@ -469,14 +469,14 @@ export default function CreateTeamModal({
             type="button"
             onClick={() => !creating && onClose()}
             disabled={creating}
-            className="rounded-full px-4 py-2 font-givonic text-sm font-semibold text-gray-600 transition hover:bg-gray-100 disabled:opacity-50"
+            className="rounded-full px-4 py-2 font-manrope text-sm font-semibold text-gray-600 transition hover:bg-gray-100 disabled:opacity-50"
           >
             Batal
           </button>
           <button
             type="submit"
             disabled={creating || !name.trim()}
-            className="rounded-full bg-perrific-violet px-5 py-2 font-givonic text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-50"
+            className="rounded-full bg-perrific-violet px-5 py-2 font-manrope text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-50"
           >
             {creating ? 'Membuat…' : 'Buat tim'}
           </button>
