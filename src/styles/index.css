@@ -189,3 +189,28 @@ html {
 .col-enter {
   animation: col-enter 0.25s ease-out;
 }
+
+/* Efek shimmer sweep & fadeIn untuk sistem Skeleton loading */
+@keyframes shimmer-sweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+.animate-shimmer {
+  animation: shimmer-sweep 1.6s ease-in-out infinite;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.animate-fadeIn {
+  animation: fade-in 0.2s ease-out;
+}
