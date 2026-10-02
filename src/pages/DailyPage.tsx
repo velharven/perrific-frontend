@@ -59,6 +59,7 @@ import {
 import { useCalendarSync } from '@/store/calendarSync';
 import { doesActivityOccurOnDate, getDayBefore, projectActivityOntoDate } from '@/lib/recurrence';
 import type { DailyActivity, DailyColumn, DailyColumnType, RecurrenceConfig, RecurrenceEditScope } from '@/types';
+import { TableSkeleton } from '@/components/ui/loading';
 
 // Helpers
 function toISODate(d: Date): string {
@@ -2469,7 +2470,7 @@ function DailyPageInner() {
 
       {/* Database tabel, Kalender, Task Team, atau Project Pribadi */}
       {loading ? (
-        <p className="py-8 text-center text-sm text-gray-500">Memuat…</p>
+        <TableSkeleton />
       ) : activeView === 'personal-projects' ? (
         <PersonalProjectKanbanView />
       ) : activeView === 'team-tasks' ? (

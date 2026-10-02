@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { noteApi } from '@/api/notes';
 import type { Note } from '@/types';
+import { DocumentSkeleton } from '@/components/ui/loading';
 import DailyPage from './DailyPage';
 
 // Kamar aktivitas berkunci: URL /daily/:id, isi sama persis
@@ -39,7 +40,7 @@ export default function DailyInstancePage() {
       </div>
     );
   }
-  if (!note) return <p className="text-gray-500">Memuat…</p>;
+  if (!note) return <DocumentSkeleton />;
 
   return (
     <div className="space-y-3">

@@ -14,6 +14,7 @@ import Avatar from '@/components/ui/Avatar';
 import { useAuth } from '@/store/auth';
 import { UndoStackProvider, useUndo } from '@/hooks/useUndoStack';
 import { Filter, Search, X, ChevronDown, Check } from 'lucide-react';
+import { KanbanSkeleton } from '@/components/ui/loading';
 import type { BoardColumn, Project, Task, Team } from '@/types';
 
 export const BOARD_VIEW_EVENT = 'boardview-changed';
@@ -380,7 +381,7 @@ function BoardPageInner() {
     filterRole !== 'all' ||
     filterCreatedBy !== 'all';
 
-  if (loading) return <p className="text-gray-500">Memuat…</p>;
+  if (loading) return <KanbanSkeleton />;
 
   const isAdmin = team?.members?.some((m) => m.userId === user?.id && m.role === 'ADMIN') ?? false;
   const isMember = team?.members?.some((m) => m.userId === user?.id) ?? false;

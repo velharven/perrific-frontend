@@ -9,6 +9,7 @@ import { notifyNotesChanged } from '@/pages/NotePage';
 import { notifyTeamsChanged, useTrash } from '@/hooks/useNavLabels';
 import { useAuth } from '@/store/auth';
 import { UndoStackProvider, useUndo } from '@/hooks/useUndoStack';
+import { TableSkeleton } from '@/components/ui/loading';
 import { MoreVertical } from 'lucide-react';
 
 function TablePageInner() {
@@ -114,7 +115,7 @@ function TablePageInner() {
     notifyTeamsChanged();
   }
 
-  if (t.loading) return <p className="text-gray-500">Memuat...</p>;
+  if (t.loading) return <TableSkeleton />;
 
   if (isTrashed) {
     return (

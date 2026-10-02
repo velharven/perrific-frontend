@@ -21,6 +21,7 @@ import { showToast } from '@/components/ui/Toast';
 import NoteBlocks, { type BlockFocusReq } from '@/components/note/BlockEditor';
 import HeadingOutline from '@/components/note/HeadingOutline';
 import SlashMenu, { getCaretViewportPos, type SlashCommandId } from '@/components/note/SlashMenu';
+import { DocumentSkeleton } from '@/components/ui/loading';
 import {
   appendBlock,
   countBlockWords,
@@ -544,13 +545,7 @@ function NotePageInner() {
   }
 
   if (loading) {
-    return (
-      <div className="mx-auto max-w-3xl animate-pulse space-y-4">
-        <div className="h-9 w-1/2 rounded-lg bg-gray-200" />
-        <div className="h-4 w-1/4 rounded bg-gray-200" />
-        <div className="h-64 rounded-xl bg-gray-100" />
-      </div>
-    );
+    return <DocumentSkeleton />;
   }
 
   if (notFound || !note) {
