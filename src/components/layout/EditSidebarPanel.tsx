@@ -27,6 +27,7 @@ import {
   sortableKeyboardCoordinates,
 } from '@dnd-kit/sortable';
 import SortableTabRow from './SortableTabRow';
+import ConfirmModal from '@/components/ui/ConfirmModal';
 import type { SidebarSection, PresetSection } from '@/hooks/useNavLabels';
 
 interface EditSidebarPanelProps {
@@ -51,12 +52,14 @@ export default function EditSidebarPanel({
   sectionLabel,
 }: EditSidebarPanelProps) {
   const [editView, setEditView] = useState<'main' | 'preset'>('main');
+  const [pendingDelete, setPendingDelete] = useState<{ id: PresetSection; name: string } | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
   // Reset view saat panel dibuka
   useEffect(() => {
     if (open) {
       setEditView('main');
+      setPendingDelete(null);
     }
   }, [open]);
 
@@ -65,7 +68,9 @@ export default function EditSidebarPanel({
     if (!open) return;
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
-        if (editView === 'preset') {
+        if (pendingDelete) {
+          setPendingDelete(null);
+        } else if (editView === 'preset') {
           setEditView('main');
         } else {
           onClose();
@@ -74,7 +79,7 @@ export default function EditSidebarPanel({
     }
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [open, onClose, editView]);
+  }, [open, onClose, editView, pendingDelete]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -135,6 +140,8 @@ export default function EditSidebarPanel({
       iconClass: 'bg-sky-100 text-sky-600',
     },
   ] as const;
+
+  const getSectionName = (id: string) => presets.find((p) => p.id === id)?.name ?? sectionLabel(id);
 
   return (
     <div
@@ -231,7 +238,7 @@ export default function EditSidebarPanel({
                   {isActive ? (
                     <button
                       type="button"
-                      onClick={() => onRemovePreset(p.id)}
+                      onClick={() => setPendingDelete({ id: p.id, name: p.name })}
                       aria-label={`Hapus bagian ${p.name}`}
                       className="shrink-0 rounded-full border border-red-200 px-3 py-1 font-givonic text-xs font-semibold text-red-600 transition hover:bg-red-50"
                     >
@@ -267,17 +274,32 @@ export default function EditSidebarPanel({
                     <SortableTabRow
                       key={`section:${s}`}
                       id={`section:${s}`}
-                      className="flex cursor-grab items-center gap-2.5 rounded-lg border border-gray-100 bg-white px-3 py-2.5 shadow-sm transition hover:border-gray-200 hover:bg-gray-50 active:cursor-grabbing"
+                      className="group flex cursor-grab items-center justify-between gap-2.5 rounded-lg border border-gray-100 bg-white px-3 py-2.5 shadow-sm transition hover:border-gray-200 hover:bg-gray-50 active:cursor-grabbing"
                     >
-                      <span
-                        aria-hidden="true"
-                        className="flex h-5 w-5 shrink-0 items-center justify-center text-perrific-graphite/40"
+                      <div className="flex min-w-0 flex-1 items-center gap-2.5">
+                        <span
+                          aria-hidden="true"
+                          className="flex h-5 w-5 shrink-0 items-center justify-center text-perrific-graphite/40"
+                        >
+                          <GripVertical size={15} strokeWidth={1.6} />
+                        </span>
+                        <span className="truncate font-mono text-xs font-medium tracking-wider text-perrific-graphite">
+                          {sectionLabel(s)}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPendingDelete({ id: s, name: getSectionName(s) });
+                        }}
+                        title={`Hapus bagian ${sectionLabel(s)}`}
+                        aria-label={`Hapus bagian ${sectionLabel(s)}`}
+                        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-gray-400 transition hover:bg-red-50 hover:text-red-600"
                       >
-                        <GripVertical size={15} strokeWidth={1.6} />
-                      </span>
-                      <span className="font-mono text-xs font-medium tracking-wider text-perrific-graphite">
-                        {sectionLabel(s)}
-                      </span>
+                        <X size={14} strokeWidth={1.8} aria-hidden="true" />
+                      </button>
                     </SortableTabRow>
                   ))}
                 </div>
@@ -297,6 +319,22 @@ export default function EditSidebarPanel({
           </div>
         )}
       </div>
+
+      {/* Modal Konfirmasi Hapus Bagian */}
+      <ConfirmModal
+        open={pendingDelete !== null}
+        title={pendingDelete ? `Hapus bagian ${pendingDelete.name}?` : ''}
+        message="Bagian ini akan disembunyikan dari sidebar. Anda dapat menambahkannya kembali kapan saja melalui menu Tambah Bagian."
+        confirmLabel="Hapus"
+        cancelLabel="Batal"
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={() => {
+          if (pendingDelete) {
+            onRemovePreset(pendingDelete.id);
+            setPendingDelete(null);
+          }
+        }}
+      />
     </div>
   );
 }

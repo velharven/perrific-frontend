@@ -17,6 +17,8 @@ describe('ArchivePanel Component', () => {
       kind: 'NOTE',
       content: '',
       userId: 'u1',
+      parentId: null,
+      coverUrl: null,
       order: 0,
       createdAt: '',
       updatedAt: '',
@@ -27,9 +29,6 @@ describe('ArchivePanel Component', () => {
     {
       id: 'team-1',
       name: 'Tim Alpha',
-      createdAt: '',
-      updatedAt: '',
-      ownerId: 'u1',
     },
   ];
 

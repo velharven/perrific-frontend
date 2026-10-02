@@ -79,7 +79,7 @@ describe('EditSidebarPanel Component', () => {
     expect(onAddPreset).toHaveBeenCalledWith('favorit');
   });
 
-  it('handles removing an active preset', () => {
+  it('handles removing an active preset with confirmation modal from preset sub-view', () => {
     const onRemovePreset = vi.fn();
     render(
       <EditSidebarPanel
@@ -99,10 +99,61 @@ describe('EditSidebarPanel Component', () => {
 
     const removeFavoritBtn = screen.getByLabelText('Hapus bagian Favorit');
     fireEvent.click(removeFavoritBtn);
+
+    // Modal konfirmasi harus muncul
+    expect(screen.getByText('Hapus bagian Favorit?')).toBeTruthy();
+    expect(screen.getByText(/Bagian ini akan disembunyikan dari sidebar/i)).toBeTruthy();
+
+    // Batal konfirmasi
+    fireEvent.click(screen.getByRole('button', { name: 'Batal' }));
+    expect(onRemovePreset).not.toHaveBeenCalled();
+
+    // Buka kembali modal konfirmasi dan setujui
+    fireEvent.click(removeFavoritBtn);
+    fireEvent.click(screen.getByRole('button', { name: 'Hapus' }));
     expect(onRemovePreset).toHaveBeenCalledWith('favorit');
   });
 
-  it('handles Escape key: returns from preset view first, then closes panel', () => {
+  it('renders X button on each row in main view and deletes with confirmation', () => {
+    const onRemovePreset = vi.fn();
+    render(
+      <EditSidebarPanel
+        open={true}
+        onClose={vi.fn()}
+        sectionOrder={['privat', 'teams', 'organisasi']}
+        presetSections={['privat', 'teams', 'organisasi']}
+        onReorderSections={vi.fn()}
+        onAddPreset={vi.fn()}
+        onRemovePreset={onRemovePreset}
+        sectionLabel={sectionLabel}
+      />
+    );
+
+    // Tombol X harus tersedia di setiap baris bagian
+    const removePrivatBtn = screen.getByLabelText('Hapus bagian PRIVAT');
+    const removeTeamsBtn = screen.getByLabelText('Hapus bagian TIM SAYA');
+    const removeOrgBtn = screen.getByLabelText('Hapus bagian ORGANISASI');
+    expect(removePrivatBtn).toBeTruthy();
+    expect(removeTeamsBtn).toBeTruthy();
+    expect(removeOrgBtn).toBeTruthy();
+
+    // Klik tombol X pada Organisasi
+    fireEvent.click(removeOrgBtn);
+
+    // Modal konfirmasi muncul
+    expect(screen.getByText('Hapus bagian Organisasi?')).toBeTruthy();
+
+    // Klik Batal
+    fireEvent.click(screen.getByRole('button', { name: 'Batal' }));
+    expect(onRemovePreset).not.toHaveBeenCalled();
+
+    // Klik X lagi lalu konfirmasi Hapus
+    fireEvent.click(removeOrgBtn);
+    fireEvent.click(screen.getByRole('button', { name: 'Hapus' }));
+    expect(onRemovePreset).toHaveBeenCalledWith('organisasi');
+  });
+
+  it('handles Escape key: cancels confirm modal first, then returns from preset view, then closes panel', () => {
     const onClose = vi.fn();
     render(
       <EditSidebarPanel
@@ -117,16 +168,25 @@ describe('EditSidebarPanel Component', () => {
       />
     );
 
+    // Klik tombol X di daftar utama untuk membuka konfirmasi
+    fireEvent.click(screen.getByLabelText('Hapus bagian PRIVAT'));
+    expect(screen.getByText('Hapus bagian Privat?')).toBeTruthy();
+
+    // Escape 1: Menutup modal konfirmasi
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByText('Hapus bagian Privat?')).toBeNull();
+    expect(onClose).not.toHaveBeenCalled();
+
     // Buka preset sub-view
     fireEvent.click(screen.getByLabelText('Tambah bagian baru'));
     expect(screen.getByText('Tambah Bagian')).toBeTruthy();
 
-    // Escape 1: Kembali ke main view
+    // Escape 2: Kembali ke main view
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(screen.getByText('Edit Sidebar')).toBeTruthy();
     expect(onClose).not.toHaveBeenCalled();
 
-    // Escape 2: Menutup panel
+    // Escape 3: Menutup panel
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(onClose).toHaveBeenCalledTimes(1);
   });

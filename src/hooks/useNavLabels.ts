@@ -365,11 +365,7 @@ function presetKeyV2For(userId?: string) {
 function readActivePresets(userId?: string): PresetSection[] {
   const v2 = readJson<string[] | null>(presetKeyV2For(userId), null);
   if (v2 !== null) {
-    const list = v2.filter(isPresetSection);
-    if (!list.includes('organisasi')) {
-      list.push('organisasi');
-    }
-    return list;
+    return v2.filter(isPresetSection);
   }
   // Migrasi sekali jalan: preset lama (favorit/shortcut) digabung default,
   // agar user lama tidak kehilangan section. 'sampah' era lama terbuang.
@@ -388,11 +384,7 @@ function normalizeSections(stored: string[] | null, active: PresetSection[] = []
   // tanpa tempel otomatis agar section yang dihapus tetap hilang.
   if (stored === null) return [...DEFAULT_PRESETS];
   const ok = new Set<string>(active);
-  const filtered = stored.filter((s): s is SidebarSection => ok.has(s));
-  if (active.includes('organisasi') && !filtered.includes('organisasi')) {
-    filtered.push('organisasi');
-  }
-  return filtered;
+  return stored.filter((s): s is SidebarSection => ok.has(s));
 }
 
 /**
