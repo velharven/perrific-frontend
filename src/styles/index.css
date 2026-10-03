@@ -12,10 +12,33 @@
   outline: 2px solid #ff500b;
   outline-offset: 2px;
 }
-:root,
+:root {
+  color-scheme: light;
+  --app-vh: 100vh;
+  --app-scale: 1;
+}
+
+@supports (height: 100dvh) {
+  :root {
+    --app-vh: 100dvh;
+  }
+}
+
 html,
 body {
   color-scheme: light;
+  min-height: 100%;
+}
+
+/* Pastikan elemen tinggi layar selalu mengisi penuh viewport fisik saat zoom desktop aktif */
+.h-screen {
+  height: var(--app-vh, 100vh) !important;
+}
+.min-h-screen {
+  min-height: var(--app-vh, 100vh) !important;
+}
+.max-h-screen {
+  max-height: var(--app-vh, 100vh) !important;
 }
 
 html {

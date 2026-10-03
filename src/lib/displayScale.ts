@@ -20,7 +20,9 @@ export function computeTargetScale(
 }
 
 /**
- * Menerapkan nilai skala ke document.documentElement melalui CSS zoom.
+ * Menerapkan nilai skala ke document.documentElement melalui CSS zoom
+ * dan menyelaraskan CSS variable --app-vh agar elemen full-height (sidebar, viewport)
+ * selalu mengisi 100% tinggi fisik layar tanpa celah atau blok kosong di bawahnya.
  */
 export function applyRootScale(scale: number): void {
   if (typeof document === 'undefined') return;
@@ -29,4 +31,11 @@ export function applyRootScale(scale: number): void {
 
   const formattedScale = Math.abs(scale - 1.0) < 0.001 ? '1' : scale.toString();
   (root.style as any).zoom = formattedScale;
+  root.style.setProperty('--app-scale', formattedScale);
+
+  // Jika dokumen di-zoom dengan faktor S, elemen dengan tinggi 100vh hanya akan tampak (100 * S)vh.
+  // Dengan menghitung (100 / S)vh, tinggi elemen setelah zoom akan tepat 100% dari tinggi layar fisik.
+  const adjustedVh = scale > 0 ? (100 / scale).toFixed(4) : '100';
+  const vhUnit = typeof CSS !== 'undefined' && CSS.supports && CSS.supports('height', '100dvh') ? 'dvh' : 'vh';
+  root.style.setProperty('--app-vh', `${adjustedVh}${vhUnit}`);
 }

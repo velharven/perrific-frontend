@@ -29,6 +29,15 @@ export default {
         'space-grotesk': ['"Space Grotesk"', 'system-ui', 'sans-serif'],
         manrope: ['Manrope', 'system-ui', 'sans-serif'],
       },
+      height: {
+        screen: 'var(--app-vh, 100vh)',
+      },
+      minHeight: {
+        screen: 'var(--app-vh, 100vh)',
+      },
+      maxHeight: {
+        screen: 'var(--app-vh, 100vh)',
+      },
     },
   },
   plugins: [],

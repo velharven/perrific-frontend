@@ -3449,7 +3449,7 @@ export default function AppLayout() {
 
       {/* Sidebar desktop */}
       <aside
-        className={`hidden shrink-0 overflow-hidden border-gray-200 transition-[width,border-color] duration-300 ease-in-out lg:sticky lg:top-0 lg:block lg:h-screen ${
+        className={`hidden shrink-0 overflow-hidden border-gray-200 transition-[width,border-color] duration-300 ease-in-out lg:sticky lg:top-0 lg:self-start lg:block lg:h-screen ${
           collapsed ? 'lg:w-0 border-r-0' : 'lg:w-64 border-r'
         }`}
       >

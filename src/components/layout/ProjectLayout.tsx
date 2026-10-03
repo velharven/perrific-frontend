@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useParams } from 'react-router-dom';
 import { projectApi } from '@/api/projects';
 import { teamApi } from '@/api/teams';
@@ -7,6 +7,7 @@ import { ActivityIcon } from '@/components/icons';
 import { PanelLeftOpen, ChevronRight, Home, Settings } from 'lucide-react';
 import { PROJECT_UPDATED_EVENT } from '@/pages/ProjectSettingsPage';
 import { useAuth } from '@/store/auth';
+import { useDisplayScale } from '@/hooks/useDisplayScale';
 import type { Project } from '@/types';
 
 const tabs = [
@@ -25,6 +26,7 @@ export function isProjectSidebarCollapsed(): boolean {
 }
 
 export default function ProjectLayout() {
+  useDisplayScale();
   const { projectId } = useParams<{ projectId: string }>();
   const location = useLocation();
   const { user } = useAuth();
@@ -104,12 +106,12 @@ export default function ProjectLayout() {
   return (
     <div className="flex min-h-screen bg-perrific-paper">
       <aside
-        className={`hidden shrink-0 flex-col bg-perrific-graphite text-white transition-[width,padding] duration-200 ease-in-out md:sticky md:top-0 md:flex md:h-screen md:overflow-y-auto ${
-          collapsed ? 'w-0 p-0 overflow-hidden border-0' : 'w-56 p-4'
+        className={`hidden shrink-0 flex-col bg-perrific-graphite text-white transition-[width,padding] duration-200 ease-in-out md:sticky md:top-0 md:self-start md:flex md:h-screen overflow-hidden ${
+          collapsed ? 'w-0 p-0 border-0' : 'w-56 p-4'
         }`}
       >
         <div className="flex h-full w-48 min-w-[12rem] flex-col">
-          <div className="flex items-center justify-start">
+          <div className="flex shrink-0 items-center justify-start">
             <button
               type="button"
               onClick={() => {
@@ -129,79 +131,79 @@ export default function ProjectLayout() {
               aria-expanded={!collapsed}
               className="flex h-9 w-9 items-center justify-center rounded-lg text-white/80 transition hover:bg-white/10 hover:text-white"
             >
-            <PanelLeftOpen size={16} strokeWidth={1.6} aria-hidden="true" />
-          </button>
-        </div>
-        <nav className="mt-4 space-y-1" aria-label="Navigasi project">
-          {tabs.map((t) => (
-            <NavLink
-              key={t.to}
-              to={t.to}
-              end={t.end}
-              title={t.label}
-              className={({ isActive }) =>
-                `flex items-center gap-2.5 rounded-lg px-3 py-2 font-manrope text-sm transition ${
-                  collapsed ? 'justify-center' : ''
-                } ${
-                  isActive ? 'bg-white/10 font-semibold text-white' : 'text-white/60 hover:bg-white/5 hover:text-white'
-                }`
-              }
+              <PanelLeftOpen size={16} strokeWidth={1.6} aria-hidden="true" />
+            </button>
+          </div>
+          <nav className="mt-4 flex-1 space-y-1 overflow-y-auto nice-scroll pr-1" aria-label="Navigasi project">
+            {tabs.map((t) => (
+              <NavLink
+                key={t.to}
+                to={t.to}
+                end={t.end}
+                title={t.label}
+                className={({ isActive }) =>
+                  `flex items-center gap-2.5 rounded-lg px-3 py-2 font-manrope text-sm transition ${
+                    collapsed ? 'justify-center' : ''
+                  } ${
+                    isActive ? 'bg-white/10 font-semibold text-white' : 'text-white/60 hover:bg-white/5 hover:text-white'
+                  }`
+                }
+              >
+                <ActivityIcon name={t.icon} className="h-4 w-4 shrink-0" />
+                {!collapsed && t.label}
+              </NavLink>
+            ))}
+            {isAdmin && (
+              <NavLink
+                to="persetujuan"
+                title="Persetujuan"
+                className={({ isActive }) =>
+                  `flex items-center gap-2.5 rounded-lg px-3 py-2 font-manrope text-sm transition ${
+                    collapsed ? 'justify-center' : ''
+                  } ${
+                    isActive ? 'bg-white/10 font-semibold text-white' : 'text-white/60 hover:bg-white/5 hover:text-white'
+                  }`
+                }
+              >
+                <ActivityIcon name="flag" className="h-4 w-4 shrink-0" />
+                {!collapsed && <span className="min-w-0 flex-1 truncate">Persetujuan</span>}
+                {!collapsed && approvalCount > 0 && (
+                  <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-perrific-violet px-1.5 font-manrope text-[11px] font-bold text-white">
+                    {approvalCount}
+                  </span>
+                )}
+              </NavLink>
+            )}
+          </nav>
+          <div className="mt-auto shrink-0 space-y-1 pt-4">
+            {isAdmin && (
+              <NavLink
+                to="settings"
+                title="Settings"
+                className={({ isActive }) =>
+                  `flex items-center gap-2.5 rounded-lg px-3 py-2 font-manrope text-sm transition ${
+                    collapsed ? 'justify-center' : ''
+                  } ${
+                    isActive ? 'bg-white/10 font-semibold text-white' : 'text-white/60 hover:bg-white/5 hover:text-white'
+                  }`
+                }
+              >
+                <ActivityIcon name="gear" className="h-4 w-4 shrink-0" />
+                {!collapsed && 'Settings'}
+              </NavLink>
+            )}
+            <Link
+              to="/dashboard"
+              title="Kembali"
+              aria-label="Kembali"
+              className={`flex items-center gap-2.5 rounded-lg px-3 py-2 font-manrope text-sm text-white/60 transition hover:bg-white/5 hover:text-white ${
+                collapsed ? 'justify-center' : ''
+              }`}
             >
-              <ActivityIcon name={t.icon} className="h-4 w-4 shrink-0" />
-              {!collapsed && t.label}
-            </NavLink>
-          ))}
-          {isAdmin && (
-            <NavLink
-              to="persetujuan"
-              title="Persetujuan"
-              className={({ isActive }) =>
-                `flex items-center gap-2.5 rounded-lg px-3 py-2 font-manrope text-sm transition ${
-                  collapsed ? 'justify-center' : ''
-                } ${
-                  isActive ? 'bg-white/10 font-semibold text-white' : 'text-white/60 hover:bg-white/5 hover:text-white'
-                }`
-              }
-            >
-              <ActivityIcon name="flag" className="h-4 w-4 shrink-0" />
-              {!collapsed && <span className="min-w-0 flex-1 truncate">Persetujuan</span>}
-              {!collapsed && approvalCount > 0 && (
-                <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-perrific-violet px-1.5 font-manrope text-[11px] font-bold text-white">
-                  {approvalCount}
-                </span>
-              )}
-            </NavLink>
-          )}
-        </nav>
-        <div className="mt-auto space-y-1 pt-4">
-          {isAdmin && (
-            <NavLink
-              to="settings"
-              title="Settings"
-              className={({ isActive }) =>
-                `flex items-center gap-2.5 rounded-lg px-3 py-2 font-manrope text-sm transition ${
-                  collapsed ? 'justify-center' : ''
-                } ${
-                  isActive ? 'bg-white/10 font-semibold text-white' : 'text-white/60 hover:bg-white/5 hover:text-white'
-                }`
-              }
-            >
-              <ActivityIcon name="gear" className="h-4 w-4 shrink-0" />
-              {!collapsed && 'Settings'}
-            </NavLink>
-          )}
-          <Link
-            to="/dashboard"
-            title="Kembali"
-            aria-label="Kembali"
-            className={`flex items-center gap-2.5 rounded-lg px-3 py-2 font-manrope text-sm text-white/60 transition hover:bg-white/5 hover:text-white ${
-              collapsed ? 'justify-center' : ''
-            }`}
-          >
-            <Home size={16} strokeWidth={1.6} aria-hidden="true" className="shrink-0" />
-            {!collapsed && 'Kembali'}
-          </Link>
-        </div>
+              <Home size={16} strokeWidth={1.6} aria-hidden="true" className="shrink-0" />
+              {!collapsed && 'Kembali'}
+            </Link>
+          </div>
         </div>
       </aside>
 
