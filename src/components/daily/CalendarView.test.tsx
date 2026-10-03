@@ -1812,7 +1812,49 @@ describe("Notion-style lifecycle sync", () => {
       expect(onSelectDateMock).toHaveBeenCalled();
     });
 
-    it("membuka modal bottom-sheet pengaturan saat kartu kalender diklik dan dapat ditutup", async () => {
+    it("membuka pengaturan kartu langsung di sidebar kalendar pada desktop saat kartu diklik", async () => {
+      Object.defineProperty(window, "innerWidth", { writable: true, configurable: true, value: 1200 });
+
+      const scheduledAct: DailyActivity = {
+        id: "sched-1",
+        userId: "user-1",
+        title: "Meeting Penting",
+        date: "2026-09-29T00:00:00+07:00",
+        startTime: "2026-09-29T09:00:00+07:00",
+        endTime: "2026-09-29T10:00:00+07:00",
+        allDay: false,
+        type: "CUSTOM",
+        status: "PENDING",
+        order: 0,
+        checklistItems: [],
+      };
+
+      render(
+        <CalendarView
+          {...props}
+          selectedDate={new Date("2026-09-29T00:00:00+07:00")}
+          activities={[scheduledAct]}
+        />,
+      );
+
+      // Klik kartu kegiatan
+      const card = screen.getByText("Meeting Penting");
+      fireEvent.click(card);
+
+      // Di desktop, settings langsung terbuka di sidebar tanpa floating action box
+      expect(screen.queryByRole("button", { name: "Buka Pengaturan Card" })).toBeNull();
+      const settingsList = screen.getAllByTestId("calendar-card-settings");
+      expect(settingsList.length).toBeGreaterThanOrEqual(1);
+
+      // Tutup via tombol tutup settings
+      const closeSettingsBtn = screen.getAllByRole("button", { name: "Tutup Settings" });
+      fireEvent.click(closeSettingsBtn[0]);
+      expect(screen.queryByTestId("calendar-card-settings")).toBeNull();
+    });
+
+    it("menampilkan floating action box pada layar mobile saat kartu diklik dan dapat membuka modal", async () => {
+      Object.defineProperty(window, "innerWidth", { writable: true, configurable: true, value: 500 });
+
       const scheduledAct: DailyActivity = {
         id: "sched-1",
         userId: "user-1",
@@ -1841,9 +1883,10 @@ describe("Notion-style lifecycle sync", () => {
 
       // Buka pengaturan via tombol floating action box
       const openSettingsBtn = screen.getByRole("button", { name: "Buka Pengaturan Card" });
+      expect(openSettingsBtn).toBeTruthy();
       fireEvent.click(openSettingsBtn);
 
-      // Modal bottom-sheet settings harus muncul
+      // Modal settings harus muncul
       const settingsList = screen.getAllByTestId("calendar-card-settings");
       expect(settingsList.length).toBeGreaterThanOrEqual(1);
 

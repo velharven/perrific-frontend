@@ -310,6 +310,35 @@ export default function CalendarView({
   const [importing, setImporting] = useState(false);
   const [now, setNow] = useState(new Date());
 
+  const [isDesktop, setIsDesktop] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth >= 1024 : true,
+  );
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsDesktop(window.innerWidth >= 1024);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const handleCardClick = useCallback((item: CombinedItem) => {
+    const desktopMode = typeof window !== 'undefined' ? window.innerWidth >= 1024 : true;
+    if (desktopMode) {
+      setFloatingCardItem(null);
+      setSelectedCardItem(item);
+    } else {
+      setFloatingCardItem(item);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isDesktop && floatingCardItem) {
+      setSelectedCardItem(floatingCardItem);
+      setFloatingCardItem(null);
+    }
+  }, [isDesktop, floatingCardItem]);
+
   const [recurringMovePrompt, setRecurringMovePrompt] = useState<{
     isOpen: boolean;
     activity?: DailyActivity;
@@ -2204,7 +2233,7 @@ export default function CalendarView({
               return (
                 <button key={item.id} type="button" title={title} draggable
                   className={`w-full truncate rounded border-l-2 px-2 py-1 text-left text-[11px] font-medium ${color.bgClass} ${color.borderClass} ${color.textClass} ${draggingCardId === item.id ? 'opacity-40' : 'opacity-100'}`}
-                  onClick={() => setFloatingCardItem(item.type === 'activity' && masterAct ? { ...item, act: masterAct } : item)}
+                  onClick={() => handleCardClick(item.type === 'activity' && masterAct ? { ...item, act: masterAct } : item)}
                   onDragStart={(event) => {
                     event.stopPropagation();
                     if (activity && pendingActivityMoveIdsRef.current.has(activity.id)) {
@@ -2351,7 +2380,7 @@ export default function CalendarView({
           const targetItem = isAct
             ? { ...item, act: masterAct ?? item.act }
             : item;
-          setFloatingCardItem(targetItem);
+          handleCardClick(targetItem);
         }}
         onDragOver={(e) => {
           e.preventDefault();
@@ -3039,30 +3068,42 @@ export default function CalendarView({
       )}
         </div>
 
-        {/* Kolom Kanan: Sidebar Item belum terjadwal + Settings Card Terpilih (Desktop) */}
+        {/* Kolom Kanan: Sidebar Kalendar & Pengaturan Card (Desktop) */}
         <div className="hidden lg:flex sticky top-6 w-80 shrink-0 flex-col gap-3 self-start">
-          <CalendarSidebar
-            activities={activities}
-            onRefresh={onRefreshActivities}
-            onScheduleItem={handleScheduleFromSidebar}
-            activeCalendarDate={selectedDate}
-          />
-
-          {selectedCardItem && (
-            <CalendarCardSettings
-              selectedItem={selectedCardItem}
-              onClose={() => setSelectedCardItem(null)}
-              onOpenActivity={onOpenActivity}
-              onDelete={handleDeleteCard}
+          {selectedCardItem ? (
+            <div className="space-y-2 w-full">
+              <div className="flex items-center justify-between px-1">
+                <button
+                  type="button"
+                  onClick={() => setSelectedCardItem(null)}
+                  className="flex items-center gap-1.5 text-xs font-semibold text-perrific-violet hover:underline cursor-pointer"
+                >
+                  <ChevronLeft size={14} />
+                  <span>Kembali ke daftar item</span>
+                </button>
+              </div>
+              <CalendarCardSettings
+                selectedItem={selectedCardItem}
+                onClose={() => setSelectedCardItem(null)}
+                onOpenActivity={onOpenActivity}
+                onDelete={handleDeleteCard}
+                onRefresh={onRefreshActivities}
+                onRecordUndo={recordUndo}
+                onUndo={handleUndo}
+                getNextUndoId={() => nextUndoIdRef.current++}
+                onDateChanged={(newDate) => {
+                  onSelectDate(newDate);
+                  setCurrentYear(newDate.getFullYear());
+                  setCurrentMonth(newDate.getMonth());
+                }}
+              />
+            </div>
+          ) : (
+            <CalendarSidebar
+              activities={activities}
               onRefresh={onRefreshActivities}
-              onRecordUndo={recordUndo}
-              onUndo={handleUndo}
-              getNextUndoId={() => nextUndoIdRef.current++}
-              onDateChanged={(newDate) => {
-                onSelectDate(newDate);
-                setCurrentYear(newDate.getFullYear());
-                setCurrentMonth(newDate.getMonth());
-              }}
+              onScheduleItem={handleScheduleFromSidebar}
+              activeCalendarDate={selectedDate}
             />
           )}
         </div>
@@ -3116,8 +3157,8 @@ export default function CalendarView({
         </div>
       )}
 
-      {/* Floating Action Box Non-Blocking: Buka Pengaturan Card */}
-      {floatingCardItem && (
+      {/* Floating Action Box Non-Blocking: Buka Pengaturan Card (Mobile & Tablet) */}
+      {!isDesktop && floatingCardItem && (
         <CalendarFloatingCardAction
           item={floatingCardItem}
           onOpenSettings={() => {

@@ -34,7 +34,7 @@ export default function CalendarFloatingCardAction({
     <div
       role="region"
       aria-label="Aksi kartu kalender"
-      className="fixed bottom-5 inset-x-4 z-40 mx-auto max-w-md animate-in slide-in-from-bottom-3 duration-200"
+      className="fixed bottom-5 inset-x-4 z-40 mx-auto max-w-md animate-in slide-in-from-bottom-3 duration-200 lg:hidden"
     >
       <div className="flex items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white/95 px-4 py-3 shadow-[0_12px_36px_rgba(26,26,30,0.18)] backdrop-blur">
         <div className="min-w-0 flex-1">
