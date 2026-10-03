@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { projectApi } from '@/api/projects';
 import { taskApi } from '@/api/tasks';
@@ -7,6 +7,7 @@ import { showToast } from '@/components/ui/Toast';
 import ModalShell from '@/components/ui/ModalShell';
 import MenuPortal from '@/components/ui/MenuPortal';
 import KanbanBoard, { DEFAULT_BOARD_VIEW, loadBoardView, saveBoardView, type BoardView } from '@/components/kanban/KanbanBoard';
+import KanbanFloatingCardAction from '@/components/kanban/KanbanFloatingCardAction';
 import { APP_SIDEBAR_EVENT, isAppSidebarCollapsed } from '@/components/layout/AppLayout';
 import { PROJECT_SIDEBAR_EVENT, isProjectSidebarCollapsed } from '@/components/layout/ProjectLayout';
 import { PROJECT_UPDATED_EVENT } from '@/pages/ProjectSettingsPage';
@@ -31,6 +32,7 @@ function BoardPageInner() {
   const [columns, setColumns] = useState<BoardColumn[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<BoardView>(DEFAULT_BOARD_VIEW);
+  const [selectedFloatingTask, setSelectedFloatingTask] = useState<Task | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -758,16 +760,27 @@ function BoardPageInner() {
         onMove={moveTask}
         onReorder={reorderColumn}
         onOpen={(t) => {
-          // Navigasi relatif mengikuti layout asal: /board/:projectId memakai
-          // task/:taskId, tab kanban project memakai :taskId.
-          if (location.pathname.startsWith('/board/')) navigate(`task/${t.id}`);
-          else navigate(`${t.id}`);
+          setSelectedFloatingTask(t);
         }}
         onToggleCollapse={toggleCollapse}
         onAdd={openCreateFor}
         canAdd={isMember}
         view={view}
       />
+
+      {selectedFloatingTask && (
+        <KanbanFloatingCardAction
+          task={selectedFloatingTask}
+          columnName={columns.find((c) => c.id === selectedFloatingTask.columnId)?.name}
+          onOpenSettings={() => {
+            const t = selectedFloatingTask;
+            setSelectedFloatingTask(null);
+            if (location.pathname.startsWith('/board/')) navigate(`task/${t.id}`);
+            else navigate(`${t.id}`);
+          }}
+          onClose={() => setSelectedFloatingTask(null)}
+        />
+      )}
       <div aria-hidden="true" className="h-16" />
 
       <div
