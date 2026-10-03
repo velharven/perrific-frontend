@@ -1,4 +1,4 @@
-﻿import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/store/auth';
@@ -10,6 +10,7 @@ import UsernameModal from '@/components/auth/UsernameModal';
 import SortableTabRow from './SortableTabRow';
 import DropIndicator from './DropIndicator';
 import FloatingMobileBurger from './FloatingMobileBurger';
+import { useDisplayScale } from '@/hooks/useDisplayScale';
 import {
   DndContext,
   DragOverlay,
@@ -3204,6 +3205,7 @@ export function isAppSidebarCollapsed(): boolean {
 }
 
 export default function AppLayout() {
+  useDisplayScale();
   const { user } = useAuth();
   const { socket } = useSocket();
   const [open, setOpen] = useState(false);
