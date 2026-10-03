@@ -180,9 +180,7 @@ describe('TeamPage - Tab Usulan in Cell Pill', () => {
     });
   });
 
-  it('allows admin to reject a pending proposal with optional reason', async () => {
-    vi.spyOn(window, 'prompt').mockReturnValue('Belum prioritas');
-
+  it('allows admin to reject a pending proposal via RejectProposalModal with optional reason', async () => {
     renderTeamPage();
 
     await waitFor(() => {
@@ -191,10 +189,19 @@ describe('TeamPage - Tab Usulan in Cell Pill', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: /Usulan/i }));
 
-    const rejectBtn = screen.getByRole('button', { name: /Tolak/i });
+    const rejectBtn = screen.getByRole('button', { name: /^Tolak$/i });
     expect(rejectBtn).toBeTruthy();
 
     fireEvent.click(rejectBtn);
+
+    // Modal should now be open
+    expect(screen.getByText('Tolak Usulan Project')).toBeTruthy();
+
+    const textarea = screen.getByPlaceholderText(/Tuliskan alasan penolakan usulan/i);
+    fireEvent.change(textarea, { target: { value: 'Belum prioritas' } });
+
+    const confirmRejectBtn = screen.getByRole('button', { name: /^Tolak Usulan$/i });
+    fireEvent.click(confirmRejectBtn);
 
     await waitFor(() => {
       expect(teamApi.rejectProjectProposal).toHaveBeenCalledWith('team-1', 'prop-1', 'Belum prioritas');

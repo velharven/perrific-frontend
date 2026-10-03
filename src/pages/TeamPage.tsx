@@ -10,6 +10,7 @@ import { TEAMS_CHANGED_EVENT } from '@/hooks/useNavLabels';
 import { useAuth } from '@/store/auth';
 import { Briefcase } from 'lucide-react';
 import { KanbanSkeleton } from '@/components/ui/loading';
+import RejectProposalModal from '@/components/team/RejectProposalModal';
 import type { Project, Task, Team, ProjectProposal } from '@/types';
 
 type TaskWithProject = Task & { projectName: string; projectId: string };
@@ -151,13 +152,15 @@ export default function TeamPage() {
     }
   }
 
-  async function handleRejectProposal(proposal: ProjectProposal) {
-    if (!teamId) return;
-    const reason = window.prompt('Alasan penolakan (opsional):') ?? undefined;
-    setActionProposalId(proposal.id);
+  const [rejectingProposal, setRejectingProposal] = useState<ProjectProposal | null>(null);
+
+  async function handleConfirmReject(reason?: string) {
+    if (!teamId || !rejectingProposal) return;
+    setActionProposalId(rejectingProposal.id);
     try {
-      await teamApi.rejectProjectProposal(teamId, proposal.id, reason);
-      showToast(`Usulan project "${proposal.name}" ditolak.`);
+      await teamApi.rejectProjectProposal(teamId, rejectingProposal.id, reason);
+      showToast(`Usulan project "${rejectingProposal.name}" ditolak.`);
+      setRejectingProposal(null);
       await refresh(teamId);
     } catch {
       showToast('Gagal menolak usulan project.');
@@ -479,7 +482,7 @@ export default function TeamPage() {
                         <button
                           type="button"
                           disabled={actionProposalId === prop.id}
-                          onClick={() => void handleRejectProposal(prop)}
+                          onClick={() => setRejectingProposal(prop)}
                           className="rounded-lg border border-red-200 bg-red-50 px-3.5 py-1.5 font-manrope text-xs font-semibold text-red-600 transition hover:bg-red-100 disabled:opacity-50 cursor-pointer"
                         >
                           Tolak
@@ -555,6 +558,13 @@ export default function TeamPage() {
           }}
         />
       )}
+
+      <RejectProposalModal
+        proposal={rejectingProposal}
+        submitting={actionProposalId === rejectingProposal?.id}
+        onClose={() => setRejectingProposal(null)}
+        onConfirm={handleConfirmReject}
+      />
     </div>
   );
 }

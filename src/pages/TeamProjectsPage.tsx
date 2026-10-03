@@ -1,9 +1,10 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { teamApi } from '@/api/teams';
 import { projectApi } from '@/api/projects';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import CreateProjectModal from '@/components/project/CreateProjectModal';
+import RejectProposalModal from '@/components/team/RejectProposalModal';
 import { PROJECT_UPDATED_EVENT } from '@/pages/ProjectSettingsPage';
 import { useAuth } from '@/store/auth';
 import { showToast } from '@/components/ui/Toast';
@@ -19,6 +20,7 @@ export default function TeamProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [proposals, setProposals] = useState<ProjectProposal[]>([]);
   const [actionProposalId, setActionProposalId] = useState<string | null>(null);
+  const [rejectingProposal, setRejectingProposal] = useState<ProjectProposal | null>(null);
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
   const [drafts, setDrafts] = useState<Record<string, { name: string; description: string; status: Project['status'] }>>({});
@@ -109,13 +111,13 @@ export default function TeamProjectsPage() {
     }
   }
 
-  async function handleRejectProposal(proposal: ProjectProposal) {
-    if (!teamId) return;
-    const reason = window.prompt('Alasan penolakan (opsional):') ?? undefined;
-    setActionProposalId(proposal.id);
+  async function handleConfirmReject(reason?: string) {
+    if (!teamId || !rejectingProposal) return;
+    setActionProposalId(rejectingProposal.id);
     try {
-      await teamApi.rejectProjectProposal(teamId, proposal.id, reason);
-      showToast(`Usulan project "${proposal.name}" ditolak.`);
+      await teamApi.rejectProjectProposal(teamId, rejectingProposal.id, reason);
+      showToast(`Usulan project "${rejectingProposal.name}" ditolak.`);
+      setRejectingProposal(null);
       await refresh(teamId);
     } catch {
       showToast('Gagal menolak usulan project.');
@@ -204,8 +206,8 @@ export default function TeamProjectsPage() {
                     <button
                       type="button"
                       disabled={actionProposalId === prop.id}
-                      onClick={() => handleRejectProposal(prop)}
-                      className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 font-manrope text-xs font-semibold text-red-600 transition hover:bg-red-100 disabled:opacity-50"
+                      onClick={() => setRejectingProposal(prop)}
+                      className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 font-manrope text-xs font-semibold text-red-600 transition hover:bg-red-100 disabled:opacity-50 cursor-pointer"
                     >
                       Tolak
                     </button>
@@ -398,6 +400,13 @@ export default function TeamProjectsPage() {
           onCreated={() => void handleCreated()}
         />
       )}
+
+      <RejectProposalModal
+        proposal={rejectingProposal}
+        submitting={actionProposalId === rejectingProposal?.id}
+        onClose={() => setRejectingProposal(null)}
+        onConfirm={handleConfirmReject}
+      />
     </div>
   );
 }
