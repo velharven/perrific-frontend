@@ -7,6 +7,7 @@ import Avatar from '@/components/ui/Avatar';
 import { SettingsBlock } from '@/components/ui/SettingsShell';
 import { fileToAvatarDataUrl } from '@/lib/avatar';
 import { useGoogleCalendar } from '@/hooks/useGoogleCalendar';
+import DisplayScaleSettings from '@/components/settings/DisplayScaleSettings';
 
 function apiMessage(e: unknown, fallback: string): string {
   if (typeof e === 'object' && e !== null && 'response' in e) {
@@ -344,6 +345,8 @@ export default function SettingsPage() {
           </div>
         </form>
         </SettingsBlock>
+
+        <DisplayScaleSettings />
 
         <SettingsBlock
           title="Integrasi Google Calendar"
