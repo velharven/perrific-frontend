@@ -1,6 +1,6 @@
-﻿import { useState } from 'react';
-import { LogOut } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { LogOut, ShieldCheck } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/store/auth';
 import { useUsernameAvailability } from '@/hooks/useUsernameAvailability';
 import Avatar from '@/components/ui/Avatar';
@@ -426,6 +426,15 @@ export default function SettingsPage() {
                 {gcalError}
               </p>
             )}
+            <div className="flex items-center gap-1.5 pt-1 text-[11px] text-perrific-graphite/60 font-manrope">
+              <ShieldCheck size={13} className="shrink-0 text-perrific-wood" />
+              <span>
+                Koneksi dienkripsi dengan AES-256-GCM dan mematuhi Kebijakan Penggunaan Terbatas Google API.{' '}
+                <Link to="/privacy" className="text-perrific-violet font-medium underline underline-offset-2 hover:text-[#E64D0A] transition">
+                  Pelajari selengkapnya di Kebijakan Privasi
+                </Link>
+              </span>
+            </div>
           </div>
         </SettingsBlock>
 

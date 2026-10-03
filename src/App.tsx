@@ -27,6 +27,8 @@ import PrivatRedirect from '@/pages/PrivatRedirect';
 import DailyInstancePage from '@/pages/DailyInstancePage';
 import TablePage from '@/pages/TablePage';
 import OrganizationPage from '@/pages/OrganizationPage';
+import PrivacyPolicyPage from '@/pages/PrivacyPolicyPage';
+import TermsOfServicePage from '@/pages/TermsOfServicePage';
 
 export default function App() {
   const googleClientId = getGoogleClientId();
@@ -40,6 +42,8 @@ export default function App() {
               <Route path="/" element={<LandingPage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
+              <Route path="/privacy" element={<PrivacyPolicyPage />} />
+              <Route path="/terms" element={<TermsOfServicePage />} />
 
               <Route element={<ProtectedRoute />}>
                 <Route path="/join/:code" element={<JoinPage />} />

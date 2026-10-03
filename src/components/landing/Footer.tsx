@@ -1,4 +1,5 @@
-﻿import { ChevronRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ChevronRight } from 'lucide-react';
 
 export default function Footer() {
   return (
@@ -83,6 +84,16 @@ export default function Footer() {
           <div>
             <p className="font-mono text-[11px] tracking-widest text-perrific-wood">INFO</p>
             <ul className="mt-4 space-y-2.5 font-manrope text-sm">
+              <li>
+                <Link to="/privacy" className="text-perrific-graphite/70 hover:text-perrific-violet transition">
+                  Kebijakan Privasi
+                </Link>
+              </li>
+              <li>
+                <Link to="/terms" className="text-perrific-graphite/70 hover:text-perrific-violet transition">
+                  Syarat & Ketentuan
+                </Link>
+              </li>
               <li className="text-perrific-graphite/40">PRD v1.0 — 3 Agu 2026</li>
               <li className="font-mono text-xs text-perrific-graphite/40">© 2026 Purrific</li>
             </ul>
