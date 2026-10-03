@@ -51,8 +51,15 @@ Purrific telah mengimplementasikan sistem penskalaan desktop adaptif berbasis ac
     Pengguna dapat melakukan scrolling horizontal antar kolom dan scrolling vertikal isi kolom tanpa memicu drag secara tidak sengaja.
   - Kartu yang sedang di-drag menampilkan bayangan terangkat dan opacity 90%.
 - **Lebar Kolom & Layout di HP**:
-  - Kolom menggunakan lebar `w-[84vw] sm:w-80 shrink-0` dengan container `overflow-x-auto nice-scroll pb-20 sm:pb-6`.
-  - Margin bawah ekstra (`pb-20`) mencegah kartu paling bawah tertutup oleh floating pill project switcher.
+  - Kolom menggunakan lebar `w-[84vw] sm:w-80 shrink-0` dengan container `overflow-x-auto nice-scroll pb-24 sm:pb-8`.
+  - Margin bawah ekstra (`pb-24`) mencegah kartu paling bawah tertutup oleh floating pill project switcher atau preview banner.
+- **Kotak Aksi Mengambang Non-Blocking ("Buka Pengaturan Card")**:
+  - Saat kartu task di-tap/klik, aplikasi tidak langsung memblokir layar dengan modal penuh.
+  - Sebuah kotak mengambang (*floating action box*) muncul di bagian bawah layar (`fixed bottom-4 inset-x-4 max-w-md mx-auto z-40`):
+    - Berisi judul task dan tombol utama berlabel **"Buka Pengaturan Card"**.
+    - Tombol tutup (`×`) untuk menutup kotak.
+    - **Tanpa backdrop overlay pemblokir**: Pengguna tetap dapat men-scroll board kanban secara bebas saat kotak ini muncul.
+    - Menekan tombol "Buka Pengaturan Card" akan membuka modal detail task penuh.
 - **Menu Alternatif "Pindah Status"**:
   - Di modal detail task ([`TaskDetailPage.tsx`](file:///c:/Users/VelHarven/Music/Ta/purrific-frontend/src/pages/TaskDetailPage.tsx)), pemilih status kolom disediakan secara mencolok sehingga pemindahan task bisa dilakukan dengan 1 kali tap tanpa harus drag melintasi kolom.
 
@@ -62,6 +69,11 @@ Purrific telah mengimplementasikan sistem penskalaan desktop adaptif berbasis ac
   - Tampilan Hari menyajikan timeline vertikal per jam (00:00 - 23:00) yang lapang dan mudah diklik untuk membuat/mengedit jadwal.
 - **Tampilan Minggu (Week View) di HP**:
   - Saat pengguna memilih mode Minggu di HP, grid hari tidak ditekan ke dalam 1 layar, melainkan memiliki pembungkus `overflow-x-auto nice-scroll` dengan lebar kolom minimal `min-w-[120px]` per hari (`grid-cols-[56px_repeat(7,minmax(120px,1fr))]`).
+- **Kotak Aksi Mengambang Non-Blocking ("Buka Pengaturan Card")**:
+  - Saat kartu jadwal di-tap/klik pada kalender, sistem memunculkan kotak mengambang di bawah layar (`fixed bottom-4 inset-x-4 max-w-md mx-auto z-40`).
+  - Menampilkan ringkasan kegiatan dan tombol aksi jelas: **"Buka Pengaturan Card"**.
+  - **Dapat di-scroll secara bebas**: Kotak ini tidak menggunakan backdrop overlay gelap yang memblokir layar, sehingga pengguna tetap bisa men-scroll jadwal/timeline kalender secara bebas meskipun kotak aksi sedang tampil.
+  - Menekan "Buka Pengaturan Card" akan membuka modal/bottom-sheet pengaturan kartu kegiatan (`CalendarCardSettings`).
 - **Laci Tugas Belum Terjadwal (Unscheduled Tasks Drawer)**:
   - Di HP, tombol "Tugas belum terjadwal" membuka bottom drawer atau modal ringkas agar pengguna bisa memilih tugas untuk dimasukkan ke jam tertentu.
 
