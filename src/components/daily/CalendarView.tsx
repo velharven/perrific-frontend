@@ -6,6 +6,7 @@ import { calendarApi } from '@/api/calendar';
 import { showToast } from '@/components/ui/Toast';
 import CalendarSidebar from './CalendarSidebar';
 import CalendarCardSettings, { type CombinedItem, type CalendarUndoAction } from './CalendarCardSettings';
+import CalendarFloatingCardAction from './CalendarFloatingCardAction';
 import RecurrenceScopeModal from './RecurrenceScopeModal';
 import { doesActivityOccurOnDate, getDayBefore, getNthWeekdayInfo, projectActivityOntoDate } from '@/lib/recurrence';
 import { getCalendarColorMeta } from '@/lib/calendarColors';
@@ -305,6 +306,7 @@ export default function CalendarView({
   }, []);
   const [selectedEvent, setSelectedEvent] = useState<GoogleCalendarEvent | null>(null);
   const [selectedCardItem, setSelectedCardItem] = useState<CombinedItem | null>(null);
+  const [floatingCardItem, setFloatingCardItem] = useState<CombinedItem | null>(null);
   const [importing, setImporting] = useState(false);
   const [now, setNow] = useState(new Date());
 
@@ -591,6 +593,8 @@ export default function CalendarView({
   // Ref untuk item yang sedang dipilih agar event listener selalu mendapatkan nilai terbaru
   const selectedCardItemRef = useRef<CombinedItem | null>(null);
   selectedCardItemRef.current = selectedCardItem;
+  const floatingCardItemRef = useRef<CombinedItem | null>(null);
+  floatingCardItemRef.current = floatingCardItem;
 
   // Stack riwayat untuk undo (Ctrl+Z)
   const undoStackRef = useRef<CalendarUndoAction[]>([]);
@@ -1979,18 +1983,21 @@ export default function CalendarView({
       }
 
       // Pintasan Hapus: Delete atau Backspace saat ada kartu yang dipilih
-      if (selectedCardItemRef.current && (e.key === 'Delete' || e.key === 'Backspace')) {
+      const currentCard = selectedCardItemRef.current || floatingCardItemRef.current;
+      if (currentCard && (e.key === 'Delete' || e.key === 'Backspace')) {
         e.preventDefault();
         e.stopImmediatePropagation();
-        void handleDeleteCard(selectedCardItemRef.current);
+        void handleDeleteCard(currentCard);
         return;
       }
 
       // Pintasan Escape: Deselect kartu terpilih
-      if (e.key === 'Escape' && selectedCardItemRef.current) {
+      if (e.key === 'Escape' && (selectedCardItemRef.current || floatingCardItemRef.current)) {
         e.preventDefault();
         selectedCardItemRef.current = null;
+        floatingCardItemRef.current = null;
         setSelectedCardItem(null);
+        setFloatingCardItem(null);
         return;
       }
 
@@ -2197,7 +2204,7 @@ export default function CalendarView({
               return (
                 <button key={item.id} type="button" title={title} draggable
                   className={`w-full truncate rounded border-l-2 px-2 py-1 text-left text-[11px] font-medium ${color.bgClass} ${color.borderClass} ${color.textClass} ${draggingCardId === item.id ? 'opacity-40' : 'opacity-100'}`}
-                  onClick={() => setSelectedCardItem(item.type === 'activity' && masterAct ? { ...item, act: masterAct } : item)}
+                  onClick={() => setFloatingCardItem(item.type === 'activity' && masterAct ? { ...item, act: masterAct } : item)}
                   onDragStart={(event) => {
                     event.stopPropagation();
                     if (activity && pendingActivityMoveIdsRef.current.has(activity.id)) {
@@ -2341,14 +2348,10 @@ export default function CalendarView({
         onDragEnd={clearDragState}
         onClick={(e) => {
           e.stopPropagation();
-          if (isAct) {
-            setSelectedCardItem({
-              ...item,
-              act: masterAct ?? item.act,
-            });
-          } else {
-            setSelectedCardItem(item);
-          }
+          const targetItem = isAct
+            ? { ...item, act: masterAct ?? item.act }
+            : item;
+          setFloatingCardItem(targetItem);
         }}
         onDragOver={(e) => {
           e.preventDefault();
@@ -3113,7 +3116,18 @@ export default function CalendarView({
         </div>
       )}
 
-
+      {/* Floating Action Box Non-Blocking: Buka Pengaturan Card */}
+      {floatingCardItem && (
+        <CalendarFloatingCardAction
+          item={floatingCardItem}
+          onOpenSettings={() => {
+            const it = floatingCardItem;
+            setFloatingCardItem(null);
+            setSelectedCardItem(it);
+          }}
+          onClose={() => setFloatingCardItem(null)}
+        />
+      )}
 
       {/* ============================================================== */}
       {/* 5. MODAL DETAIL EVENT GOOGLE CALENDAR                           */}

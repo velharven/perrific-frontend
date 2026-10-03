@@ -1839,6 +1839,10 @@ describe("Notion-style lifecycle sync", () => {
       const card = screen.getByText("Meeting Penting");
       fireEvent.click(card);
 
+      // Buka pengaturan via tombol floating action box
+      const openSettingsBtn = screen.getByRole("button", { name: "Buka Pengaturan Card" });
+      fireEvent.click(openSettingsBtn);
+
       // Modal bottom-sheet settings harus muncul
       const settingsList = screen.getAllByTestId("calendar-card-settings");
       expect(settingsList.length).toBeGreaterThanOrEqual(1);
@@ -1926,6 +1930,8 @@ describe("Notion-style lifecycle sync", () => {
 
       // Buka modal settings dengan klik kartu
       fireEvent.click(screen.getByText("Event Pindah Hari"));
+      const openSettingsBtn = screen.getByRole("button", { name: "Buka Pengaturan Card" });
+      fireEvent.click(openSettingsBtn);
 
       // Klik tombol mock pindah tanggal
       const moveButtons = screen.getAllByRole("button", { name: "Mock Pindah Tanggal" });
