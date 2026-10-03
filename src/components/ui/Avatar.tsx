@@ -1,4 +1,5 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { User } from 'lucide-react';
 
 type AvatarProps = {
   src?: string | null;
@@ -6,16 +7,24 @@ type AvatarProps = {
   alt?: string;
   size?: number;
   className?: string;
+  fallback?: 'initial' | 'silhouette';
 };
 
 /**
  * Avatar aman untuk Google lh3.googleusercontent.com:
  * - referrerPolicy="no-referrer" mencegah 403 di beberapa browser/laptop
  *   yang mengirim Referer (penyebab "di laptop lain muncul, di sini tidak")
- * - onError fallback ke inisial agar tidak tampil broken image
+ * - onError fallback ke inisial atau siluet ikon agar tidak tampil broken image
  * - tidak menimpa foto custom data:image/... dari /settings
  */
-export default function Avatar({ src, name, alt, size = 36, className = '' }: AvatarProps) {
+export default function Avatar({
+  src,
+  name,
+  alt,
+  size = 36,
+  className = '',
+  fallback = 'initial',
+}: AvatarProps) {
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
@@ -46,6 +55,20 @@ export default function Avatar({ src, name, alt, size = 36, className = '' }: Av
           decoding="async"
           draggable={false}
         />
+      </span>
+    );
+  }
+
+  if (fallback === 'silhouette') {
+    const iconSize = Math.max(12, Math.round(size * 0.55));
+    return (
+      <span
+        aria-hidden="true"
+        data-testid="avatar-silhouette"
+        className={`flex shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500 border border-gray-200/80 ${className}`}
+        style={{ width: dimension, height: dimension }}
+      >
+        <User size={iconSize} strokeWidth={2} />
       </span>
     );
   }

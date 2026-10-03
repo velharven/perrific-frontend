@@ -5,6 +5,7 @@ import { projectApi } from '@/api/projects';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import CreateProjectModal from '@/components/project/CreateProjectModal';
 import RejectProposalModal from '@/components/team/RejectProposalModal';
+import ProjectProposalCard from '@/components/team/ProjectProposalCard';
 import { PROJECT_UPDATED_EVENT } from '@/pages/ProjectSettingsPage';
 import { useAuth } from '@/store/auth';
 import { showToast } from '@/components/ui/Toast';
@@ -161,59 +162,16 @@ export default function TeamProjectsPage() {
             </span>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-3">
             {proposals.map((prop) => (
-              <div
+              <ProjectProposalCard
                 key={prop.id}
-                className="flex flex-col gap-2 rounded-xl border border-amber-100 bg-white p-3.5 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-manrope text-sm font-bold text-perrific-graphite">{prop.name}</h3>
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                        prop.status === 'APPROVED'
-                          ? 'bg-emerald-100 text-emerald-700'
-                          : prop.status === 'REJECTED'
-                            ? 'bg-red-100 text-red-600'
-                            : 'bg-amber-100 text-amber-700'
-                      }`}
-                    >
-                      {prop.status === 'APPROVED' ? 'Disetujui' : prop.status === 'REJECTED' ? 'Ditolak' : 'Menunggu Approval'}
-                    </span>
-                  </div>
-                  {prop.description && (
-                    <p className="mt-0.5 text-xs text-gray-500">{prop.description}</p>
-                  )}
-                  <p className="mt-1 text-[11px] text-gray-400">
-                    Organisasi: <strong className="text-gray-600">{prop.organization?.name}</strong> • Diajukan oleh: {prop.createdBy?.name}
-                  </p>
-                  {prop.rejectionReason && (
-                    <p className="mt-1 text-[11px] text-red-600">Alasan: {prop.rejectionReason}</p>
-                  )}
-                </div>
-
-                {prop.status === 'PENDING' && isAdmin && (
-                  <div className="flex shrink-0 items-center gap-2 pt-2 sm:pt-0">
-                    <button
-                      type="button"
-                      disabled={actionProposalId === prop.id}
-                      onClick={() => handleApproveProposal(prop)}
-                      className="rounded-lg bg-emerald-600 px-3 py-1.5 font-manrope text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-50"
-                    >
-                      {actionProposalId === prop.id ? 'Memproses...' : 'Setujui'}
-                    </button>
-                    <button
-                      type="button"
-                      disabled={actionProposalId === prop.id}
-                      onClick={() => setRejectingProposal(prop)}
-                      className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 font-manrope text-xs font-semibold text-red-600 transition hover:bg-red-100 disabled:opacity-50 cursor-pointer"
-                    >
-                      Tolak
-                    </button>
-                  </div>
-                )}
-              </div>
+                proposal={prop}
+                isAdmin={isAdmin}
+                isProcessing={actionProposalId === prop.id}
+                onApprove={(p) => handleApproveProposal(p)}
+                onReject={(p) => setRejectingProposal(p)}
+              />
             ))}
           </div>
         </div>

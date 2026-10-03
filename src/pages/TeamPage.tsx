@@ -11,6 +11,7 @@ import { useAuth } from '@/store/auth';
 import { Briefcase } from 'lucide-react';
 import { KanbanSkeleton } from '@/components/ui/loading';
 import RejectProposalModal from '@/components/team/RejectProposalModal';
+import ProjectProposalCard from '@/components/team/ProjectProposalCard';
 import type { Project, Task, Team, ProjectProposal } from '@/types';
 
 type TaskWithProject = Task & { projectName: string; projectId: string };
@@ -434,62 +435,16 @@ export default function TeamPage() {
                 <p className="mt-1 text-xs text-gray-500">Belum ada usulan project dari organisasi untuk tim ini.</p>
               </div>
             ) : (
-              <div className="space-y-2.5">
+              <div className="space-y-3">
                 {proposals.map((prop) => (
-                  <div
+                  <ProjectProposalCard
                     key={prop.id}
-                    className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-2xs sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="font-manrope text-sm font-bold text-perrific-graphite">{prop.name}</h3>
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                            prop.status === 'APPROVED'
-                              ? 'bg-emerald-100 text-emerald-700'
-                              : prop.status === 'REJECTED'
-                                ? 'bg-red-100 text-red-600'
-                                : 'bg-amber-100 text-amber-700'
-                          }`}
-                        >
-                          {prop.status === 'APPROVED' ? 'Disetujui' : prop.status === 'REJECTED' ? 'Ditolak' : 'Menunggu Approval'}
-                        </span>
-                      </div>
-                      {prop.description && (
-                        <p className="mt-1 text-xs text-gray-600">{prop.description}</p>
-                      )}
-                      <p className="mt-2 text-[11px] text-gray-400">
-                        Organisasi: <strong className="text-gray-600">{prop.organization?.name ?? '—'}</strong>
-                        {prop.createdBy?.name && (
-                          <> • Diajukan oleh: <strong className="text-gray-600">{prop.createdBy.name}</strong></>
-                        )}
-                      </p>
-                      {prop.rejectionReason && (
-                        <p className="mt-1 text-[11px] text-red-600">Alasan: {prop.rejectionReason}</p>
-                      )}
-                    </div>
-
-                    {prop.status === 'PENDING' && isAdmin && (
-                      <div className="flex shrink-0 items-center gap-2 pt-2 sm:pt-0">
-                        <button
-                          type="button"
-                          disabled={actionProposalId === prop.id}
-                          onClick={() => void handleApproveProposal(prop)}
-                          className="rounded-lg bg-emerald-600 px-3.5 py-1.5 font-manrope text-xs font-semibold text-white shadow-xs transition hover:bg-emerald-700 disabled:opacity-50 cursor-pointer"
-                        >
-                          {actionProposalId === prop.id ? 'Memproses...' : 'Setujui'}
-                        </button>
-                        <button
-                          type="button"
-                          disabled={actionProposalId === prop.id}
-                          onClick={() => setRejectingProposal(prop)}
-                          className="rounded-lg border border-red-200 bg-red-50 px-3.5 py-1.5 font-manrope text-xs font-semibold text-red-600 transition hover:bg-red-100 disabled:opacity-50 cursor-pointer"
-                        >
-                          Tolak
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                    proposal={prop}
+                    isAdmin={isAdmin}
+                    isProcessing={actionProposalId === prop.id}
+                    onApprove={(p) => void handleApproveProposal(p)}
+                    onReject={(p) => setRejectingProposal(p)}
+                  />
                 ))}
               </div>
             )}
