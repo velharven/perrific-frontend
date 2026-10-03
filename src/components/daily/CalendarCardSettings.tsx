@@ -14,6 +14,7 @@ import { calendarApi } from '@/api/calendar';
 import {
   DAY_NAMES_ID,
   DAY_PILLS_ID,
+  findFirstMatchingRecurrenceDate,
   formatRecurrenceLabel,
   getDayBefore,
   getNthWeekdayInfo,
@@ -493,12 +494,23 @@ export default function CalendarCardSettings({
     const effectiveAllDay = override?.allDay !== undefined ? override.allDay : isAllDay;
     const effectiveRecurrence =
       override?.nextRecurrence !== undefined ? override.nextRecurrence : recurrence;
-    const effectiveDateStr =
+    let effectiveDateStr =
       override?.nextDateStr !== undefined
         ? override.nextDateStr
         : isAct && act && (isRepeating || Boolean(effectiveRecurrence))
           ? toDateInputValue(act.date || act.startTime || dateStr)
           : dateStr;
+
+    if (effectiveRecurrence && !effectiveRecurrence.isException && effectiveRecurrence.freq) {
+      const anchor = toLocalMidnight(effectiveDateStr);
+      const firstValidDate = findFirstMatchingRecurrenceDate(anchor, effectiveRecurrence);
+      const computedDateStr = toDateInputValue(firstValidDate);
+      if (computedDateStr !== effectiveDateStr) {
+        effectiveDateStr = computedDateStr;
+        setDateStr(computedDateStr);
+        onDateChanged?.(firstValidDate);
+      }
+    }
     const effectiveColor =
       override?.nextColor !== undefined ? override.nextColor : color;
     const effectiveStartTimeStr = override?.nextStartTimeStr ?? startTimeStr;
@@ -1048,9 +1060,16 @@ export default function CalendarCardSettings({
       nextConfig.count = Math.max(1, Number(customCount) || 1);
     }
 
+    const firstValidDate = findFirstMatchingRecurrenceDate(anchor, nextConfig);
+    const nextDateStr = toDateInputValue(firstValidDate);
+
     setRecurrence(nextConfig);
     setCustomModalOpen(false);
-    void handleSave({ nextRecurrence: nextConfig });
+    if (nextDateStr !== dateStr) {
+      setDateStr(nextDateStr);
+      onDateChanged?.(firstValidDate);
+    }
+    void handleSave({ nextRecurrence: nextConfig, nextDateStr });
   };
 
   // Hapus kegiatan
@@ -1498,9 +1517,23 @@ export default function CalendarCardSettings({
                   key={preset.id}
                   type="button"
                   onClick={() => {
+                    let nextDateStr: string | undefined = undefined;
+                    if (preset.config) {
+                      const anchor = toLocalMidnight(dateStr || new Date());
+                      const firstValidDate = findFirstMatchingRecurrenceDate(anchor, preset.config);
+                      const computedDateStr = toDateInputValue(firstValidDate);
+                      if (computedDateStr !== dateStr) {
+                        nextDateStr = computedDateStr;
+                        setDateStr(computedDateStr);
+                        onDateChanged?.(firstValidDate);
+                      }
+                    }
                     setRecurrence(preset.config);
                     setRepeatMenuOpen(false);
-                    void handleSave({ nextRecurrence: preset.config });
+                    void handleSave({
+                      nextRecurrence: preset.config,
+                      ...(nextDateStr ? { nextDateStr } : {}),
+                    });
                   }}
                   className={`flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs transition cursor-pointer ${
                     selected

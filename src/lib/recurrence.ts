@@ -458,3 +458,30 @@ export function getDayBefore(dateInput: Date | string): string {
   return `${year}-${month}-${day}`;
 }
 
+export function findFirstMatchingRecurrenceDate(
+  anchorDateInput: Date | string,
+  recurrence: RecurrenceConfig | null | undefined,
+): Date {
+  const anchor = toLocalMidnight(anchorDateInput);
+  if (!recurrence || recurrence.isException || !recurrence.freq) {
+    return anchor;
+  }
+
+  // Jika tanggal anchor sudah memenuhi aturan perulangan, gunakan langsung
+  if (doesActivityOccurOnDate(anchor, recurrence, anchor)) {
+    return anchor;
+  }
+
+  // Jika tidak memenuhi (misal dibuat hari Minggu tapi perulangan Senin, Selasa, Kamis, Jumat),
+  // cari tanggal kemunculan pertama pada hari berikutnya yang memenuhi aturan perulangan.
+  const candidate = new Date(anchor);
+  for (let step = 1; step <= 366; step++) {
+    candidate.setDate(candidate.getDate() + 1);
+    if (doesActivityOccurOnDate(anchor, recurrence, candidate)) {
+      return candidate;
+    }
+  }
+
+  return anchor;
+}
+

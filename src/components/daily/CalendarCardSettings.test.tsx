@@ -263,4 +263,120 @@ describe('CalendarCardSettings (Notion-style recurring options)', () => {
       expect(onDateChanged).toHaveBeenCalledWith(expect.any(Date));
     });
   });
+
+  it('shifts Sunday anchor to Monday when setting custom repeat for Mon, Tue, Thu, Fri', async () => {
+    const onDateChanged = vi.fn();
+    const sundayActivity: DailyActivity = {
+      id: 'sunday-act-1',
+      userId: 'user-a',
+      title: 'Sunday Planning',
+      date: '2026-10-04T00:00:00.000Z', // 2026-10-04 is Sunday
+      startTime: '2026-10-04T10:00:00.000Z',
+      endTime: '2026-10-04T11:00:00.000Z',
+      type: 'CUSTOM',
+      status: 'PENDING',
+      order: 0,
+      checklistItems: [],
+    };
+    const item: CombinedItem = {
+      type: 'activity',
+      id: 'sunday-act-1',
+      act: sundayActivity,
+      instanceDate: '2026-10-04',
+    };
+
+    render(
+      <CalendarCardSettings
+        selectedItem={item}
+        onClose={onClose}
+        onRefresh={onRefresh}
+        onDateChanged={onDateChanged}
+      />,
+    );
+
+    // Open repeat menu
+    const repeatBtn = screen.getByRole('button', { name: 'Tidak berulang' });
+    fireEvent.click(repeatBtn);
+
+    // Click "Kustom..."
+    const customOption = screen.getByText('Kustom...');
+    fireEvent.click(customOption);
+
+    // In custom modal, select Mon, Tue, Thu, Fri and deselect Sunday
+    fireEvent.click(screen.getByTitle('Senin'));
+    fireEvent.click(screen.getByTitle('Selasa'));
+    fireEvent.click(screen.getByTitle('Kamis'));
+    fireEvent.click(screen.getByTitle('Jumat'));
+    fireEvent.click(screen.getByTitle('Minggu')); // Deselect Sunday
+
+    // Click "Selesai"
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Selesai' }));
+    });
+
+    await waitFor(() => {
+      expect(mocks.updateActivity).toHaveBeenCalledWith(
+        'sunday-act-1',
+        expect.objectContaining({
+          date: '2026-10-05T00:00:00.000Z',
+          recurrence: expect.objectContaining({
+            freq: 'WEEKLY',
+            byDays: [1, 2, 4, 5],
+          }),
+        }),
+      );
+    });
+  });
+
+  it('shifts Sunday anchor to Monday when selecting WEEKDAYS preset', async () => {
+    const onDateChanged = vi.fn();
+    const sundayActivity: DailyActivity = {
+      id: 'sunday-act-2',
+      userId: 'user-a',
+      title: 'Work Sprint',
+      date: '2026-10-04T00:00:00.000Z',
+      startTime: '2026-10-04T09:00:00.000Z',
+      endTime: '2026-10-04T10:00:00.000Z',
+      type: 'CUSTOM',
+      status: 'PENDING',
+      order: 0,
+      checklistItems: [],
+    };
+    const item: CombinedItem = {
+      type: 'activity',
+      id: 'sunday-act-2',
+      act: sundayActivity,
+      instanceDate: '2026-10-04',
+    };
+
+    render(
+      <CalendarCardSettings
+        selectedItem={item}
+        onClose={onClose}
+        onRefresh={onRefresh}
+        onDateChanged={onDateChanged}
+      />,
+    );
+
+    const repeatBtn = screen.getByRole('button', { name: 'Tidak berulang' });
+    fireEvent.click(repeatBtn);
+
+    const weekdaysOption = screen.getByText('Setiap hari kerja (Senin hingga Jumat)');
+    await act(async () => {
+      fireEvent.click(weekdaysOption);
+    });
+
+    await waitFor(() => {
+      expect(mocks.updateActivity).toHaveBeenCalledWith(
+        'sunday-act-2',
+        expect.objectContaining({
+          date: '2026-10-05T00:00:00.000Z',
+          recurrence: expect.objectContaining({
+            freq: 'WEEKLY',
+            byDays: [1, 2, 3, 4, 5],
+          }),
+        }),
+      );
+    });
+  });
 });
