@@ -5,11 +5,13 @@ import type { Task } from '@/types';
 
 const mockTask: Task = {
   id: 'task-1',
+  number: 1,
   title: 'Implementasi Fitur Responsif',
   description: 'Membuat tampilan responsif mobile',
-  status: 'IN_PROGRESS',
   priority: 'HIGH',
+  approval: 'APPROVED',
   columnId: 'col-2',
+  column: { id: 'col-2', name: 'In Progress', order: 2 },
   projectId: 'proj-1',
   order: 1,
   assignees: [],

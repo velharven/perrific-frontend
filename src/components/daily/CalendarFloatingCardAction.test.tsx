@@ -6,12 +6,18 @@ import type { CombinedItem } from './CalendarCardSettings';
 const mockItem: CombinedItem = {
   id: 'activity-1',
   type: 'activity',
-  title: 'Meeting Proyek Purrific',
-  date: '2026-10-03',
-  startTime: '09:00',
-  endTime: '10:30',
-  description: 'Membahas responsivitas mobile',
-  recurrence: 'NONE',
+  act: {
+    id: 'activity-1',
+    userId: 'user-1',
+    title: 'Meeting Proyek Purrific',
+    startTime: '09:00',
+    endTime: '10:30',
+    description: 'Membahas responsivitas mobile',
+    createdAt: '2026-10-03T00:00:00Z',
+    updatedAt: '2026-10-03T00:00:00Z',
+  } as any,
+  time: '09:00',
+  instanceDate: '2026-10-03',
 };
 
 describe('CalendarFloatingCardAction Component', () => {

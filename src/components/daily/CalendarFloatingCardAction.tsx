@@ -10,6 +10,26 @@ export default function CalendarFloatingCardAction({
   onOpenSettings: () => void;
   onClose: () => void;
 }) {
+  const title = item.type === 'activity' ? item.act.title : item.gEv.title || 'Event Google';
+  const startTime = item.type === 'activity' ? item.act.startTime : item.gEv.start;
+  const endTime = item.type === 'activity' ? item.act.endTime : item.gEv.end;
+
+  const formatTime = (isoOrTime?: string | null) => {
+    if (!isoOrTime) return '';
+    if (isoOrTime.includes('T')) {
+      const d = new Date(isoOrTime);
+      if (isNaN(d.getTime())) return '';
+      return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    }
+    return isoOrTime.slice(0, 5);
+  };
+
+  const startFormatted = formatTime(startTime);
+  const endFormatted = formatTime(endTime);
+  const timeLabel = startFormatted
+    ? `${startFormatted}${endFormatted ? ` – ${endFormatted}` : ''}`
+    : '';
+
   return (
     <div
       role="region"
@@ -18,10 +38,12 @@ export default function CalendarFloatingCardAction({
     >
       <div className="flex items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white/95 px-4 py-3 shadow-[0_12px_36px_rgba(26,26,30,0.18)] backdrop-blur">
         <div className="min-w-0 flex-1">
-          <p className="truncate font-manrope text-xs font-bold text-perrific-graphite">{item.title}</p>
-          <p className="truncate font-mono text-[11px] text-gray-500">
-            {item.startTime} {item.endTime ? `– ${item.endTime}` : ''}
-          </p>
+          <p className="truncate font-manrope text-xs font-bold text-perrific-graphite">{title}</p>
+          {timeLabel && (
+            <p className="truncate font-mono text-[11px] text-gray-500">
+              {timeLabel}
+            </p>
+          )}
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <button
