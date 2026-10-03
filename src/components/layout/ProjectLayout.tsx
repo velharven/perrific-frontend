@@ -4,10 +4,11 @@ import { projectApi } from '@/api/projects';
 import { teamApi } from '@/api/teams';
 import { APPROVALS_CHANGED_EVENT } from '@/components/team/ApprovalLists';
 import { ActivityIcon } from '@/components/icons';
-import { PanelLeftOpen, ChevronRight, Home, Settings } from 'lucide-react';
+import { PanelLeftOpen, ChevronRight, ChevronLeft, Home, X } from 'lucide-react';
 import { PROJECT_UPDATED_EVENT } from '@/pages/ProjectSettingsPage';
 import { useAuth } from '@/store/auth';
 import { useDisplayScale } from '@/hooks/useDisplayScale';
+import FloatingMobileBurger from './FloatingMobileBurger';
 import type { Project } from '@/types';
 
 const tabs = [
@@ -39,10 +40,15 @@ export default function ProjectLayout() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [approvalCount, setApprovalCount] = useState(0);
   const [collapsed, setCollapsed] = useState<boolean>(isProjectSidebarCollapsed);
+  const [mobileOpen, setMobileOpen] = useState(false);
   // Layar loading singkat tiap pindah tab agar transisi terasa halus.
   const [switching, setSwitching] = useState(false);
   const firstRender = useRef(true);
   const switchTimer = useRef<number | null>(null);
+
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [location.pathname]);
 
   useEffect(() => {
     if (!projectId) return;
@@ -106,113 +112,38 @@ export default function ProjectLayout() {
     };
   }, [project, isAdmin]);
 
-  const name = project?.name ?? '…';
 
   return (
     <div className="flex min-h-screen bg-perrific-paper">
+      {/* Sidebar Desktop (≥ 1024px) */}
       <aside
-        className={`hidden shrink-0 flex-col bg-perrific-graphite text-white transition-[width,padding] duration-200 ease-in-out md:sticky md:top-0 md:self-start md:flex md:h-screen overflow-hidden ${
-          collapsed ? 'w-0 p-0 border-0' : 'w-56 p-4'
+        className={`hidden shrink-0 flex-col bg-perrific-graphite text-white transition-[width,padding] duration-200 ease-in-out lg:sticky lg:top-0 lg:self-start lg:flex lg:h-screen overflow-hidden ${
+          collapsed ? 'w-0 p-0 border-0' : 'w-56'
         }`}
       >
-        <div className="flex h-full w-48 min-w-[12rem] flex-col">
-          <div className="flex shrink-0 items-center justify-start">
-            <button
-              type="button"
-              onClick={() => {
-                setCollapsed((v) => {
-                  const next = !v;
-                  try {
-                    localStorage.setItem('purrific:project-sidebar-collapsed', next ? '1' : '0');
-                  } catch {
-                    // abaikan
-                  }
-                  window.dispatchEvent(new Event(PROJECT_SIDEBAR_EVENT));
-                  return next;
-                });
-              }}
-              title="Tutup sidebar project"
-              aria-label="Tutup sidebar project"
-              aria-expanded={!collapsed}
-              className="flex h-9 w-9 items-center justify-center rounded-lg text-white/80 transition hover:bg-white/10 hover:text-white"
-            >
-              <PanelLeftOpen size={16} strokeWidth={1.6} aria-hidden="true" />
-            </button>
-          </div>
-          <nav className="mt-4 flex-1 space-y-1 overflow-y-auto nice-scroll pr-1" aria-label="Navigasi project">
-            {tabs.map((t) => (
-              <NavLink
-                key={t.to}
-                to={t.to}
-                end={t.end}
-                title={t.label}
-                className={({ isActive }) =>
-                  `flex items-center gap-2.5 rounded-lg px-3 py-2 font-manrope text-sm transition ${
-                    collapsed ? 'justify-center' : ''
-                  } ${
-                    isActive ? 'bg-white/10 font-semibold text-white' : 'text-white/60 hover:bg-white/5 hover:text-white'
-                  }`
+        <div className="flex h-full w-56 min-w-[14rem] flex-col">
+          <ProjectSidebarContent
+            project={project}
+            isAdmin={isAdmin}
+            approvalCount={approvalCount}
+            collapsed={collapsed}
+            onToggleCollapse={() => {
+              setCollapsed((v) => {
+                const next = !v;
+                try {
+                  localStorage.setItem('purrific:project-sidebar-collapsed', next ? '1' : '0');
+                } catch {
+                  // abaikan
                 }
-              >
-                <ActivityIcon name={t.icon} className="h-4 w-4 shrink-0" />
-                {!collapsed && t.label}
-              </NavLink>
-            ))}
-            {isAdmin && (
-              <NavLink
-                to="persetujuan"
-                title="Persetujuan"
-                className={({ isActive }) =>
-                  `flex items-center gap-2.5 rounded-lg px-3 py-2 font-manrope text-sm transition ${
-                    collapsed ? 'justify-center' : ''
-                  } ${
-                    isActive ? 'bg-white/10 font-semibold text-white' : 'text-white/60 hover:bg-white/5 hover:text-white'
-                  }`
-                }
-              >
-                <ActivityIcon name="flag" className="h-4 w-4 shrink-0" />
-                {!collapsed && <span className="min-w-0 flex-1 truncate">Persetujuan</span>}
-                {!collapsed && approvalCount > 0 && (
-                  <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-perrific-violet px-1.5 font-manrope text-[11px] font-bold text-white">
-                    {approvalCount}
-                  </span>
-                )}
-              </NavLink>
-            )}
-          </nav>
-          <div className="mt-auto shrink-0 space-y-1 pt-4">
-            {isAdmin && (
-              <NavLink
-                to="settings"
-                title="Settings"
-                className={({ isActive }) =>
-                  `flex items-center gap-2.5 rounded-lg px-3 py-2 font-manrope text-sm transition ${
-                    collapsed ? 'justify-center' : ''
-                  } ${
-                    isActive ? 'bg-white/10 font-semibold text-white' : 'text-white/60 hover:bg-white/5 hover:text-white'
-                  }`
-                }
-              >
-                <ActivityIcon name="gear" className="h-4 w-4 shrink-0" />
-                {!collapsed && 'Settings'}
-              </NavLink>
-            )}
-            <Link
-              to="/dashboard"
-              title="Kembali"
-              aria-label="Kembali"
-              className={`flex items-center gap-2.5 rounded-lg px-3 py-2 font-manrope text-sm text-white/60 transition hover:bg-white/5 hover:text-white ${
-                collapsed ? 'justify-center' : ''
-              }`}
-            >
-              <Home size={16} strokeWidth={1.6} aria-hidden="true" className="shrink-0" />
-              {!collapsed && 'Kembali'}
-            </Link>
-          </div>
+                window.dispatchEvent(new Event(PROJECT_SIDEBAR_EVENT));
+                return next;
+              });
+            }}
+          />
         </div>
       </aside>
 
-      {/* Tombol buka sidebar project saat tertutup penuh */}
+      {/* Tombol buka sidebar project saat tertutup penuh di desktop */}
       {collapsed && (
         <button
           type="button"
@@ -227,71 +158,43 @@ export default function ProjectLayout() {
           }}
           title="Buka sidebar project"
           aria-label="Buka sidebar project"
-          className="fixed left-3 top-3 z-30 hidden h-8 w-8 items-center justify-center rounded-lg bg-white text-perrific-graphite transition hover:bg-gray-100 md:flex"
+          className="fixed left-3 top-3 z-30 hidden h-8 w-8 items-center justify-center rounded-lg bg-white text-perrific-graphite transition hover:bg-gray-100 lg:flex shadow-sm border border-gray-200 cursor-pointer"
         >
           <ChevronRight size={16} strokeWidth={1.6} aria-hidden="true" />
         </button>
       )}
 
+      {/* Sidebar mobile (geser) untuk layar HP & Tablet (< 1024px) */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-40 w-64 max-w-[85vw] shrink-0 bg-perrific-graphite text-white shadow-2xl transition-transform duration-300 ease-in-out lg:hidden ${
+          mobileOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <ProjectSidebarContent
+          project={project}
+          isAdmin={isAdmin}
+          approvalCount={approvalCount}
+          collapsed={false}
+          onClose={() => setMobileOpen(false)}
+        />
+      </aside>
+
+      {/* Backdrop saat sidebar mobile terbuka */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/40 backdrop-blur-[2px] transition-opacity lg:hidden"
+          onClick={() => setMobileOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 border-b border-gray-200 bg-white/90 px-4 py-3 backdrop-blur md:hidden">
-          <div className="flex items-center justify-between gap-2">
-            <p className="truncate font-manrope text-sm font-bold text-perrific-graphite">{name}</p>
-            <div className="flex shrink-0 items-center gap-1">
-              {isAdmin && (
-                <Link
-                  to="settings"
-                  title="Settings"
-                  aria-label="Settings"
-                  className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-perrific-graphite"
-                >
-                  <Settings size={15} strokeWidth={1.6} aria-hidden="true" />
-                </Link>
-              )}
-              {project && (
-                <Link
-                  to={`/team/${project.teamId}`}
-                  className="font-manrope text-xs font-semibold text-perrific-violet hover:underline"
-                >
-                  ← Tim
-                </Link>
-              )}
-            </div>
-          </div>
-          <nav className="mt-2 flex gap-1.5 overflow-x-auto nice-scroll pb-1" aria-label="Navigasi project">
-            {tabs.map((t) => (
-              <NavLink
-                key={t.to}
-                to={t.to}
-                end={t.end}
-                className={({ isActive }) =>
-                  `shrink-0 rounded-full px-3 py-1.5 font-manrope text-xs font-semibold transition ${
-                    isActive ? 'bg-perrific-graphite text-white' : 'text-gray-500 hover:bg-gray-100'
-                  }`
-                }
-              >
-                {t.label}
-              </NavLink>
-            ))}
-            {isAdmin && (
-              <NavLink
-                to="persetujuan"
-                className={({ isActive }) =>
-                  `flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 font-manrope text-xs font-semibold transition ${
-                    isActive ? 'bg-perrific-graphite text-white' : 'text-gray-500 hover:bg-gray-100'
-                  }`
-                }
-              >
-                Persetujuan
-                {approvalCount > 0 && (
-                  <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-perrific-violet px-1 text-[10px] font-bold text-white">
-                    {approvalCount}
-                  </span>
-                )}
-              </NavLink>
-            )}
-          </nav>
-        </header>
+        {/* Tombol burger floating draggable untuk layar ponsel & tablet seperti dashboard utama */}
+        <FloatingMobileBurger
+          onOpen={() => setMobileOpen(true)}
+          hidden={mobileOpen}
+        />
+
         <main className="relative flex-1 overflow-auto p-4 sm:p-6">
           <Outlet />
           {switching && (
@@ -306,6 +209,149 @@ export default function ProjectLayout() {
             </div>
           )}
         </main>
+      </div>
+    </div>
+  );
+}
+
+function ProjectSidebarContent({
+  project,
+  isAdmin,
+  approvalCount,
+  collapsed,
+  onToggleCollapse,
+  onClose,
+}: {
+  project: Project | null;
+  isAdmin: boolean;
+  approvalCount: number;
+  collapsed: boolean;
+  onToggleCollapse?: () => void;
+  onClose?: () => void;
+}) {
+  const name = project?.name ?? '…';
+
+  return (
+    <div className="flex h-full w-full flex-col">
+      {/* Header bar di dalam sidebar */}
+      <div className="flex shrink-0 items-center justify-between gap-2 p-4 pb-2">
+        <div className="flex min-w-0 items-center gap-2">
+          {!collapsed && (
+            <p className="truncate font-manrope text-sm font-bold text-white">{name}</p>
+          )}
+        </div>
+        {onClose ? (
+          <button
+            type="button"
+            onClick={onClose}
+            title="Tutup sidebar"
+            aria-label="Tutup sidebar"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-white/80 transition hover:bg-white/10 hover:text-white cursor-pointer"
+          >
+            <X size={18} strokeWidth={1.8} aria-hidden="true" />
+          </button>
+        ) : onToggleCollapse ? (
+          <button
+            type="button"
+            onClick={onToggleCollapse}
+            title="Tutup sidebar project"
+            aria-label="Tutup sidebar project"
+            aria-expanded={!collapsed}
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-white/80 transition hover:bg-white/10 hover:text-white cursor-pointer"
+          >
+            <PanelLeftOpen size={16} strokeWidth={1.6} aria-hidden="true" />
+          </button>
+        ) : null}
+      </div>
+
+      {/* Navigasi tabs */}
+      <nav className="mt-2 flex-1 space-y-1 overflow-y-auto nice-scroll px-4 pr-3" aria-label="Navigasi project">
+        {tabs.map((t) => (
+          <NavLink
+            key={t.to}
+            to={t.to}
+            end={t.end}
+            title={t.label}
+            onClick={() => onClose?.()}
+            className={({ isActive }) =>
+              `flex items-center gap-2.5 rounded-lg px-3 py-2 font-manrope text-sm transition ${
+                collapsed ? 'justify-center' : ''
+              } ${
+                isActive ? 'bg-white/10 font-semibold text-white' : 'text-white/60 hover:bg-white/5 hover:text-white'
+              }`
+            }
+          >
+            <ActivityIcon name={t.icon} className="h-4 w-4 shrink-0" />
+            {!collapsed && t.label}
+          </NavLink>
+        ))}
+        {isAdmin && (
+          <NavLink
+            to="persetujuan"
+            title="Persetujuan"
+            onClick={() => onClose?.()}
+            className={({ isActive }) =>
+              `flex items-center gap-2.5 rounded-lg px-3 py-2 font-manrope text-sm transition ${
+                collapsed ? 'justify-center' : ''
+              } ${
+                isActive ? 'bg-white/10 font-semibold text-white' : 'text-white/60 hover:bg-white/5 hover:text-white'
+              }`
+            }
+          >
+            <ActivityIcon name="flag" className="h-4 w-4 shrink-0" />
+            {!collapsed && <span className="min-w-0 flex-1 truncate">Persetujuan</span>}
+            {!collapsed && approvalCount > 0 && (
+              <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-perrific-violet px-1.5 font-manrope text-[11px] font-bold text-white">
+                {approvalCount}
+              </span>
+            )}
+          </NavLink>
+        )}
+      </nav>
+
+      {/* Bagian bawah: Settings & Kembali */}
+      <div className="mt-auto shrink-0 space-y-1 p-4 pt-3 border-t border-white/10">
+        {isAdmin && (
+          <NavLink
+            to="settings"
+            title="Settings"
+            onClick={() => onClose?.()}
+            className={({ isActive }) =>
+              `flex items-center gap-2.5 rounded-lg px-3 py-2 font-manrope text-sm transition ${
+                collapsed ? 'justify-center' : ''
+              } ${
+                isActive ? 'bg-white/10 font-semibold text-white' : 'text-white/60 hover:bg-white/5 hover:text-white'
+              }`
+            }
+          >
+            <ActivityIcon name="gear" className="h-4 w-4 shrink-0" />
+            {!collapsed && 'Settings'}
+          </NavLink>
+        )}
+        {project && (
+          <Link
+            to={`/team/${project.teamId}`}
+            title="Kembali ke Tim"
+            onClick={() => onClose?.()}
+            className={`flex items-center gap-2.5 rounded-lg px-3 py-2 font-manrope text-sm text-white/60 transition hover:bg-white/5 hover:text-white ${
+              collapsed ? 'justify-center' : ''
+            }`}
+          >
+            <ChevronLeft size={16} strokeWidth={1.6} aria-hidden="true" className="shrink-0" />
+            {!collapsed && 'Kembali ke Tim'}
+          </Link>
+        )}
+        <Link
+          to="/dashboard"
+          title="Dashboard"
+          onClick={() => onClose?.()}
+          className={`flex items-center gap-2.5 rounded-lg px-3 py-2 font-manrope text-sm text-white/60 transition hover:bg-white/5 hover:text-white ${
+            collapsed ? 'justify-center' : ''
+          }`}
+        >
+          <Home size={16} strokeWidth={1.6} aria-hidden="true" className="shrink-0" />
+          {!collapsed && 'Dashboard'}
+        </Link>
       </div>
     </div>
   );
