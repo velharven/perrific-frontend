@@ -1,5 +1,5 @@
 import { render, screen, cleanup } from '@testing-library/react';
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, beforeAll } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import PrivacyPolicyPage from './PrivacyPolicyPage';
 import TermsOfServicePage from './TermsOfServicePage';
@@ -37,10 +37,14 @@ vi.mock('@/hooks/useGoogleCalendar', () => ({
 }));
 
 describe('Legal & Compliance Pages', () => {
+  beforeAll(() => {
+    window.scrollTo = vi.fn();
+  });
+
   afterEach(cleanup);
 
   describe('PrivacyPolicyPage', () => {
-    it('renders the header, title, and back button', () => {
+    it('renders the header, title, back button, and sets document.title', () => {
       render(
         <MemoryRouter>
           <PrivacyPolicyPage />
@@ -50,9 +54,10 @@ describe('Legal & Compliance Pages', () => {
       expect(screen.getByRole('heading', { level: 1, name: /Kebijakan Privasi Purrific/i })).toBeTruthy();
       const backLink = screen.getAllByRole('link', { name: /Kembali ke Beranda/i })[0];
       expect(backLink.getAttribute('href')).toBe('/');
+      expect(document.title).toBe('Kebijakan Privasi | Purrific');
     });
 
-    it('displays the Google Calendar scope and Limited Use disclosure clause', () => {
+    it('displays the Google Calendar scope and Limited Use disclosure clause in both ID and EN', () => {
       render(
         <MemoryRouter>
           <PrivacyPolicyPage />
@@ -62,10 +67,17 @@ describe('Legal & Compliance Pages', () => {
       // Verify OAuth scope
       expect(screen.getByText(/https:\/\/www\.googleapis\.com\/auth\/calendar\.events/i)).toBeTruthy();
 
-      // Verify Google Limited Use Disclosure clause
+      // Verify Indonesian Google Limited Use Disclosure clause
       expect(
         screen.getByText(
           /Penggunaan dan transfer informasi yang diterima oleh Purrific dari Google API ke aplikasi lain akan mematuhi Kebijakan Data Pengguna Layanan Google API \(Google API Services User Data Policy\), termasuk persyaratan Penggunaan Terbatas \(Limited Use requirements\)\./i
+        )
+      ).toBeTruthy();
+
+      // Verify Verbatim English Google Limited Use Disclosure clause
+      expect(
+        screen.getByText(
+          /Purrific's use and transfer to any other app of information received from Google APIs will adhere to Google API Services User Data Policy, including the Limited Use requirements\./i
         )
       ).toBeTruthy();
     });
@@ -88,7 +100,7 @@ describe('Legal & Compliance Pages', () => {
   });
 
   describe('TermsOfServicePage', () => {
-    it('renders the title, back button, and all required sections', () => {
+    it('renders the title, back button, sets document.title, and all required sections', () => {
       render(
         <MemoryRouter>
           <TermsOfServicePage />
@@ -98,6 +110,7 @@ describe('Legal & Compliance Pages', () => {
       expect(screen.getByRole('heading', { level: 1, name: /Syarat dan Ketentuan Layanan/i })).toBeTruthy();
       const backLink = screen.getAllByRole('link', { name: /Kembali ke Beranda/i })[0];
       expect(backLink.getAttribute('href')).toBe('/');
+      expect(document.title).toBe('Syarat dan Ketentuan Layanan | Purrific');
 
       expect(screen.getByRole('heading', { level: 2, name: /Penerimaan Ketentuan/i })).toBeTruthy();
       expect(screen.getByRole('heading', { level: 2, name: /Akun dan Tanggung Jawab Pengguna/i })).toBeTruthy();

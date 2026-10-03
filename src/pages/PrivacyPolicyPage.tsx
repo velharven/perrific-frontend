@@ -1,7 +1,13 @@
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, ShieldCheck, Lock, KeyRound, Mail, ExternalLink } from 'lucide-react';
 
 export default function PrivacyPolicyPage() {
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    document.title = 'Kebijakan Privasi | Purrific';
+  }, []);
+
   return (
     <div className="min-h-screen bg-perrific-paper font-manrope text-perrific-graphite antialiased">
       {/* Top Brand Bar */}
@@ -134,6 +140,9 @@ export default function PrivacyPolicyPage() {
                     </h3>
                     <p className="mt-1.5 text-blue-950 font-medium italic leading-relaxed text-sm">
                       &ldquo;Penggunaan dan transfer informasi yang diterima oleh Purrific dari Google API ke aplikasi lain akan mematuhi Kebijakan Data Pengguna Layanan Google API (Google API Services User Data Policy), termasuk persyaratan Penggunaan Terbatas (Limited Use requirements).&rdquo;
+                    </p>
+                    <p className="mt-2 text-blue-900/90 text-xs italic leading-relaxed font-mono">
+                      &ldquo;Purrific&#39;s use and transfer to any other app of information received from Google APIs will adhere to Google API Services User Data Policy, including the Limited Use requirements.&rdquo;
                     </p>
                   </div>
                 </div>

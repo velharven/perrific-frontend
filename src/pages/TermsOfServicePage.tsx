@@ -1,7 +1,13 @@
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, FileText, Mail } from 'lucide-react';
 
 export default function TermsOfServicePage() {
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    document.title = 'Syarat dan Ketentuan Layanan | Purrific';
+  }, []);
+
   return (
     <div className="min-h-screen bg-perrific-paper font-manrope text-perrific-graphite antialiased">
       {/* Top Brand Bar */}
