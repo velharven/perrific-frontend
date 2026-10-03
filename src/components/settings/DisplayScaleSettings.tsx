@@ -1,5 +1,5 @@
 import { useDisplayScale } from '@/hooks/useDisplayScale';
-import { CUSTOM_SCALE_PRESETS, type DisplayScaleMode } from '@/lib/displayScale';
+import { CUSTOM_SCALE_PRESETS } from '@/lib/displayScale';
 import { SettingsBlock } from '@/components/ui/SettingsShell';
 import { Monitor, Check, Sparkles, Sliders, Smartphone } from 'lucide-react';
 
