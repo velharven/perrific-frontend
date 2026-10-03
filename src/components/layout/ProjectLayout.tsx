@@ -19,7 +19,12 @@ export const PROJECT_SIDEBAR_EVENT = 'project-sidebar-changed';
 
 export function isProjectSidebarCollapsed(): boolean {
   try {
-    return localStorage.getItem('purrific:project-sidebar-collapsed') === '1';
+    const saved = localStorage.getItem('purrific:project-sidebar-collapsed');
+    if (saved !== null) return saved === '1';
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      return true;
+    }
+    return false;
   } catch {
     return false;
   }
@@ -253,7 +258,7 @@ export default function ProjectLayout() {
               )}
             </div>
           </div>
-          <nav className="mt-2 flex gap-1 overflow-x-auto" aria-label="Navigasi project">
+          <nav className="mt-2 flex gap-1.5 overflow-x-auto nice-scroll pb-1" aria-label="Navigasi project">
             {tabs.map((t) => (
               <NavLink
                 key={t.to}

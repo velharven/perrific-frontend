@@ -3198,7 +3198,12 @@ export const APP_SIDEBAR_EVENT = 'app-sidebar-changed';
 
 export function isAppSidebarCollapsed(): boolean {
   try {
-    return localStorage.getItem('purrific:sidebar-collapsed') === '1';
+    const saved = localStorage.getItem('purrific:sidebar-collapsed');
+    if (saved !== null) return saved === '1';
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      return true;
+    }
+    return false;
   } catch {
     return false;
   }
@@ -3209,13 +3214,7 @@ export default function AppLayout() {
   const { user } = useAuth();
   const { socket } = useSocket();
   const [open, setOpen] = useState(false);
-  const [collapsed, setCollapsed] = useState(() => {
-    try {
-      return localStorage.getItem('purrific:sidebar-collapsed') === '1';
-    } catch {
-      return false;
-    }
-  });
+  const [collapsed, setCollapsed] = useState<boolean>(isAppSidebarCollapsed);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -3488,7 +3487,7 @@ export default function AppLayout() {
 
       {/* Sidebar mobile (geser) */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 w-64 shrink-0 border-r border-gray-200 transition-transform duration-300 ease-in-out lg:hidden ${
+        className={`fixed inset-y-0 left-0 z-40 w-64 max-w-[85vw] shrink-0 border-r border-gray-200 bg-white shadow-xl transition-transform duration-300 ease-in-out lg:hidden ${
           open ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
