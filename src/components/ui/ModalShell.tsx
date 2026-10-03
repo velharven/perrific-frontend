@@ -43,16 +43,17 @@ export default function ModalShell({
       role="dialog"
       aria-modal="true"
       aria-label={label}
-      className={`fixed inset-0 ${zClass} flex items-center justify-center bg-black/40 p-4`}
+      className={`fixed inset-0 ${zClass} flex items-end justify-center p-0 sm:items-center sm:p-4 bg-black/40`}
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
-        className={`nice-scroll max-h-[82vh] w-full overflow-y-auto rounded-2xl border border-gray-200 bg-white p-4 shadow-[0_16px_48px_rgba(26,26,30,0.2)] ${
+        className={`nice-scroll max-h-[88vh] w-full overflow-y-auto rounded-t-2xl border-t border-gray-200 bg-white p-4 shadow-[0_16px_48px_rgba(26,26,30,0.2)] sm:max-h-[82vh] sm:rounded-2xl sm:border ${
           maxWidthClass ?? (wide ? 'max-w-2xl' : 'max-w-sm')
         }`}
       >
+        <div className="mx-auto mb-2.5 h-1 w-12 shrink-0 rounded-full bg-gray-300 sm:hidden" aria-hidden="true" />
         {children}
       </div>
     </div>,
