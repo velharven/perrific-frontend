@@ -146,8 +146,9 @@ export default function TeamPage() {
       await teamApi.approveProjectProposal(teamId, proposal.id);
       showToast(`Project "${proposal.name}" disetujui dan berhasil dibuat!`);
       await refresh(teamId);
-    } catch {
-      showToast('Gagal menyetujui usulan project.');
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || 'Gagal menyetujui usulan project.';
+      showToast(msg);
     } finally {
       setActionProposalId(null);
     }
@@ -163,8 +164,9 @@ export default function TeamPage() {
       showToast(`Usulan project "${rejectingProposal.name}" ditolak.`);
       setRejectingProposal(null);
       await refresh(teamId);
-    } catch {
-      showToast('Gagal menolak usulan project.');
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || 'Gagal menolak usulan project.';
+      showToast(msg);
     } finally {
       setActionProposalId(null);
     }

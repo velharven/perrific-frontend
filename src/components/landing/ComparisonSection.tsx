@@ -28,11 +28,11 @@ export default function ComparisonSection() {
       icon: <Columns3 size={18} strokeWidth={1.6} className="text-perrific-violet" />,
       feature: 'Manajemen Kanban Tim',
       purrificText: 'Bawaan & Real-time',
-      notion: {
+      workspace: {
         text: 'Perlu setup database manual',
         type: 'partial' as const,
       },
-      taiga: {
+      projectMgmt: {
         text: 'Mendukung sprint developer',
         type: 'supported' as const,
       },
@@ -41,11 +41,11 @@ export default function ComparisonSection() {
       icon: <Calendar size={18} strokeWidth={1.6} className="text-perrific-amber" />,
       feature: 'Time-Blocking Harian Pribadi',
       purrificText: 'Terintegrasi Penuh',
-      notion: {
+      workspace: {
         text: 'Input manual via template',
         type: 'partial' as const,
       },
-      taiga: {
+      projectMgmt: {
         text: 'Hanya level sprint tim',
         type: 'unsupported' as const,
       },
@@ -54,11 +54,11 @@ export default function ComparisonSection() {
       icon: <RefreshCw size={18} strokeWidth={1.7} className="text-emerald-500" />,
       feature: 'Penjadwalan Tugas Tim ke Kalender',
       purrificText: 'Drag & Drop + Sidebar Terpadu',
-      notion: {
+      workspace: {
         text: 'Tidak ada (copy-paste manual)',
         type: 'unsupported' as const,
       },
-      taiga: {
+      projectMgmt: {
         text: 'Tidak ada kalender personal',
         type: 'unsupported' as const,
       },
@@ -67,11 +67,11 @@ export default function ComparisonSection() {
       icon: <Clock size={18} strokeWidth={1.6} className="text-blue-500" />,
       feature: 'Integrasi Google Calendar 2-Arah',
       purrificText: 'Tersedia Langsung',
-      notion: {
-        text: 'Perlu addon / Notion Calendar',
+      workspace: {
+        text: 'Perlu plugin / kalender terpisah',
         type: 'partial' as const,
       },
-      taiga: {
+      projectMgmt: {
         text: 'Tidak tersedia integrasi',
         type: 'unsupported' as const,
       },
@@ -80,11 +80,11 @@ export default function ComparisonSection() {
       icon: <Zap size={18} strokeWidth={1.6} className="text-amber-500" />,
       feature: 'Setup Cepat Tanpa Rumus (< 2 Menit)',
       purrificText: '< 2 Menit Siap Pakai',
-      notion: {
+      workspace: {
         text: '1 – 2 jam menyusun struktur',
         type: 'partial' as const,
       },
-      taiga: {
+      projectMgmt: {
         text: 'Konfigurasi scrum cukup rumit',
         type: 'partial' as const,
       },
@@ -93,11 +93,11 @@ export default function ComparisonSection() {
       icon: <FileText size={18} strokeWidth={1.6} className="text-rose-500" />,
       feature: 'Catatan & Dokumen Terpadu',
       purrificText: 'Block Editor & Tabel',
-      notion: {
+      workspace: {
         text: 'Dukungan blok sangat kaya',
         type: 'supported' as const,
       },
-      taiga: {
+      projectMgmt: {
         text: 'Hanya modul wiki proyek',
         type: 'partial' as const,
       },
@@ -110,7 +110,7 @@ export default function ComparisonSection() {
         {/* Header - Clean, Bold, Minimalist */}
         <div className="text-center mb-12 sm:mb-16">
           <h2 className="font-manrope text-[28px] font-extrabold tracking-[-0.03em] text-perrific-graphite sm:text-[40px] lg:text-[46px]">
-            Purrific vs. Notion & Taiga
+            Purrific vs. Solusi Lainnya
           </h2>
           <p className="mt-3 font-manrope text-sm text-perrific-graphite/60 sm:text-base">
             Perbandingan fitur utama untuk mengelola kolaborasi tim dan aktivitas harianmu.
@@ -161,10 +161,10 @@ export default function ComparisonSection() {
               </div>
             </div>
 
-            {/* Column 3: Notion */}
+            {/* Column 3: Workspace & Dokumen */}
             <div>
               <div className="h-10 flex items-center pl-2 font-mono text-[11px] font-bold tracking-widest text-perrific-graphite/40 uppercase">
-                NOTION
+                WORKSPACE DOKUMEN
               </div>
               <div className="divide-y divide-perrific-line/50">
                 {rows.map((row, idx) => (
@@ -173,18 +173,18 @@ export default function ComparisonSection() {
                     className="h-[72px] flex items-center justify-between pl-2 pr-2"
                   >
                     <span className="font-manrope text-xs text-perrific-graphite/70 pr-2 leading-relaxed">
-                      {row.notion.text}
+                      {row.workspace.text}
                     </span>
-                    <StatusBadge type={row.notion.type} />
+                    <StatusBadge type={row.workspace.type} />
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Column 4: Taiga */}
+            {/* Column 4: Project Management */}
             <div>
               <div className="h-10 flex items-center pl-2 font-mono text-[11px] font-bold tracking-widest text-perrific-graphite/40 uppercase">
-                TAIGA
+                PROJECT MANAGEMENT
               </div>
               <div className="divide-y divide-perrific-line/50">
                 {rows.map((row, idx) => (
@@ -193,9 +193,9 @@ export default function ComparisonSection() {
                     className="h-[72px] flex items-center justify-between pl-2 pr-2"
                   >
                     <span className="font-manrope text-xs text-perrific-graphite/70 pr-2 leading-relaxed">
-                      {row.taiga.text}
+                      {row.projectMgmt.text}
                     </span>
-                    <StatusBadge type={row.taiga.type} />
+                    <StatusBadge type={row.projectMgmt.type} />
                   </div>
                 ))}
               </div>

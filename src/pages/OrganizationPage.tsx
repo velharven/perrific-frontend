@@ -365,7 +365,7 @@ export default function OrganizationPage() {
               </span>
               {pendingTasksCount > 0 && (
                 <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">
-                  {pendingTasksCount} Pending
+                  {pendingTasksCount} Menunggu
                 </span>
               )}
             </div>
@@ -469,7 +469,7 @@ export default function OrganizationPage() {
             </span>
             {pendingTasksCount > 0 && (
               <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">
-                {pendingTasksCount} Pending
+                {pendingTasksCount} Menunggu
               </span>
             )}
           </button>
