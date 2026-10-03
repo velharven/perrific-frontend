@@ -10,7 +10,7 @@ import { TEAMS_CHANGED_EVENT } from '@/hooks/useNavLabels';
 import { useAuth } from '@/store/auth';
 import { Briefcase } from 'lucide-react';
 import { KanbanSkeleton } from '@/components/ui/loading';
-import type { Project, Task, Team } from '@/types';
+import type { Project, Task, Team, ProjectProposal } from '@/types';
 
 type TaskWithProject = Task & { projectName: string; projectId: string };
 
@@ -91,9 +91,11 @@ export default function TeamPage() {
   const [tasksByProject, setTasksByProject] = useState<Record<string, Task[]>>({});
   const [tasksLoading, setTasksLoading] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
-  const [tab, setTab] = useState<'project' | 'team'>('project');
+  const [tab, setTab] = useState<'project' | 'team' | 'usulan'>('project');
   const [email, setEmail] = useState('');
+  const [proposals, setProposals] = useState<ProjectProposal[]>([]);
   const [pendingProposalCount, setPendingProposalCount] = useState(0);
+  const [actionProposalId, setActionProposalId] = useState<string | null>(null);
   // Offset pill fixed agar center ke area konten (di luar sidebar utama).
   const [sbCollapsed, setSbCollapsed] = useState<boolean>(isAppSidebarCollapsed);
 
@@ -135,6 +137,35 @@ export default function TeamPage() {
     }
   }
 
+  async function handleApproveProposal(proposal: ProjectProposal) {
+    if (!teamId) return;
+    setActionProposalId(proposal.id);
+    try {
+      await teamApi.approveProjectProposal(teamId, proposal.id);
+      showToast(`Project "${proposal.name}" disetujui dan berhasil dibuat!`);
+      await refresh(teamId);
+    } catch {
+      showToast('Gagal menyetujui usulan project.');
+    } finally {
+      setActionProposalId(null);
+    }
+  }
+
+  async function handleRejectProposal(proposal: ProjectProposal) {
+    if (!teamId) return;
+    const reason = window.prompt('Alasan penolakan (opsional):') ?? undefined;
+    setActionProposalId(proposal.id);
+    try {
+      await teamApi.rejectProjectProposal(teamId, proposal.id, reason);
+      showToast(`Usulan project "${proposal.name}" ditolak.`);
+      await refresh(teamId);
+    } catch {
+      showToast('Gagal menolak usulan project.');
+    } finally {
+      setActionProposalId(null);
+    }
+  }
+
   async function refresh(tid: string) {
     const [t, ps, props] = await Promise.all([
       teamApi.getTeam(tid),
@@ -143,6 +174,7 @@ export default function TeamPage() {
     ]);
     setTeam(t);
     setProjects(ps);
+    setProposals(props);
     setPendingProposalCount(props.filter((p) => p.status === 'PENDING').length);
     setTasksLoading(true);
     try {
@@ -244,12 +276,13 @@ export default function TeamPage() {
               Ada <strong>{pendingProposalCount} usulan project baru</strong> dari organisasi yang menunggu persetujuan Anda.
             </p>
           </div>
-          <Link
-            to={`/team/${team.id}/projects`}
-            className="shrink-0 self-start sm:self-auto rounded-lg bg-amber-600 px-3 py-1.5 font-semibold text-white transition hover:bg-amber-700"
+          <button
+            type="button"
+            onClick={() => setTab('usulan')}
+            className="shrink-0 self-start sm:self-auto rounded-lg bg-amber-600 px-3 py-1.5 font-semibold text-white transition hover:bg-amber-700 cursor-pointer"
           >
             Tinjau Usulan
-          </Link>
+          </button>
         </div>
       )}
 
@@ -325,7 +358,7 @@ export default function TeamPage() {
               </aside>
             </div>
           )
-        ) : (
+        ) : tab === 'team' ? (
           <section aria-label="Undang dan anggota tim" className="space-y-5">
             <div className="rounded-xl border border-gray-200 bg-white p-4">
               <h2 className="font-manrope text-sm font-bold text-perrific-graphite">Undang anggota</h2>
@@ -339,7 +372,7 @@ export default function TeamPage() {
                   <button
                     type="button"
                     onClick={() => void handleCopyCode()}
-                    className="rounded-lg px-2 py-1 font-manrope text-xs font-semibold text-perrific-violet transition hover:bg-perrific-violet/10"
+                    className="rounded-lg px-2 py-1 font-manrope text-xs font-semibold text-perrific-violet transition hover:bg-perrific-violet/10 cursor-pointer"
                   >
                     Salin
                   </button>
@@ -352,7 +385,7 @@ export default function TeamPage() {
                   placeholder="Email anggota"
                   className="min-w-0 flex-1 rounded-[10px] border border-perrific-line bg-white px-3 py-2.5 font-manrope text-sm text-perrific-graphite placeholder:text-perrific-graphite/40 focus:border-perrific-violet focus:outline-none focus:ring-2 focus:ring-perrific-violet/20"
                 />
-                <button className="shrink-0 rounded-full bg-perrific-violet px-5 py-2.5 font-manrope text-sm font-semibold text-white transition hover:bg-[#E64D0A]">
+                <button className="shrink-0 rounded-full bg-perrific-violet px-5 py-2.5 font-manrope text-sm font-semibold text-white transition hover:bg-[#E64D0A] cursor-pointer">
                   Undang
                 </button>
               </form>
@@ -377,6 +410,87 @@ export default function TeamPage() {
               </ul>
             </div>
           </section>
+        ) : (
+          <section aria-label="Usulan project dari organisasi" className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="font-manrope text-base font-bold text-perrific-graphite">Usulan Project dari Organisasi</h2>
+                <p className="text-xs text-gray-500">Daftar usulan project yang diajukan oleh organisasi binaan</p>
+              </div>
+              {pendingProposalCount > 0 && (
+                <span className="rounded-full bg-amber-100 px-2.5 py-0.5 font-mono text-[11px] font-bold text-amber-800">
+                  {pendingProposalCount} Menunggu
+                </span>
+              )}
+            </div>
+
+            {proposals.length === 0 ? (
+              <div className="rounded-xl border border-gray-200 bg-white p-8 text-center">
+                <Briefcase size={28} className="mx-auto text-gray-300" strokeWidth={1.5} />
+                <p className="mt-2 font-manrope text-sm font-bold text-perrific-graphite">Belum ada usulan project</p>
+                <p className="mt-1 text-xs text-gray-500">Belum ada usulan project dari organisasi untuk tim ini.</p>
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                {proposals.map((prop) => (
+                  <div
+                    key={prop.id}
+                    className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-2xs sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="font-manrope text-sm font-bold text-perrific-graphite">{prop.name}</h3>
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                            prop.status === 'APPROVED'
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : prop.status === 'REJECTED'
+                                ? 'bg-red-100 text-red-600'
+                                : 'bg-amber-100 text-amber-700'
+                          }`}
+                        >
+                          {prop.status === 'APPROVED' ? 'Disetujui' : prop.status === 'REJECTED' ? 'Ditolak' : 'Menunggu Approval'}
+                        </span>
+                      </div>
+                      {prop.description && (
+                        <p className="mt-1 text-xs text-gray-600">{prop.description}</p>
+                      )}
+                      <p className="mt-2 text-[11px] text-gray-400">
+                        Organisasi: <strong className="text-gray-600">{prop.organization?.name ?? '—'}</strong>
+                        {prop.createdBy?.name && (
+                          <> • Diajukan oleh: <strong className="text-gray-600">{prop.createdBy.name}</strong></>
+                        )}
+                      </p>
+                      {prop.rejectionReason && (
+                        <p className="mt-1 text-[11px] text-red-600">Alasan: {prop.rejectionReason}</p>
+                      )}
+                    </div>
+
+                    {prop.status === 'PENDING' && isAdmin && (
+                      <div className="flex shrink-0 items-center gap-2 pt-2 sm:pt-0">
+                        <button
+                          type="button"
+                          disabled={actionProposalId === prop.id}
+                          onClick={() => void handleApproveProposal(prop)}
+                          className="rounded-lg bg-emerald-600 px-3.5 py-1.5 font-manrope text-xs font-semibold text-white shadow-xs transition hover:bg-emerald-700 disabled:opacity-50 cursor-pointer"
+                        >
+                          {actionProposalId === prop.id ? 'Memproses...' : 'Setujui'}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={actionProposalId === prop.id}
+                          onClick={() => void handleRejectProposal(prop)}
+                          className="rounded-lg border border-red-200 bg-red-50 px-3.5 py-1.5 font-manrope text-xs font-semibold text-red-600 transition hover:bg-red-100 disabled:opacity-50 cursor-pointer"
+                        >
+                          Tolak
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
         )}
       </div>
 
@@ -394,6 +508,7 @@ export default function TeamPage() {
             [
               { id: 'project', label: 'Project' },
               { id: 'team', label: 'Team' },
+              { id: 'usulan', label: 'Usulan', badge: pendingProposalCount },
             ] as const
           ).map((t) => (
             <button
@@ -402,13 +517,22 @@ export default function TeamPage() {
               role="tab"
               aria-selected={tab === t.id}
               onClick={() => setTab(t.id)}
-              className={`shrink-0 rounded-full px-4 py-2 font-manrope text-xs font-semibold transition ${
+              className={`flex items-center gap-1.5 shrink-0 rounded-full px-4 py-2 font-manrope text-xs font-semibold transition cursor-pointer ${
                 tab === t.id
                   ? 'bg-perrific-graphite text-white'
                   : 'text-gray-800 hover:bg-gray-200 hover:text-black'
               }`}
             >
-              {t.label}
+              <span>{t.label}</span>
+              {'badge' in t && t.badge > 0 && (
+                <span
+                  className={`flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold ${
+                    tab === t.id ? 'bg-amber-500 text-white' : 'bg-amber-100 text-amber-800'
+                  }`}
+                >
+                  {t.badge}
+                </span>
+              )}
             </button>
           ))}
         </div>
