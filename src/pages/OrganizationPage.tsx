@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { organizationApi } from '@/api/organizations';
 import { teamApi } from '@/api/teams';
@@ -318,7 +318,7 @@ export default function OrganizationPage() {
         </div>
 
         {/* Quick Stats Grid Interaktif */}
-        <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <button
             type="button"
             aria-label="Lihat Usulan Project"
@@ -413,7 +413,7 @@ export default function OrganizationPage() {
 
       {/* Tabs Navigasi Modern */}
       <div className="border-b border-gray-200">
-        <nav className="flex space-x-2 sm:space-x-6 overflow-x-auto pb-px" role="tablist" aria-label="Tab Organisasi">
+        <nav className="nice-scroll flex space-x-2 sm:space-x-6 overflow-x-auto pb-px" role="tablist" aria-label="Tab Organisasi">
           <button
             type="button"
             role="tab"

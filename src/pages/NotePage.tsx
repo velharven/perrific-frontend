@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { noteApi } from '@/api/notes';
 import { notifyTeamsChanged, readTrashIds, useHiddenNav, useTrash } from '@/hooks/useNavLabels';
@@ -562,7 +562,7 @@ function NotePageInner() {
   const parent = note.parentId ? (allNotes.find((n) => n.id === note.parentId) ?? null) : null;
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="mx-auto max-w-3xl px-3 sm:px-6 w-full">
       {parent && (
         <nav aria-label="Breadcrumb" className="mb-2 flex min-w-0 items-center gap-1.5 font-manrope text-xs text-perrific-graphite/50">
           <Link to={notePathFor(parent)} className="truncate hover:text-perrific-violet hover:underline">

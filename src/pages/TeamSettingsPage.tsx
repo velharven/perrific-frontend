@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { teamApi } from '@/api/teams';
 import { showToast } from '@/components/ui/Toast';
@@ -257,7 +257,7 @@ export default function TeamSettingsPage() {
         }`}
       >
         <div
-          className="pointer-events-auto nice-scroll flex max-w-full gap-1 overflow-x-auto rounded-full border border-gray-200 bg-white/95 p-1.5 shadow-[0_8px_24px_rgba(26,26,30,0.14)] backdrop-blur"
+          className="pointer-events-auto nice-scroll flex max-w-[calc(100vw-2rem)] gap-1 overflow-x-auto rounded-full border border-gray-200 bg-white/95 p-1.5 shadow-[0_8px_24px_rgba(26,26,30,0.14)] backdrop-blur"
           role="tablist"
           aria-label="Settings tim"
         >

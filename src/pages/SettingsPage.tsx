@@ -390,7 +390,7 @@ export default function SettingsPage() {
                   <button
                     type="button"
                     onClick={() => void disconnectGcal()}
-                    className="shrink-0 rounded-full border border-gray-200 bg-white px-4 py-1.5 font-manrope text-xs font-medium text-gray-700 hover:bg-gray-50 transition shadow-xs"
+                    className="shrink-0 self-start sm:self-auto rounded-full border border-gray-200 bg-white px-4 py-1.5 font-manrope text-xs font-medium text-gray-700 hover:bg-gray-50 transition shadow-xs"
                   >
                     Putuskan
                   </button>
@@ -402,7 +402,7 @@ export default function SettingsPage() {
                 )}
               </div>
             ) : (
-              <div className="flex items-center justify-between gap-4 rounded-[12px] border border-perrific-line bg-perrific-paper/50 p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-[12px] border border-perrific-line bg-perrific-paper/50 p-4">
                 <div>
                   <p className="font-manrope text-sm font-semibold text-perrific-graphite">
                     Belum terhubung
@@ -415,7 +415,7 @@ export default function SettingsPage() {
                   type="button"
                   disabled={gcalConnecting}
                   onClick={connectGcal}
-                  className="inline-flex shrink-0 items-center gap-2 rounded-full border border-perrific-line bg-white px-5 py-2 font-manrope text-xs font-semibold text-perrific-graphite shadow-sm hover:bg-perrific-paper transition disabled:opacity-60"
+                  className="inline-flex shrink-0 self-start sm:self-auto items-center gap-2 rounded-full border border-perrific-line bg-white px-5 py-2 font-manrope text-xs font-semibold text-perrific-graphite shadow-sm hover:bg-perrific-paper transition disabled:opacity-60"
                 >
                   {gcalConnecting ? 'Menghubungkan…' : 'Hubungkan'}
                 </button>

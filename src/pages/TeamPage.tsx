@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { teamApi } from '@/api/teams';
 import { projectApi } from '@/api/projects';
@@ -235,7 +235,7 @@ export default function TeamPage() {
       </div>
 
       {isAdmin && pendingProposalCount > 0 && (
-        <div className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-xs text-amber-900">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-xs text-amber-900">
           <div className="flex items-center gap-2.5">
             <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-amber-100 text-amber-700">
               <Briefcase size={14} strokeWidth={1.8} aria-hidden="true" />
@@ -246,7 +246,7 @@ export default function TeamPage() {
           </div>
           <Link
             to={`/team/${team.id}/projects`}
-            className="shrink-0 rounded-lg bg-amber-600 px-3 py-1.5 font-semibold text-white transition hover:bg-amber-700"
+            className="shrink-0 self-start sm:self-auto rounded-lg bg-amber-600 px-3 py-1.5 font-semibold text-white transition hover:bg-amber-700"
           >
             Tinjau Usulan
           </Link>

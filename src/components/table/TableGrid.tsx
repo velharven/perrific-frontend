@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Maximize2 } from 'lucide-react';
 import {
   DndContext,
@@ -564,7 +564,7 @@ export default function TableGrid({
       </div>
       )}
       <DndContext sensors={sensors} collisionDetection={closestCenter} modifiers={[lockDragAxis, ({ active, activeNodeRect, transform }) => (String(active?.id ?? '').startsWith(ROW_PREFIX) ? clampRowToTbody(tbodyRef.current, activeNodeRect, transform) : transform)]} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto nice-scroll pb-4">
         <table className="ml-10 min-w-[calc(100%_-_2.5rem)] border-collapse text-sm">
           <thead>
             <SortableContext items={columns.map((c) => c.id)} strategy={horizontalListSortingStrategy}>
