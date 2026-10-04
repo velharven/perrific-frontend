@@ -37,8 +37,8 @@ export const taskApi = {
     api
       .delete<{ data: { userId: string } }>(`/tasks/${taskId}/watchers/${userId}`)
       .then((r) => r.data.data),
-  approve: (taskId: string) =>
-    api.patch<{ data: Task }>(`/tasks/${taskId}/approve`).then((r) => r.data.data),
+  approve: (taskId: string, body?: { assigneeIds?: string[] }) =>
+    api.patch<{ data: Task }>(`/tasks/${taskId}/approve`, body).then((r) => r.data.data),
   reject: (taskId: string) =>
     api.patch<{ data: Task }>(`/tasks/${taskId}/reject`).then((r) => r.data.data),
 };

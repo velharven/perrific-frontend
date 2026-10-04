@@ -4,7 +4,8 @@ import { taskApi } from '@/api/tasks';
 import { SettingsBlock } from '@/components/ui/SettingsShell';
 import Avatar from '@/components/ui/Avatar';
 import { showToast } from '@/components/ui/Toast';
-import type { JoinRequest, PendingTask } from '@/types';
+import ApproveTaskModal from './ApproveTaskModal';
+import type { JoinRequest, PendingTask, TeamMember } from '@/types';
 
 // Event jendela saat antrean persetujuan berubah (setujui/tolak), agar badge
 // sidebar ikut refresh. Pola yang sama dipakai TEAMS_CHANGED_EVENT.
@@ -32,15 +33,22 @@ export default function ApprovalLists({
 }) {
   const [tasks, setTasks] = useState<PendingTask[]>([]);
   const [requests, setRequests] = useState<JoinRequest[]>([]);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [approvingTask, setApprovingTask] = useState<PendingTask | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
     setLoading(true);
     try {
-      const [t, r] = await Promise.all([teamApi.listPendingTasks(teamId), teamApi.listJoinRequests(teamId)]);
+      const [t, r, teamData] = await Promise.all([
+        teamApi.listPendingTasks(teamId),
+        teamApi.listJoinRequests(teamId),
+        teamApi.getTeam(teamId).catch(() => null),
+      ]);
       setTasks(t);
       setRequests(r);
+      if (teamData?.members) setTeamMembers(teamData.members);
     } catch {
       showToast('Gagal memuat daftar persetujuan.');
     } finally {
@@ -58,14 +66,32 @@ export default function ApprovalLists({
     onCountsChange?.({ taskCount: visibleTasks.length, requestCount: requests.length });
   }, [visibleTasks.length, requests.length, onCountsChange]);
 
-  async function decideTask(task: PendingTask, approve: boolean) {
+  async function handleApproveTask(task: PendingTask, assigneeIds?: string[]) {
     setBusy(task.id);
     try {
-      if (approve) await taskApi.approve(task.id);
-      else await taskApi.reject(task.id);
+      await taskApi.approve(task.id, { assigneeIds });
       setTasks((prev) => prev.filter((t) => t.id !== task.id));
       dispatchApprovalsChanged();
-      showToast(approve ? 'Task disetujui.' : 'Task ditolak.');
+      setApprovingTask(null);
+      showToast('Task disetujui.');
+    } catch {
+      showToast('Gagal memproses task.');
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function decideTask(task: PendingTask, approve: boolean) {
+    if (approve) {
+      setApprovingTask(task);
+      return;
+    }
+    setBusy(task.id);
+    try {
+      await taskApi.reject(task.id);
+      setTasks((prev) => prev.filter((t) => t.id !== task.id));
+      dispatchApprovalsChanged();
+      showToast('Task ditolak.');
     } catch {
       showToast('Gagal memproses task.');
     } finally {
@@ -181,6 +207,16 @@ export default function ApprovalLists({
           </ul>
         )}
       </SettingsBlock>
+      )}
+
+      {approvingTask && (
+        <ApproveTaskModal
+          task={approvingTask}
+          teamMembers={teamMembers}
+          submitting={busy === approvingTask.id}
+          onClose={() => setApprovingTask(null)}
+          onConfirm={(assigneeIds) => handleApproveTask(approvingTask, assigneeIds)}
+        />
       )}
     </div>
   );
