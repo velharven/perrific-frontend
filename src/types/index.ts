@@ -230,7 +230,7 @@ export interface DailyActivity {
   icon?: string | null;
   order: number;
   checklistItems: ChecklistItem[];
-  task?: Pick<Task, 'id' | 'title' | 'priority'> | null;
+  task?: Pick<Task, 'id' | 'title' | 'priority' | 'dueDate'> | null;
   customValues?: Record<string, string | number | boolean> | null;
   recurrence?: RecurrenceConfig | null;
   googleEventId?: string | null;

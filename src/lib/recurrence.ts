@@ -485,3 +485,31 @@ export function findFirstMatchingRecurrenceDate(
   return anchor;
 }
 
+export function applyTaskDeadlineRecurrence(
+  config: RecurrenceConfig | null | undefined,
+  anchorDateInput: Date | string,
+  taskDueDate?: string | null,
+): RecurrenceConfig | null | undefined {
+  if (!config || !config.freq || config.isException) return config;
+  if (!taskDueDate) return config;
+
+  const dueMidnight = toLocalMidnight(taskDueDate);
+  const anchorMidnight = toLocalMidnight(anchorDateInput);
+
+  // Jika tanggal kegiatan sudah melewati tanggal deadline (overdue), biarkan perulangan normal
+  if (anchorMidnight.getTime() > dueMidnight.getTime()) {
+    return config;
+  }
+
+  const year = dueMidnight.getFullYear();
+  const month = String(dueMidnight.getMonth() + 1).padStart(2, '0');
+  const day = String(dueMidnight.getDate()).padStart(2, '0');
+  const dueStr = `${year}-${month}-${day}`;
+
+  return {
+    ...config,
+    endType: 'ON_DATE',
+    untilDate: dueStr,
+  };
+}
+

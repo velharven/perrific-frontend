@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { findFirstMatchingRecurrenceDate } from './recurrence';
+import { findFirstMatchingRecurrenceDate, applyTaskDeadlineRecurrence } from './recurrence';
 import type { RecurrenceConfig } from '@/types';
 
 describe('findFirstMatchingRecurrenceDate', () => {
@@ -96,3 +96,48 @@ describe('findFirstMatchingRecurrenceDate', () => {
     ).toBe(4);
   });
 });
+
+describe('applyTaskDeadlineRecurrence', () => {
+  it('sets endType to ON_DATE and untilDate to deadline when taskDueDate is >= anchorDate', () => {
+    const config: RecurrenceConfig = {
+      freq: 'WEEKLY',
+      interval: 1,
+      byDays: [1, 3, 5],
+      endType: 'NEVER',
+    };
+
+    const result = applyTaskDeadlineRecurrence(config, '2026-10-10', '2026-10-25T00:00:00.000Z');
+    expect(result?.endType).toBe('ON_DATE');
+    expect(result?.untilDate).toBe('2026-10-25');
+  });
+
+  it('keeps original config when taskDueDate is earlier than anchorDate (overdue)', () => {
+    const config: RecurrenceConfig = {
+      freq: 'DAILY',
+      interval: 1,
+      endType: 'NEVER',
+    };
+
+    const result = applyTaskDeadlineRecurrence(config, '2026-10-26', '2026-10-25T00:00:00.000Z');
+    expect(result?.endType).toBe('NEVER');
+    expect(result?.untilDate).toBeUndefined();
+  });
+
+  it('keeps original config when taskDueDate is null or undefined', () => {
+    const config: RecurrenceConfig = {
+      freq: 'DAILY',
+      interval: 1,
+      endType: 'NEVER',
+    };
+
+    expect(applyTaskDeadlineRecurrence(config, '2026-10-10', null)).toEqual(config);
+    expect(applyTaskDeadlineRecurrence(config, '2026-10-10', undefined)).toEqual(config);
+  });
+
+  it('handles null or exception recurrence gracefully', () => {
+    expect(applyTaskDeadlineRecurrence(null, '2026-10-10', '2026-10-25')).toBeNull();
+    const exceptionConfig: RecurrenceConfig = { freq: 'DAILY', isException: true };
+    expect(applyTaskDeadlineRecurrence(exceptionConfig, '2026-10-10', '2026-10-25')).toEqual(exceptionConfig);
+  });
+});
+
