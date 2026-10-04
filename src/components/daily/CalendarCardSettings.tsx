@@ -21,6 +21,7 @@ import {
   getRecurrencePresets,
   isSameRecurrence,
   toLocalMidnight,
+  applyTaskDeadlineRecurrence,
 } from '@/lib/recurrence';
 import { CALENDAR_COLORS, getCalendarColorMeta } from '@/lib/calendarColors';
 import TimePickerInput from '@/components/ui/TimePickerInput';
@@ -222,6 +223,7 @@ export default function CalendarCardSettings({
   const isAct = selectedItem.type === 'activity';
   const act = isAct ? selectedItem.act : null;
   const gEv = !isAct ? selectedItem.gEv : null;
+  const taskDueDate = isAct && act?.task?.dueDate ? act.task.dueDate : null;
 
   const [title, setTitle] = useState('');
   const [dateStr, setDateStr] = useState('');
@@ -470,8 +472,11 @@ export default function CalendarCardSettings({
 
   const isCustomRecurrenceSelected = useMemo(() => {
     if (!recurrence) return false;
-    return !presets.some((p) => p.config && isSameRecurrence(p.config, recurrence));
-  }, [recurrence, presets]);
+    return !presets.some((p) => {
+      const cfg = applyTaskDeadlineRecurrence(p.config, dateStr || new Date(), taskDueDate);
+      return cfg && isSameRecurrence(cfg, recurrence);
+    });
+  }, [recurrence, presets, dateStr, taskDueDate]);
 
   const recurrenceSummaryLabel = formatRecurrenceLabel(recurrence, dateStr || new Date());
 
@@ -1004,6 +1009,9 @@ export default function CalendarCardSettings({
     setRepeatMenuOpen(false);
     const anchor = toLocalMidnight(dateStr || new Date());
     const anchorDow = anchor.getDay();
+    const hasValidDeadline = Boolean(
+      taskDueDate && toLocalMidnight(taskDueDate).getTime() >= anchor.getTime(),
+    );
 
     if (recurrence) {
       setCustomInterval(Math.max(1, recurrence.interval || 1));
@@ -1014,18 +1022,39 @@ export default function CalendarCardSettings({
           : [anchorDow],
       );
       setCustomMonthlyMode(recurrence.byWeekOfMonth ? 'NTH_WEEKDAY' : 'DAY_OF_MONTH');
-      setCustomEndType(recurrence.endType || 'NEVER');
-      setCustomUntilDate(
-        recurrence.untilDate || defaultUntilDateFromAnchor(dateStr),
-      );
+      if (recurrence.endType === 'ON_DATE') {
+        setCustomEndType('ON_DATE');
+        setCustomUntilDate(
+          recurrence.untilDate ||
+            (hasValidDeadline ? toDateInputValue(taskDueDate) : defaultUntilDateFromAnchor(dateStr)),
+        );
+      } else if (recurrence.endType === 'AFTER') {
+        setCustomEndType('AFTER');
+        setCustomUntilDate(
+          hasValidDeadline ? toDateInputValue(taskDueDate) : defaultUntilDateFromAnchor(dateStr),
+        );
+      } else {
+        if (hasValidDeadline) {
+          setCustomEndType('ON_DATE');
+          setCustomUntilDate(toDateInputValue(taskDueDate));
+        } else {
+          setCustomEndType('NEVER');
+          setCustomUntilDate(defaultUntilDateFromAnchor(dateStr));
+        }
+      }
       setCustomCount(recurrence.count && recurrence.count > 0 ? recurrence.count : 13);
     } else {
       setCustomInterval(1);
       setCustomFreq('WEEKLY');
       setCustomByDays([anchorDow]);
       setCustomMonthlyMode('DAY_OF_MONTH');
-      setCustomEndType('NEVER');
-      setCustomUntilDate(defaultUntilDateFromAnchor(dateStr));
+      if (hasValidDeadline) {
+        setCustomEndType('ON_DATE');
+        setCustomUntilDate(toDateInputValue(taskDueDate));
+      } else {
+        setCustomEndType('NEVER');
+        setCustomUntilDate(defaultUntilDateFromAnchor(dateStr));
+      }
       setCustomCount(13);
     }
 
@@ -1526,13 +1555,17 @@ export default function CalendarCardSettings({
             className="w-64 overflow-y-auto rounded-xl border border-gray-200 bg-white py-1.5 shadow-xl font-manrope animate-in fade-in zoom-in-95 duration-100"
           >
             {presets.map((preset) => {
-              const selected = isSameRecurrence(recurrence, preset.config);
+              const effectivePresetConfig = preset.config
+                ? applyTaskDeadlineRecurrence(preset.config, dateStr || new Date(), taskDueDate) ?? null
+                : null;
+              const selected = isSameRecurrence(recurrence, effectivePresetConfig);
               return (
                 <button
                   key={preset.id}
                   type="button"
                   onClick={() => {
                     let nextDateStr: string | undefined = undefined;
+                    let nextConfig = effectivePresetConfig;
                     if (preset.config) {
                       const anchor = toLocalMidnight(dateStr || new Date());
                       const firstValidDate = findFirstMatchingRecurrenceDate(anchor, preset.config);
@@ -1542,11 +1575,17 @@ export default function CalendarCardSettings({
                         setDateStr(computedDateStr);
                         onDateChanged?.(firstValidDate);
                       }
+                      nextConfig =
+                        applyTaskDeadlineRecurrence(
+                          preset.config,
+                          firstValidDate,
+                          taskDueDate,
+                        ) ?? null;
                     }
-                    setRecurrence(preset.config);
+                    setRecurrence(nextConfig);
                     setRepeatMenuOpen(false);
                     void handleSave({
-                      nextRecurrence: preset.config,
+                      nextRecurrence: nextConfig,
                       ...(nextDateStr ? { nextDateStr } : {}),
                     });
                   }}
@@ -1715,7 +1754,16 @@ export default function CalendarCardSettings({
                         onChange={() => setCustomEndType('ON_DATE')}
                         className="h-4 w-4 accent-blue-600 cursor-pointer"
                       />
-                      <span className="text-sm text-gray-800">Pada</span>
+                      <span className="text-sm text-gray-800">
+                        Pada
+                        {Boolean(
+                          taskDueDate && toDateInputValue(taskDueDate) === customUntilDate,
+                        ) && (
+                          <span className="ml-1.5 text-[11px] font-semibold text-blue-600">
+                            (Sesuai batas waktu task)
+                          </span>
+                        )}
+                      </span>
                     </label>
                     <input
                       type="date"
