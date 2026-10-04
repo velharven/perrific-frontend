@@ -760,7 +760,13 @@ function BoardPageInner() {
         onMove={moveTask}
         onReorder={reorderColumn}
         onOpen={(t) => {
-          setSelectedFloatingTask(t);
+          const isDesktop = typeof window !== 'undefined' ? window.innerWidth >= 768 : true;
+          if (isDesktop) {
+            if (location.pathname.startsWith('/board/')) navigate(`task/${t.id}`);
+            else navigate(`${t.id}`);
+          } else {
+            setSelectedFloatingTask(t);
+          }
         }}
         onToggleCollapse={toggleCollapse}
         onAdd={openCreateFor}
