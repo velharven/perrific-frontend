@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { teamApi } from '@/api/teams';
 import { taskApi } from '@/api/tasks';
 import { SettingsBlock } from '@/components/ui/SettingsShell';
@@ -106,10 +106,17 @@ export default function ApprovalLists({
           <ul className="divide-y divide-gray-100 overflow-hidden rounded-[10px] border border-perrific-line">
             {visibleTasks.map((t) => (
               <li key={t.id} className="flex items-center gap-3 px-3 py-2.5">
+                <Avatar
+                  src={t.createdBy?.avatarUrl ?? undefined}
+                  name={t.createdBy?.name ?? 'Pengaju'}
+                  size={36}
+                  alt={t.createdBy?.name ?? 'Pengaju'}
+                  className="h-9 w-9 shrink-0 text-xs shadow-xs"
+                />
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-manrope text-sm font-semibold text-perrific-graphite">{t.title}</p>
                   <p className="truncate font-manrope text-xs text-gray-500">
-                    {t.project.name} · oleh {t.createdBy?.name ?? 'anggota'}
+                    {t.project.name} · diajukan oleh <span className="font-medium text-gray-700">{t.createdBy?.name ?? 'Anggota'}</span>
                   </p>
                 </div>
                 <button
@@ -142,10 +149,16 @@ export default function ApprovalLists({
           <ul className="divide-y divide-gray-100 overflow-hidden rounded-[10px] border border-perrific-line">
             {requests.map((r) => (
               <li key={r.id} className="flex items-center gap-3 px-3 py-2.5">
-                <Avatar src={r.user?.avatarUrl ?? undefined} name={r.user?.name ?? '?'} size={32} alt={r.user?.name ?? 'anggota'} className="h-8 w-8 text-xs" />
+                <Avatar
+                  src={r.user?.avatarUrl ?? undefined}
+                  name={r.user?.name ?? '?'}
+                  size={36}
+                  alt={r.user?.name ?? 'calon anggota'}
+                  className="h-9 w-9 shrink-0 text-xs shadow-xs"
+                />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-manrope text-sm font-semibold text-perrific-graphite">{r.user?.name}</p>
-                  <p className="truncate font-manrope text-xs text-gray-500">{r.user?.email}</p>
+                  <p className="truncate font-manrope text-sm font-semibold text-perrific-graphite">{r.user?.name ?? 'Calon Anggota'}</p>
+                  <p className="truncate font-manrope text-xs text-gray-500">Ingin bergabung ke tim</p>
                 </div>
                 <button
                   type="button"
