@@ -28,6 +28,8 @@ const mocks = vi.hoisted(() => ({
   createActivity: vi.fn().mockResolvedValue({ id: "created-act-1" }),
   removeActivity: vi.fn().mockResolvedValue({}),
   updateGoogleEvent: vi.fn().mockResolvedValue({}),
+  deleteGoogleEvent: vi.fn().mockResolvedValue({}),
+  createGoogleEvent: vi.fn().mockResolvedValue({ id: "created-google-1" }),
 }));
 vi.mock("@/api/activities", () => ({
   activityApi: {
@@ -61,6 +63,8 @@ vi.mock("@/store/calendarSync", () => ({
 vi.mock("@/api/calendar", () => ({
   calendarApi: {
     updateEvent: (...args: unknown[]) => mocks.updateGoogleEvent(...args),
+    deleteEvent: (...args: unknown[]) => mocks.deleteGoogleEvent(...args),
+    createEvent: (...args: unknown[]) => mocks.createGoogleEvent(...args),
   },
 }));
 vi.mock("@/components/ui/Toast", () => ({ showToast: vi.fn() }));
@@ -167,6 +171,8 @@ beforeEach(() => {
   mocks.updateActivity.mockReset().mockResolvedValue({});
   mocks.createActivity.mockReset().mockResolvedValue({ id: "created-act-1" });
   mocks.removeActivity.mockReset().mockResolvedValue({});
+  mocks.deleteGoogleEvent.mockReset().mockResolvedValue({});
+  mocks.createGoogleEvent.mockReset().mockResolvedValue({ id: "created-google-1" });
 });
 afterEach(() => {
   cleanup();
@@ -1982,6 +1988,112 @@ describe("Notion-style lifecycle sync", () => {
 
       fireEvent.click(moveButtons[0]);
       expect(onSelectDateMock).toHaveBeenCalledWith(expect.any(Date));
+    });
+  });
+
+  describe("Moving deleted calendar items to unscheduled items instead of permanent deletion", () => {
+    it("unschedules Purrific activity on Delete key rather than deleting from database", async () => {
+      const onUnscheduleActivityMock = vi.fn();
+      const scheduledAct = fixture({
+        id: "act-to-unschedule-1",
+        title: "Kegiatan Kalender",
+        date: "2026-09-29T00:00:00Z",
+        startTime: "2026-09-29T10:00:00+07:00",
+        endTime: "2026-09-29T11:00:00+07:00",
+      });
+
+      render(
+        <CalendarView
+          {...props}
+          selectedDate={new Date("2026-09-29T00:00:00+07:00")}
+          activities={[scheduledAct]}
+          onUnscheduleActivity={onUnscheduleActivityMock}
+        />,
+      );
+
+      const card = screen.getByTitle("Kegiatan Kalender");
+      fireEvent.click(card);
+
+      await act(async () => {
+        fireEvent.keyDown(window, { key: "Delete" });
+        await Promise.resolve();
+      });
+
+      // Assert: calls activityApi.update with null times instead of activityApi.remove
+      expect(mocks.updateActivity).toHaveBeenCalledWith("act-to-unschedule-1", {
+        startTime: null,
+        endTime: null,
+        allDay: false,
+        recurrence: null,
+      });
+      expect(mocks.removeActivity).not.toHaveBeenCalled();
+      expect(onUnscheduleActivityMock).toHaveBeenCalledWith("act-to-unschedule-1");
+      expect(showToast).toHaveBeenCalledWith(
+        'Kegiatan "Kegiatan Kalender" dipindahkan ke daftar item',
+        expect.objectContaining({ label: 'Urungkan (Ctrl+Z)' }),
+      );
+
+      // Tekan Ctrl+Z untuk undo
+      await act(async () => {
+        fireEvent.keyDown(window, { key: "z", ctrlKey: true });
+        await Promise.resolve();
+      });
+
+      // Assert: undo restores original schedule via updateActivity
+      expect(mocks.updateActivity).toHaveBeenLastCalledWith("act-to-unschedule-1", {
+        date: scheduledAct.date,
+        startTime: scheduledAct.startTime,
+        endTime: scheduledAct.endTime,
+        allDay: false,
+        recurrence: null,
+      });
+      expect(showToast).toHaveBeenCalledWith('Kegiatan "Kegiatan Kalender" dipulihkan.');
+    });
+
+    it("copies Google Calendar event to Purrific unscheduled item before deleting from Google", async () => {
+      mocks.status = { connected: true };
+      mocks.fetchEvents.mockResolvedValue([
+        {
+          id: "google-ev-to-del",
+          title: "Meeting di Google",
+          start: "2026-09-29T14:00:00+07:00",
+          end: "2026-09-29T15:00:00+07:00",
+        },
+      ]);
+
+      render(
+        <CalendarView
+          {...props}
+          selectedDate={new Date("2026-09-29T00:00:00+07:00")}
+          activities={[]}
+        />,
+      );
+
+      await act(async () => {});
+
+      const card = screen.getByTitle("Meeting di Google");
+      fireEvent.click(card);
+
+      await act(async () => {
+        fireEvent.keyDown(window, { key: "Delete" });
+        await Promise.resolve();
+      });
+
+      // Assert: created unscheduled Purrific activity
+      expect(mocks.createActivity).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Meeting di Google",
+          startTime: null,
+          endTime: null,
+          allDay: false,
+        }),
+      );
+      // Assert: deleted from Google Calendar
+      expect(mocks.deleteGoogleEvent).toHaveBeenCalledWith("google-ev-to-del");
+      expect(showToast).toHaveBeenCalledWith(
+        'Kegiatan "Meeting di Google" dipindahkan ke daftar item',
+        expect.objectContaining({ label: 'Urungkan (Ctrl+Z)' }),
+      );
     });
   });
 });

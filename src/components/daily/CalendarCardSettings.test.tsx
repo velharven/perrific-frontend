@@ -379,4 +379,44 @@ describe('CalendarCardSettings (Notion-style recurring options)', () => {
       );
     });
   });
+
+  it('unschedules activity rather than removing when onDelete prop is not provided', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    const nonRepeatingItem: CombinedItem = {
+      type: 'activity',
+      id: 'act-single-1',
+      act: {
+        ...masterActivity,
+        id: 'act-single-1',
+        recurrence: undefined,
+      },
+      time: '2026-09-28T09:00:00+07:00',
+      instanceDate: '2026-09-28',
+    };
+
+    render(
+      <CalendarCardSettings
+        selectedItem={nonRepeatingItem}
+        onClose={onClose}
+        onRefresh={onRefresh}
+      />,
+    );
+
+    fireEvent.click(screen.getByTitle('Hapus kegiatan ini'));
+
+    await waitFor(() => {
+      expect(mocks.updateActivity).toHaveBeenCalledWith(
+        'act-single-1',
+        expect.objectContaining({
+          startTime: null,
+          endTime: null,
+          allDay: false,
+          recurrence: null,
+        }),
+      );
+      expect(onClose).toHaveBeenCalled();
+      expect(onRefresh).toHaveBeenCalled();
+    });
+  });
 });

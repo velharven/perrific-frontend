@@ -48,6 +48,7 @@ export type CalendarUndoAction =
       item: CombinedItem;
       title: string;
       pendingDelete: Promise<void>;
+      getCreatedGoogleActivityId?: () => string | null;
     }
   | {
       id: number;
@@ -1088,8 +1089,22 @@ export default function CalendarCardSettings({
           return;
         }
         if (isAct && act) {
-          await activityApi.remove(act.id);
+          await activityApi.update(act.id, {
+            startTime: null,
+            endTime: null,
+            allDay: false,
+            recurrence: null,
+          });
         } else if (gEv) {
+          await activityApi.create({
+            title: gEv.title || 'Tanpa judul',
+            description: gEv.description || undefined,
+            date: gEv.start && !gEv.start.includes('T') ? `${gEv.start}T00:00:00.000Z` : new Date().toISOString(),
+            startTime: null,
+            endTime: null,
+            allDay: false,
+            color: gEv.colorId || null,
+          });
           await calendarApi.deleteEvent(gEv.id);
         }
         onClose();

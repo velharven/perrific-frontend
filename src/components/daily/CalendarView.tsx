@@ -24,6 +24,7 @@ interface CalendarViewProps {
   onCreateActivity?: (date: Date, time?: { startTime: string; endTime: string }) => void;
   onRefreshActivities?: () => void;
   onDeleteActivity?: (activityId: string) => void;
+  onUnscheduleActivity?: (activityId: string) => void;
   onMoveActivity: (
     activityId: string,
     position: {
@@ -279,6 +280,7 @@ export default function CalendarView({
   onCreateActivity,
   onRefreshActivities,
   onDeleteActivity,
+  onUnscheduleActivity,
   onMoveActivity,
 }: CalendarViewProps) {
   const [currentYear, setCurrentYear] = useState(selectedDate.getFullYear());
@@ -971,26 +973,19 @@ export default function CalendarView({
           await last.pendingDelete;
           if (item.type === 'activity') {
             const act = item.act;
-            await activityApi.create({
-              title: act.title || 'Tanpa judul',
-              description: act.description || undefined,
-              date: act.date ? new Date(act.date).toISOString() : new Date().toISOString(),
-              startTime: act.startTime || undefined,
-              endTime: act.endTime || undefined,
-              allDay: act.allDay,
-              type: act.type || 'CUSTOM',
-              status: act.status || 'PENDING',
-              taskId: act.taskId || undefined,
-              icon: act.icon || undefined,
-              color: act.color || undefined,
-              recurrence: act.recurrence ?? undefined,
-              order: act.order ?? 0,
-              createdAt: act.createdAt || undefined,
-              customValues: act.customValues ?? undefined,
-              checklist: act.checklistItems?.length ? act.checklistItems.map((c) => ({ text: c.text })) : undefined,
+            await activityApi.update(act.id, {
+              date: act.date,
+              startTime: act.startTime || null,
+              endTime: act.endTime || null,
+              allDay: Boolean(act.allDay),
+              recurrence: act.recurrence ?? null,
             });
           } else {
             const gEv = item.gEv;
+            const createdGoogleActId = last.getCreatedGoogleActivityId?.();
+            if (createdGoogleActId) {
+              await activityApi.remove(createdGoogleActId);
+            }
             const createdG = await calendarApi.createEvent({
               title: gEv.title || 'Event Google',
               description: gEv.description || undefined,
@@ -1047,7 +1042,11 @@ export default function CalendarView({
       // Sembunyikan kartu segera, lalu simpan urutan aksi saat tombol ditekan.
       if (targetActId) {
         deletedActivityIdsRef.current.add(targetActId);
-        onDeleteActivity?.(targetActId);
+        if (onUnscheduleActivity) {
+          onUnscheduleActivity(targetActId);
+        } else {
+          onDeleteActivity?.(targetActId);
+        }
       }
       if (targetGoogleId) {
         googleEventsRequestRef.current++;
@@ -1055,12 +1054,41 @@ export default function CalendarView({
         setGoogleEvents((prev) => prev.filter((g) => g.id !== targetGoogleId));
       }
 
+      let createdGoogleActivityId: string | null = null;
       const pendingDelete = isAct && act
-        ? activityApi.remove(act.id).then(() => undefined)
-        : calendarApi.deleteEvent(gEv!.id).then(() => undefined);
-      recordUndo({ id: actionId, type: 'delete', item: itemToDelete, title, pendingDelete });
+        ? activityApi.update(act.id, {
+            startTime: null,
+            endTime: null,
+            allDay: false,
+            recurrence: null,
+          }).then(() => {
+            onRefreshActivities?.();
+          })
+        : (async () => {
+            const created = await activityApi.create({
+              title: gEv!.title || 'Tanpa judul',
+              description: gEv!.description || undefined,
+              date: gEv!.start && !gEv!.start.includes('T') ? `${gEv!.start}T00:00:00.000Z` : new Date().toISOString(),
+              startTime: null,
+              endTime: null,
+              allDay: false,
+              color: gEv!.colorId || null,
+            });
+            createdGoogleActivityId = created?.id || null;
+            onRefreshActivities?.();
+            await calendarApi.deleteEvent(gEv!.id);
+          })();
 
-      showToast(`Kegiatan "${title}" dihapus`, {
+      recordUndo({
+        id: actionId,
+        type: 'delete',
+        item: itemToDelete,
+        title,
+        pendingDelete,
+        getCreatedGoogleActivityId: () => createdGoogleActivityId,
+      });
+
+      showToast(`Kegiatan "${title}" dipindahkan ke daftar item`, {
         label: 'Urungkan (Ctrl+Z)',
         onAction: () => {
           void handleUndo(actionId);
@@ -1069,7 +1097,7 @@ export default function CalendarView({
 
       try {
         await pendingDelete;
-
+        if (targetActId) deletedActivityIdsRef.current.delete(targetActId);
       } catch (err) {
         console.error('[CalendarView] Gagal menghapus kegiatan:', err);
         if (gEv) setGoogleEvents(events => events.some(event => event.id === gEv.id) ? events : [...events, gEv]);
@@ -1087,7 +1115,7 @@ export default function CalendarView({
         deletingIdsRef.current.delete(targetId);
       }
     },
-    [onRefreshActivities, onDeleteActivity, handleUndo],
+    [onRefreshActivities, onDeleteActivity, onUnscheduleActivity, handleUndo],
   );
 
   const handleConfirmRecurringDelete = async (scope: RecurrenceEditScope) => {
@@ -2157,6 +2185,7 @@ export default function CalendarView({
         .filter((act) => {
           if (deletedActivityIdsRef.current.has(act.id)) return false;
           if (act.googleEventId && deletedGoogleIdsRef.current.has(act.googleEventId)) return false;
+          if (!act.allDay && !act.startTime && !act.endTime) return false;
           const itemDateStr = act.date || act.startTime;
           if (!itemDateStr) return false;
           if (act.recurrence) {

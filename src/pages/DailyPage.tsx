@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState, useCallback, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import {
   DndContext,
@@ -2503,6 +2503,16 @@ function DailyPageInner() {
             // Abaikan respons fetch yang dimulai sebelum penghapusan optimistik.
             activitiesRequestRef.current++;
             setActivities((prev) => prev.filter((a) => a.id !== activityId));
+          }}
+          onUnscheduleActivity={(activityId) => {
+            activitiesRequestRef.current++;
+            setActivities((prev) =>
+              prev.map((a) =>
+                a.id === activityId
+                  ? { ...a, startTime: null, endTime: null, allDay: false, recurrence: undefined }
+                  : a,
+              ),
+            );
           }}
         />
       ) : (
