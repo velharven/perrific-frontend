@@ -60,7 +60,7 @@ export default function TeamSettingsPage() {
   async function handleCopyLink() {
     if (!team?.inviteCode) return;
     try {
-      await navigator.clipboard.writeText(buildJoinLink(team.inviteCode));
+      await navigator.clipboard.writeText(buildJoinLink(team.inviteToken || team.inviteCode));
       showToast('Link invite disalin.');
     } catch {
       showToast('Gagal menyalin. Salin manual dari layar.');
@@ -119,7 +119,7 @@ export default function TeamSettingsPage() {
   const activePreset = matchPreset(team.inviteExpiresAt);
   const isExpired =
     team.inviteExpiresAt != null && new Date(team.inviteExpiresAt).getTime() <= Date.now();
-  const joinLink = team.inviteCode ? buildJoinLink(team.inviteCode) : '';
+  const joinLink = team.inviteCode ? buildJoinLink(team.inviteToken || team.inviteCode) : '';
 
   return (
     <div className="flex min-h-full w-full flex-col space-y-5">

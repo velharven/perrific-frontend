@@ -169,7 +169,7 @@ export default function ProjectSettingsPage() {
   async function handleCopyLink() {
     if (!team?.inviteCode) return;
     try {
-      await navigator.clipboard.writeText(buildJoinLink(team.inviteCode));
+      await navigator.clipboard.writeText(buildJoinLink(team.inviteToken || team.inviteCode));
       showToast('Link invite disalin.');
     } catch {
       showToast('Gagal menyalin. Salin manual dari layar.');
@@ -247,7 +247,7 @@ export default function ProjectSettingsPage() {
   const activePreset = matchPreset(team?.inviteExpiresAt);
   const isExpired =
     team?.inviteExpiresAt != null && new Date(team.inviteExpiresAt).getTime() <= Date.now();
-  const joinLink = team?.inviteCode ? buildJoinLink(team.inviteCode) : '';
+  const joinLink = team?.inviteCode ? buildJoinLink(team.inviteToken || team.inviteCode) : '';
 
   if (loading) return <FormSettingsSkeleton />;
   if (!project) return <p className="text-gray-500">Project tidak ditemukan.</p>;

@@ -50,6 +50,7 @@ export interface Team {
   description?: string | null;
   avatarUrl?: string | null;
   inviteCode?: string | null;
+  inviteToken?: string | null;
   inviteExpiresAt?: string | null;
   canManageInvite?: boolean;
   members?: TeamMember[];
