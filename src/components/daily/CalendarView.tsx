@@ -74,14 +74,17 @@ const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const HOUR_HEIGHT = 60; // 60px per jam => 1 menit = 1px
 const DROP_SNAP_MINUTES = 15;
 
-function getSnappedDropMinutes(
+export function getSnappedDropMinutes(
   clientY: number,
   timelineColumn: HTMLElement,
   grabOffsetMinutes = 0,
   durationMinutes = 60,
 ): number {
   const rect = timelineColumn.getBoundingClientRect();
-  const rawMinutes = ((clientY - rect.top) / HOUR_HEIGHT) * 60 - grabOffsetMinutes;
+  const totalMinutes = 24 * 60;
+  const rawMinutes = rect.height > 0
+    ? ((clientY - rect.top) / rect.height) * totalMinutes - grabOffsetMinutes
+    : ((clientY - rect.top) / HOUR_HEIGHT) * 60 - grabOffsetMinutes;
   const snappedMinutes = Math.round(rawMinutes / DROP_SNAP_MINUTES) * DROP_SNAP_MINUTES;
   const boundedDuration = Math.min(24 * 60, Math.max(DROP_SNAP_MINUTES, durationMinutes));
   return Math.min(24 * 60 - boundedDuration, Math.max(0, snappedMinutes));
@@ -2373,9 +2376,15 @@ export default function CalendarView({
           }
           const durationMinutes = Math.max(15, effectiveEnd && item.time
             ? (new Date(effectiveEnd).getTime() - new Date(item.time).getTime()) / 60000 : 60);
+          const cardRect = e.currentTarget.getBoundingClientRect();
           const grabOffsetMinutes = Math.min(
             durationMinutes,
-            Math.max(0, ((e.clientY - e.currentTarget.getBoundingClientRect().top) / HOUR_HEIGHT) * 60),
+            Math.max(
+              0,
+              cardRect.height > 0
+                ? ((e.clientY - cardRect.top) / cardRect.height) * durationMinutes
+                : ((e.clientY - cardRect.top) / HOUR_HEIGHT) * 60,
+            ),
           );
           const rawId = isAct ? item.act.id : item.gEv.id;
           const cardPayload = {

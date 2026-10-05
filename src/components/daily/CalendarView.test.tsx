@@ -8,7 +8,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useState, type ComponentProps } from "react";
-import CalendarView from "./CalendarView";
+import CalendarView, { getSnappedDropMinutes } from "./CalendarView";
 import type { DailyActivity, GoogleCalendarStatus } from "@/types";
 import { calendarCardEnd, isCalendarCardPast } from "@/lib/calendarTiming";
 import type { CalendarChange } from '@/store/calendarSync';
@@ -2095,5 +2095,79 @@ describe("Notion-style lifecycle sync", () => {
         expect.objectContaining({ label: 'Urungkan (Ctrl+Z)' }),
       );
     });
+  });
+});
+
+describe("zoom-independent drag and drop calculation", () => {
+  it("calculates accurate drop minutes on a zoomed/scaled timeline column (e.g. 1366x768 zoom scale ~0.85375)", () => {
+    const mockTimelineColumn = document.createElement("div");
+    // Under scale 0.85375, height is 1440 * 0.85375 = 1229.4px
+    const scale = 1366 / 1600; // ~0.85375
+    const scaledHeight = 1440 * scale;
+    const top = 100;
+
+    vi.spyOn(mockTimelineColumn, "getBoundingClientRect").mockReturnValue({
+      top,
+      height: scaledHeight,
+      bottom: top + scaledHeight,
+      left: 0,
+      right: 200,
+      width: 200,
+      x: 0,
+      y: top,
+      toJSON: () => {},
+    });
+
+    // Cursor at hour 19:00 -> clientY = top + (19 * 60 * scale) = 100 + 973.275 = 1073.275
+    const clientYAt19 = top + 19 * 60 * scale;
+    const minutes = getSnappedDropMinutes(clientYAt19, mockTimelineColumn, 0, 60);
+
+    // 19:00 is 19 * 60 = 1140 minutes
+    expect(minutes).toBe(1140);
+  });
+
+  it("handles fallback to default 60px/hour when container height is 0 (e.g. unmeasured jsdom)", () => {
+    const mockTimelineColumn = document.createElement("div");
+    vi.spyOn(mockTimelineColumn, "getBoundingClientRect").mockReturnValue({
+      top: 0,
+      height: 0,
+      bottom: 0,
+      left: 0,
+      right: 0,
+      width: 0,
+      x: 0,
+      y: 0,
+      toJSON: () => {},
+    });
+
+    // clientY = 960 -> 960 / 60 * 60 = 960 minutes = 16:00
+    const minutes = getSnappedDropMinutes(960, mockTimelineColumn, 0, 60);
+    expect(minutes).toBe(960);
+  });
+
+  it("applies grabOffsetMinutes correctly under scaling", () => {
+    const mockTimelineColumn = document.createElement("div");
+    const scale = 0.8;
+    const scaledHeight = 1440 * scale;
+    const top = 0;
+
+    vi.spyOn(mockTimelineColumn, "getBoundingClientRect").mockReturnValue({
+      top,
+      height: scaledHeight,
+      bottom: top + scaledHeight,
+      left: 0,
+      right: 200,
+      width: 200,
+      x: 0,
+      y: top,
+      toJSON: () => {},
+    });
+
+    // Cursor at hour 10:00 (600 minutes), grabOffsetMinutes = 30 minutes (grabbed halfway through card)
+    const clientYAt10 = 10 * 60 * scale;
+    const minutes = getSnappedDropMinutes(clientYAt10, mockTimelineColumn, 30, 60);
+
+    // 600 - 30 = 570 minutes -> 09:30
+    expect(minutes).toBe(570);
   });
 });
