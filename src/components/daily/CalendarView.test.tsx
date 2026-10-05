@@ -1498,6 +1498,90 @@ describe("Notion-style lifecycle sync", () => {
         },
       });
     });
+
+    it("deletes all recurring events with zero delay and cascade-removes child exception activities", async () => {
+      const masterAct = fixture({
+        id: "standup-master-6",
+        title: "Daily Standup 6",
+        date: "2026-09-28T00:00:00Z",
+        startTime: "2026-09-28T09:00:00+07:00",
+        endTime: "2026-09-28T10:00:00+07:00",
+        recurrence: {
+          freq: "DAILY",
+          interval: 1,
+          excludeDates: ["2026-09-29"],
+          endType: "NEVER",
+        },
+      });
+
+      const exceptionAct = fixture({
+        id: "standup-exception-6",
+        title: "Daily Standup 6 (Rescheduled)",
+        date: "2026-09-29T00:00:00Z",
+        startTime: "2026-09-29T14:00:00+07:00",
+        endTime: "2026-09-29T15:00:00+07:00",
+        recurrence: {
+          isException: true,
+          masterActivityId: "standup-master-6",
+        },
+      });
+
+      let resolveUpdate: (val: any) => void;
+      const pendingUpdate = new Promise((resolve) => {
+        resolveUpdate = resolve;
+      });
+      mocks.updateActivity.mockReturnValueOnce(pendingUpdate);
+
+      render(
+        <CalendarView
+          {...props}
+          selectedDate={new Date("2026-09-28T00:00:00+07:00")}
+          activities={[masterAct, exceptionAct]}
+        />,
+      );
+
+      // Pastikan kedua kartu muncul di layar (master di tanggal 28, exception di tanggal 29)
+      const masterCards = screen.getAllByTitle("Daily Standup 6");
+      expect(masterCards.length).toBeGreaterThan(0);
+      expect(screen.getByTitle("Daily Standup 6 (Rescheduled)")).toBeTruthy();
+
+      const masterCard = masterCards[0];
+      fireEvent.click(masterCard);
+
+      // Tekan tombol Delete
+      await act(async () => {
+        fireEvent.keyDown(window, { key: "Delete" });
+        await Promise.resolve();
+      });
+
+      // Modal konfirmasi hapus muncul
+      expect(screen.getByText("Hapus Kegiatan Berulang")).toBeTruthy();
+      fireEvent.click(screen.getByText("Semua event"));
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Hapus" }));
+        await Promise.resolve();
+      });
+
+      // Frame 0 assertion (Zero Delay): Seluruh kartu master dan exception HARUS langsung hilang tanpa menunggu API resolve
+      expect(screen.queryAllByTitle("Daily Standup 6")).toHaveLength(0);
+      expect(screen.queryByTitle("Daily Standup 6 (Rescheduled)")).toBeNull();
+
+      // Exception activity harus dihapus dari backend via removeActivity
+      expect(mocks.removeActivity).toHaveBeenCalledWith("standup-exception-6");
+      expect(mocks.updateActivity).toHaveBeenCalledWith("standup-master-6", {
+        startTime: null,
+        endTime: null,
+        allDay: false,
+        recurrence: null,
+      });
+
+      // Selesaikan pending API
+      await act(async () => {
+        resolveUpdate!(true);
+        await Promise.resolve();
+      });
+    });
   });
 
   describe("Google & Notion Calendar cascading overlapping card layout", () => {

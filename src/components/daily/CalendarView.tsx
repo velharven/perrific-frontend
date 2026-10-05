@@ -966,6 +966,9 @@ export default function CalendarView({
 
         if (item.type === 'activity') {
           deletedActivityIdsRef.current.delete(item.act.id);
+          last.childExceptions?.forEach((child) => {
+            deletedActivityIdsRef.current.delete(child.id);
+          });
         } else {
           deletedGoogleIdsRef.current.delete(item.gEv.id);
           setGoogleEvents((prev) => prev.some((g) => g.id === item.gEv.id) ? prev : [...prev, item.gEv]);
@@ -983,6 +986,25 @@ export default function CalendarView({
               allDay: Boolean(act.allDay),
               recurrence: act.recurrence ?? null,
             });
+            if (last.childExceptions?.length) {
+              await Promise.all(
+                last.childExceptions.map((child) =>
+                  activityApi.create({
+                    title: child.title,
+                    description: child.description,
+                    date: child.date,
+                    startTime: child.startTime,
+                    endTime: child.endTime,
+                    allDay: child.allDay,
+                    type: child.type || 'CUSTOM',
+                    status: child.status || 'PENDING',
+                    icon: child.icon ?? undefined,
+                    color: child.color,
+                    recurrence: child.recurrence,
+                  }).catch(() => null)
+                ),
+              );
+            }
           } else {
             const gEv = item.gEv;
             const createdGoogleActId = last.getCreatedGoogleActivityId?.();
@@ -1042,31 +1064,59 @@ export default function CalendarView({
       setSelectedCardItem(null);
 
       const actionId = nextUndoIdRef.current++;
+
+      const masterAct = isAct && act && act.recurrence?.isException && act.recurrence?.masterActivityId
+        ? (activities.find((a) => a.id === act.recurrence?.masterActivityId) || act)
+        : act;
+      const effectiveActId = masterAct?.id || targetActId;
+      const effectiveGoogleId = masterAct?.googleEventId || targetGoogleId;
+
+      // Temukan seluruh aktivitas exception anak jika kartu master berulang dihapus
+      const childExceptions = isAct && effectiveActId ? activities.filter(
+        (a) =>
+          a.id !== effectiveActId &&
+          ((a.recurrence?.isException && a.recurrence?.masterActivityId === effectiveActId) ||
+          Boolean(effectiveGoogleId && a.googleEventId?.startsWith(`${effectiveGoogleId}_`))),
+      ) : [];
+
       // Sembunyikan kartu segera, lalu simpan urutan aksi saat tombol ditekan.
-      if (targetActId) {
-        deletedActivityIdsRef.current.add(targetActId);
+      if (effectiveActId) {
+        deletedActivityIdsRef.current.add(effectiveActId);
         if (onUnscheduleActivity) {
-          onUnscheduleActivity(targetActId);
+          onUnscheduleActivity(effectiveActId);
         } else {
-          onDeleteActivity?.(targetActId);
+          onDeleteActivity?.(effectiveActId);
         }
       }
-      if (targetGoogleId) {
+
+      // Sembunyikan dan hapus seluruh exception turunan seketika pada Frame 0 (zero delay)
+      childExceptions.forEach((child) => {
+        deletedActivityIdsRef.current.add(child.id);
+        onDeleteActivity?.(child.id);
+      });
+
+      if (effectiveGoogleId) {
         googleEventsRequestRef.current++;
-        deletedGoogleIdsRef.current.add(targetGoogleId);
-        setGoogleEvents((prev) => prev.filter((g) => g.id !== targetGoogleId));
+        deletedGoogleIdsRef.current.add(effectiveGoogleId);
+        setGoogleEvents((prev) =>
+          prev.filter((g) => g.id !== effectiveGoogleId && g.recurringEventId !== effectiveGoogleId)
+        );
       }
 
       let createdGoogleActivityId: string | null = null;
-      const pendingDelete = isAct && act
-        ? activityApi.update(act.id, {
-            startTime: null,
-            endTime: null,
-            allDay: false,
-            recurrence: null,
-          }).then(() => {
+      const pendingDelete = isAct && masterAct
+        ? (async () => {
+            await Promise.all([
+              activityApi.update(masterAct.id, {
+                startTime: null,
+                endTime: null,
+                allDay: false,
+                recurrence: null,
+              }),
+              ...childExceptions.map((child) => activityApi.remove(child.id).catch(() => {})),
+            ]);
             onRefreshActivities?.();
-          })
+          })()
         : (async () => {
             const created = await activityApi.create({
               title: gEv!.title || 'Tanpa judul',
@@ -1088,6 +1138,7 @@ export default function CalendarView({
         item: itemToDelete,
         title,
         pendingDelete,
+        childExceptions,
         getCreatedGoogleActivityId: () => createdGoogleActivityId,
       });
 
@@ -1100,15 +1151,17 @@ export default function CalendarView({
 
       try {
         await pendingDelete;
-        if (targetActId) deletedActivityIdsRef.current.delete(targetActId);
+        if (effectiveActId) deletedActivityIdsRef.current.delete(effectiveActId);
+        childExceptions.forEach((child) => deletedActivityIdsRef.current.delete(child.id));
       } catch (err) {
         console.error('[CalendarView] Gagal menghapus kegiatan:', err);
         if (gEv) setGoogleEvents(events => events.some(event => event.id === gEv.id) ? events : [...events, gEv]);
         // Rollback optimistic delete & keluarkan entri dari stack jika request gagal
         undoStackRef.current = undoStackRef.current.filter((a) => a.id !== actionId);
-        if (targetActId) deletedActivityIdsRef.current.delete(targetActId);
-        if (targetGoogleId) {
-          deletedGoogleIdsRef.current.delete(targetGoogleId);
+        if (effectiveActId) deletedActivityIdsRef.current.delete(effectiveActId);
+        childExceptions.forEach((child) => deletedActivityIdsRef.current.delete(child.id));
+        if (effectiveGoogleId) {
+          deletedGoogleIdsRef.current.delete(effectiveGoogleId);
         }
         if (onRefreshActivities) onRefreshActivities();
 
@@ -1118,13 +1171,15 @@ export default function CalendarView({
         deletingIdsRef.current.delete(targetId);
       }
     },
-    [onRefreshActivities, onDeleteActivity, onUnscheduleActivity, handleUndo],
+    [onRefreshActivities, onDeleteActivity, onUnscheduleActivity, handleUndo, activities],
   );
 
   const handleConfirmRecurringDelete = async (scope: RecurrenceEditScope) => {
     if (!recurringDeletePrompt) return;
     const { item, instanceDateStr } = recurringDeletePrompt;
     setRecurringDeletePrompt(null);
+    selectedCardItemRef.current = null;
+    setSelectedCardItem(null);
 
     const isAct = item.type === 'activity';
     const act = isAct ? item.act : null;

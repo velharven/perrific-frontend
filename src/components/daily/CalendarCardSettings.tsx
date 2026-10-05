@@ -49,6 +49,7 @@ export type CalendarUndoAction =
       item: CombinedItem;
       title: string;
       pendingDelete: Promise<void>;
+      childExceptions?: DailyActivity[];
       getCreatedGoogleActivityId?: () => string | null;
     }
   | {
@@ -1108,16 +1109,17 @@ export default function CalendarCardSettings({
     deletingRef.current = true;
     setDeleting(true);
     try {
-      await savingPromiseRef.current;
       if (onDelete) {
-        await onDelete(selectedItem, forceAll);
         onClose();
+        await savingPromiseRef.current;
+        await onDelete(selectedItem, forceAll);
       } else {
         if (!window.confirm(`Hapus kegiatan "${title || 'Tanpa judul'}"?`)) {
           setDeleting(false);
           return;
         }
-        if (isAct && act) {
+        onClose();
+        await savingPromiseRef.current;
           await activityApi.update(act.id, {
             startTime: null,
             endTime: null,
