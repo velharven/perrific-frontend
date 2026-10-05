@@ -1120,6 +1120,7 @@ export default function CalendarCardSettings({
         }
         onClose();
         await savingPromiseRef.current;
+        if (isAct && act) {
           await activityApi.update(act.id, {
             startTime: null,
             endTime: null,

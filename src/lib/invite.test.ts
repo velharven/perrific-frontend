@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildJoinLink, formatExpiryText, INVITE_PRESETS, matchPreset } from './invite';
+import { buildJoinLink, formatExpiryText, matchPreset } from './invite';
 
 describe('invite helpers', () => {
   it('builds join link using encrypted token or code', () => {
